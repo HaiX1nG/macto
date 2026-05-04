@@ -2,12 +2,29 @@ import { useEffect, useMemo, useState } from 'react'
 import { Avatar, Dropdown } from 'antd'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
-import { roomService } from '@renderer/services'
-import type { ParticipantResponse } from '@shared/types/api'
-import type { ServerMember } from '@shared/types/kook'
+import { roomService, authService } from '@renderer/services'
+import type { ParticipantResponse, UserOnlineStatusResponse } from '@shared/types/api'
+import type { ServerMember, UserStatus } from '@shared/types/kook'
 
 // Convert API participant to local member format
-function participantToMember(p: ParticipantResponse): ServerMember {
+function participantToMember(p: ParticipantResponse, status?: UserOnlineStatusResponse): ServerMember {
+  // Determine status from customStatus
+  let userStatus: UserStatus = 'online'
+  let customStatus = ''
+
+  if (status) {
+    customStatus = status.customStatus || ''
+    if (!status.isOnline) {
+      userStatus = 'offline'
+    } else if (customStatus === '空闲') {
+      userStatus = 'idle'
+    } else if (customStatus === '请勿打扰') {
+      userStatus = 'dnd'
+    } else if (customStatus === '隐身') {
+      userStatus = 'offline'
+    }
+  }
+
   return {
     id: `${p.userId}`,
     serverId: '',
@@ -17,7 +34,8 @@ function participantToMember(p: ParticipantResponse): ServerMember {
       name: p.username,
       displayName: p.username,
       avatar: p.avatarUrl,
-      status: 'online',
+      status: userStatus,
+      customStatus: customStatus,
     },
     nickname: undefined,
     roles: p.role === 1 ? ['房主'] : p.role === 2 ? ['管理员'] : [],
@@ -41,7 +59,17 @@ export function MemberList() {
       try {
         // currentServerId is the room ID
         const participants = await roomService.getRoomParticipants(Number(currentServerId))
-        const convertedMembers = participants.map(participantToMember)
+
+        // Fetch online status for each participant
+        const statusPromises = participants.map(p =>
+          authService.getUserOnlineStatus(p.userId).catch(() => null)
+        )
+        const statuses = await Promise.all(statusPromises)
+
+        // Convert participants with status info
+        const convertedMembers = participants.map((p, i) =>
+          participantToMember(p, statuses[i] || undefined)
+        )
         setMembers(currentServerId, convertedMembers)
       } catch (err) {
         console.error('Failed to fetch participants:', err)
@@ -51,6 +79,58 @@ export function MemberList() {
     }
 
     fetchMembers()
+  }, [currentServerId, members, setMembers])
+
+  // Poll for status updates every 30 seconds
+  useEffect(() => {
+    if (!currentServerId) return
+
+    const pollStatus = async () => {
+      const serverMembers = members.get(currentServerId)
+      if (!serverMembers || serverMembers.length === 0) return
+
+      try {
+        const statusPromises = serverMembers.map(m =>
+          authService.getUserOnlineStatus(Number(m.userId)).catch(() => null)
+        )
+        const statuses = await Promise.all(statusPromises)
+
+        // Update members with new status
+        const updatedMembers = serverMembers.map((m, i) => {
+          const status = statuses[i]
+          if (!status) return m
+
+          let userStatus: UserStatus = 'online'
+          const customStatus = status.customStatus || ''
+
+          if (!status.isOnline) {
+            userStatus = 'offline'
+          } else if (customStatus === '空闲') {
+            userStatus = 'idle'
+          } else if (customStatus === '请勿打扰') {
+            userStatus = 'dnd'
+          } else if (customStatus === '隐身') {
+            userStatus = 'offline'
+          }
+
+          return {
+            ...m,
+            user: {
+              ...m.user,
+              status: userStatus,
+              customStatus: customStatus,
+            }
+          }
+        })
+
+        setMembers(currentServerId, updatedMembers)
+      } catch (err) {
+        console.error('Failed to poll member status:', err)
+      }
+    }
+
+    const interval = setInterval(pollStatus, 30000)
+    return () => clearInterval(interval)
   }, [currentServerId, members, setMembers])
 
   const serverMembers = currentServerId ? members.get(currentServerId) || [] : []
