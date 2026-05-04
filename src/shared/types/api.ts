@@ -49,7 +49,21 @@ export interface UserInfoResponse {
   username: string
   email: string
   avatarUrl: string
+  isOnline: boolean
+  customStatus: string
   createdAt: string
+}
+
+export interface SetCustomStatusRequest {
+  customStatus?: string
+}
+
+export interface UserOnlineStatusResponse {
+  userId: number
+  username: string
+  isOnline: boolean
+  customStatus: string
+  lastSeenAt?: string
 }
 
 // ==================== Room Types ====================

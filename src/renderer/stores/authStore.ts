@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { authService } from '../services'
-import type { LoginResponse, UserInfoResponse, UpdateProfileRequest, ChangePasswordRequest } from '@shared/types/api'
+import type { LoginResponse, UserInfoResponse, UpdateProfileRequest, ChangePasswordRequest, SetCustomStatusRequest } from '@shared/types/api'
 
 interface AuthState {
   currentUser: UserInfoResponse | null
@@ -15,6 +15,7 @@ interface AuthState {
   fetchUserInfo: () => Promise<void>
   updateProfile: (data: UpdateProfileRequest) => Promise<void>
   changePassword: (data: ChangePasswordRequest) => Promise<void>
+  setCustomStatus: (data: SetCustomStatusRequest) => Promise<void>
   setError: (error: string | null) => void
   clearError: () => void
 }
@@ -35,6 +36,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           username: response.username,
           email: response.email,
           avatarUrl: response.avatarUrl,
+          isOnline: true,
+          customStatus: '',
           createdAt: new Date().toISOString(),
         },
         isAuthenticated: true,
@@ -57,6 +60,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           username: response.username,
           email: response.email,
           avatarUrl: response.avatarUrl,
+          isOnline: true,
+          customStatus: '',
           createdAt: new Date().toISOString(),
         },
         isAuthenticated: true,
@@ -111,6 +116,19 @@ export const useAuthStore = create<AuthState>((set) => ({
       const message = err instanceof Error ? err.message : 'Failed to change password'
       set({ isLoading: false, error: message })
       throw err
+    }
+  },
+
+  setCustomStatus: async (data) => {
+    try {
+      await authService.setCustomStatus(data)
+      set((state) => ({
+        currentUser: state.currentUser
+          ? { ...state.currentUser, customStatus: data.customStatus || '' }
+          : null,
+      }))
+    } catch (err) {
+      console.error('Failed to set custom status:', err)
     }
   },
 

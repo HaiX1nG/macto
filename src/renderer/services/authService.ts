@@ -4,6 +4,8 @@ import type {
   UserInfoResponse,
   UpdateProfileRequest,
   ChangePasswordRequest,
+  SetCustomStatusRequest,
+  UserOnlineStatusResponse,
 } from '@shared/types/api'
 
 export const authService = {
@@ -29,6 +31,14 @@ export const authService = {
 
   async changePassword(data: ChangePasswordRequest): Promise<void> {
     return apiClient.put('/user/password', data)
+  },
+
+  async setCustomStatus(data: SetCustomStatusRequest): Promise<void> {
+    return apiClient.put('/user/status', data)
+  },
+
+  async getUserOnlineStatus(userId: number): Promise<UserOnlineStatusResponse> {
+    return apiClient.get<UserOnlineStatusResponse>(`/users/${userId}/online`)
   },
 
   logout(): void {

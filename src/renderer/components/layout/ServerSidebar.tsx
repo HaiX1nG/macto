@@ -8,14 +8,17 @@ import { useUserStore } from '@renderer/stores/userStore'
 import { roomService } from '@renderer/services'
 import { SettingsModal } from './SettingsModal'
 import type { Server } from '@shared/types/kook'
+import type { UserStatus } from '@shared/types/kook'
 
 export function ServerSidebar() {
   const { servers, currentServerId, setCurrentServer, addServer } = useServerStore()
-  const { currentUser } = useAuthStore()
+  const { currentUser, setCustomStatus } = useAuthStore()
   const { status, setStatus } = useUserStore()
   const { message } = App.useApp()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showExploreModal, setShowExploreModal] = useState(false)
+  const [showCustomStatusModal, setShowCustomStatusModal] = useState(false)
+  const [customStatusText, setCustomStatusText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -57,13 +60,29 @@ export function ServerSidebar() {
     setShowExploreModal(true)
   }
 
+  const handleStatusChange = async (newStatus: UserStatus) => {
+    setStatus(newStatus)
+    // Map local status to backend custom status
+    const statusText = newStatus === 'online' ? '' :
+                       newStatus === 'idle' ? '空闲' :
+                       newStatus === 'dnd' ? '请勿打扰' : '隐身'
+    await setCustomStatus({ customStatus: statusText })
+  }
+
+  const handleSetCustomStatus = async () => {
+    await setCustomStatus({ customStatus: customStatusText.trim() })
+    setShowCustomStatusModal(false)
+    setCustomStatusText('')
+    message.success('自定义状态已设置')
+  }
+
   const statusMenuItems = [
-    { key: 'online', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-online)]" /><span>在线</span></div>, onClick: () => setStatus('online') },
-    { key: 'idle', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-idle)]" /><span>空闲</span></div>, onClick: () => setStatus('idle') },
-    { key: 'dnd', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-dnd)]" /><span>请勿打扰</span></div>, onClick: () => setStatus('dnd') },
-    { key: 'offline', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-gray-500" /><span>隐身</span></div>, onClick: () => setStatus('offline') },
+    { key: 'online', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-online)]" /><span>在线</span></div>, onClick: () => handleStatusChange('online') },
+    { key: 'idle', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-idle)]" /><span>空闲</span></div>, onClick: () => handleStatusChange('idle') },
+    { key: 'dnd', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-dnd)]" /><span>请勿打扰</span></div>, onClick: () => handleStatusChange('dnd') },
+    { key: 'offline', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-gray-500" /><span>隐身</span></div>, onClick: () => handleStatusChange('offline') },
     { type: 'divider' as const },
-    { key: 'custom', label: <div className="flex items-center gap-3 py-1"><EditOutlined className="text-[var(--color-text-muted)]" /><span>设置自定义状态</span></div> }
+    { key: 'custom', label: <div className="flex items-center gap-3 py-1"><EditOutlined className="text-[var(--color-text-muted)]" /><span>设置自定义状态</span></div>, onClick: () => setShowCustomStatusModal(true) }
   ]
 
   const statusColors: Record<string, string> = {
@@ -186,6 +205,33 @@ export function ServerSidebar() {
 
       {/* Settings Modal */}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Custom Status Modal */}
+      <Modal
+        open={showCustomStatusModal}
+        title="设置自定义状态"
+        onCancel={() => {
+          setShowCustomStatusModal(false)
+          setCustomStatusText('')
+        }}
+        onOk={handleSetCustomStatus}
+        okText="设置"
+        cancelText="取消"
+        styles={{
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
+        }}
+      >
+        <div className="py-4">
+          <Input
+            value={customStatusText}
+            onChange={(e) => setCustomStatusText(e.target.value)}
+            placeholder="输入自定义状态..."
+            prefix={<EditOutlined className="text-[var(--color-text-muted)]" />}
+            className="rounded-lg"
+            maxLength={100}
+          />
+        </div>
+      </Modal>
     </div>
   )
 }
