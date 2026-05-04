@@ -6,6 +6,7 @@ import { MemberList } from '../members/MemberList'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { useAuthStore } from '@renderer/stores/authStore'
 import { useThemeStore } from '@renderer/stores/themeStore'
+import { useRoomWebSocket } from '@renderer/hooks/useRoomWebSocket'
 import { roomService } from '@renderer/services'
 import type { RoomInfoResponse } from '@shared/types/api'
 
@@ -33,6 +34,9 @@ export function MainLayout() {
   const { currentServerId, servers, setServers } = useServerStore()
   const { isAuthenticated, fetchUserInfo } = useAuthStore()
   const { initTheme } = useThemeStore()
+
+  // Connect to room WebSocket to set user online status
+  useRoomWebSocket()
 
   // Initialize theme
   useEffect(() => {
