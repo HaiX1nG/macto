@@ -29,7 +29,7 @@ export function LoginPage() {
     try {
       await login(values.username, values.password)
       message.success('登录成功')
-    } catch (err) {
+    } catch (_err) {
       message.error(error || '登录失败')
     }
   }
@@ -43,7 +43,7 @@ export function LoginPage() {
     try {
       await register(values.username, values.password, values.email)
       message.success('注册成功')
-    } catch (err) {
+    } catch (_err) {
       message.error(error || '注册失败')
     }
   }

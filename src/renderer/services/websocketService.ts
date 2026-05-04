@@ -38,7 +38,6 @@ class WebSocketService {
         this.ws = new WebSocket(url)
 
         this.ws.onopen = () => {
-          console.log('WebSocket connected')
           this.reconnectAttempts = 0
           this.flushMessageQueue()
           this.options.onOpen?.()
@@ -55,7 +54,6 @@ class WebSocketService {
         }
 
         this.ws.onclose = () => {
-          console.log('WebSocket disconnected')
           this.options.onClose?.()
           this.attemptReconnect()
         }
@@ -92,7 +90,6 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++
-    console.log(`Reconnecting... Attempt ${this.reconnectAttempts}`)
 
     setTimeout(() => {
       this.connect()

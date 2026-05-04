@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { createWebSocketConnection, WebSocketService } from '../services'
+import type { WebSocketService } from '../services';
+import { createWebSocketConnection } from '../services'
 import { useAuthStore } from '../stores/authStore'
 
 interface UseWebSocketOptions {
@@ -13,7 +14,7 @@ interface UseWebSocketOptions {
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const wsRef = useRef<WebSocketService | null>(null)
   const { isAuthenticated, getAccessToken } = useAuthStore()
-  const { onMessage, onOpen, onClose, onError, autoConnect = true } = options
+  const { onMessage, autoConnect = true } = options
 
   const connect = useCallback(() => {
     if (wsRef.current?.isConnected()) return

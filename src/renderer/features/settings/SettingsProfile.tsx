@@ -39,7 +39,7 @@ export const SettingsProfile = () => {
       await updateProfile({ avatarUrl })
       message.success('头像更新成功')
       setIsEditingAvatar(false)
-    } catch (err) {
+    } catch (_err) {
       message.error('头像更新失败')
     }
   }
@@ -57,7 +57,7 @@ export const SettingsProfile = () => {
       await updateProfile({ username })
       message.success('用户名更新成功')
       setIsEditingUsername(false)
-    } catch (err) {
+    } catch (_err) {
       message.error('用户名更新失败')
     }
   }
@@ -79,7 +79,7 @@ export const SettingsProfile = () => {
       await updateProfile({ email })
       message.success('邮箱更新成功')
       setIsEditingEmail(false)
-    } catch (err) {
+    } catch (_err) {
       message.error('邮箱更新失败')
     }
   }
@@ -104,7 +104,7 @@ export const SettingsProfile = () => {
       setOldPassword('')
       setNewPassword('')
       setConfirmPassword('')
-    } catch (err) {
+    } catch (_err) {
       message.error('密码修改失败')
     }
   }

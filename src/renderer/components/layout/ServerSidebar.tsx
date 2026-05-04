@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Tooltip } from 'antd'
 import { PlusOutlined, CompassOutlined, DownloadOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'

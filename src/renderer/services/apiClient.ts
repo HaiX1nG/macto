@@ -1,4 +1,5 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios'
 import type { ApiResponse, LoginResponse, RefreshTokenResponse } from '@shared/types/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'

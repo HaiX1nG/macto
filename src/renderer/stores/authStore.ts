@@ -81,7 +81,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const userInfo = await authService.getUserInfo()
       set({ currentUser: userInfo, isLoading: false, isAuthenticated: true })
-    } catch (err) {
+    } catch (_err) {
       // Token is invalid, clear auth state
       authService.logout()
       set({ currentUser: null, isLoading: false, isAuthenticated: false })

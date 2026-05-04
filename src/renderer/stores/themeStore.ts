@@ -13,7 +13,7 @@ const applyThemeToDocument = (theme: AppTheme) => {
   localStorage.setItem('app-theme', theme)
 }
 
-export const useThemeStore = create<ThemeState>((set, get) => ({
+export const useThemeStore = create<ThemeState>((set) => ({
   theme: 'sakura',
 
   setTheme: (theme) => {

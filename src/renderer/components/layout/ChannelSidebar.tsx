@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Dropdown } from 'antd'
-import { PlusOutlined, SettingOutlined, DownOutlined, NumberOutlined, AudioOutlined, UserOutlined } from '@ant-design/icons'
+import { SettingOutlined, DownOutlined, NumberOutlined, AudioOutlined, UserOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { UserPanel } from './UserPanel'

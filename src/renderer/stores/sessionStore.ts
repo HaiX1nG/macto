@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { roomService } from '../services'
-import type { RoomInfoResponse, ParticipantResponse } from '@shared/types/api'
+import type { RoomInfoResponse } from '@shared/types/api'
 
 export interface Session {
   id: string
@@ -54,7 +54,7 @@ function roomToSession(room: RoomInfoResponse): Session {
   }
 }
 
-export const useSessionStore = create<SessionState>((set, get) => ({
+export const useSessionStore = create<SessionState>((set) => ({
   sessions: [],
   currentSessionId: '',
   participants: [],

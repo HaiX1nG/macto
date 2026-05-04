@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Dropdown, Avatar } from 'antd'
-import { AudioOutlined, AudioMutedOutlined, SoundOutlined, SettingOutlined, UserOutlined, LogoutOutlined, EditOutlined } from '@ant-design/icons'
+import { AudioOutlined, AudioMutedOutlined, SoundOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useAuthStore } from '@renderer/stores/authStore'
 import { useUserStore } from '@renderer/stores/userStore'
 import { SettingsModal } from './SettingsModal'
 
 export function UserPanel() {
-  const { currentUser, logout } = useAuthStore()
+  const { currentUser } = useAuthStore()
   const { status, setStatus } = useUserStore()
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -21,13 +21,6 @@ export function UserPanel() {
     { key: 'offline', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-gray-500" /><span>隐身</span></div>, onClick: () => setStatus('offline') },
     { type: 'divider' as const },
     { key: 'custom', label: <div className="flex items-center gap-3 py-1"><EditOutlined className="text-[var(--color-text-muted)]" /><span>设置自定义状态</span></div> }
-  ]
-
-  const userMenuItems = [
-    { key: 'profile', label: <div className="flex items-center gap-3 py-1"><UserOutlined /><span>个人资料</span></div>, onClick: () => setSettingsOpen(true) },
-    { key: 'settings', label: <div className="flex items-center gap-3 py-1"><SettingOutlined /><span>用户设置</span></div>, onClick: () => setSettingsOpen(true) },
-    { type: 'divider' as const },
-    { key: 'logout', label: <div className="flex items-center gap-3 py-1 text-[var(--color-dnd)]"><LogoutOutlined /><span>退出登录</span></div>, onClick: logout }
   ]
 
   const statusColors: Record<string, string> = {
