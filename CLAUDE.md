@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Workflow (IMPORTANT)
+
+**每次开始开发前必须遵循以下流程：**
+
+1. **读取分支状态**: 先运行 `git status` 和 `git log --oneline -5` 了解当前分支状态
+2. **检查远程更新**: 运行 `git fetch origin` 获取远程最新状态
+3. **基于分支开发**: 在当前分支基础上继续开发，或创建新功能分支
+4. **推送进度**: 每完成一个功能点或修复，立即提交并推送到远程分支
+5. **新功能新分支**: 开始新功能开发时，从 main 创建新的 feature 分支
+
+**分支命名规范**:
+- `feature/xxx` - 新功能开发
+- `fix/xxx` - Bug 修复
+- `refactor/xxx` - 代码重构
+
+---
+
 # Macto - Voice & Screen Sharing Application
 
 ## Project Overview
