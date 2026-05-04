@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { Avatar } from 'antd'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
-import { AudioOutlined, BellOutlined, PushpinOutlined, NumberOutlined, UserOutlined, SearchOutlined, InboxOutlined } from '@ant-design/icons'
+import { AudioOutlined, AudioMutedOutlined, BellOutlined, PushpinOutlined, NumberOutlined, UserOutlined, SearchOutlined, InboxOutlined, SoundOutlined, SettingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import type { Channel, Message } from '@shared/types/kook'
 
 export function ChatView() {
   const { servers, currentServerId, currentChannelId } = useServerStore()
-  const { messages, sendMessage, addMessage } = useChatStore()
+  const { messages, addMessage } = useChatStore()
 
   const currentServer = servers.find(s => s.id === currentServerId)
   const currentChannel = currentServer?.channels.find(c => c.id === currentChannelId)
@@ -97,33 +98,159 @@ export function ChatView() {
   )
 }
 
-function HeaderBtn({ icon }: { icon: React.ReactNode }) {
-  return <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] hover:bg-[var(--color-bg-darker)] rounded transition-colors">{icon}</button>
+function HeaderBtn({ icon, onClick, active }: { icon: React.ReactNode; onClick?: () => void; active?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-8 h-8 flex items-center justify-center rounded transition-colors",
+        active
+          ? "text-[var(--color-primary)] bg-[var(--color-primary)]/10"
+          : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] hover:bg-[var(--color-bg-darker)]"
+      )}
+    >
+      {icon}
+    </button>
+  )
 }
 
 function VoiceChannelView({ channel }: { channel: Channel }) {
   const [isConnected, setIsConnected] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isDeafened, setIsDeafened] = useState(false)
+  const [volume, setVolume] = useState(100)
+  const [participants, _setParticipants] = useState([
+    { id: '1', name: '用户1', avatar: '', speaking: false },
+    { id: '2', name: '用户2', avatar: '', speaking: true },
+  ])
+
+  const handleJoinVoice = async () => {
+    try {
+      // TODO: Implement actual voice connection
+      setIsConnected(true)
+    } catch (err) {
+      console.error('Failed to join voice:', err)
+    }
+  }
+
+  const handleLeaveVoice = () => {
+    setIsConnected(false)
+    setIsMuted(false)
+    setIsDeafened(false)
+  }
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-bg-base)]">
+      {/* Header */}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2">
           <AudioOutlined className="text-[var(--color-text-muted)]" />
           <span className="font-semibold text-[var(--color-text-normal)]">{channel.name}</span>
         </div>
-      </div>
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-20 h-20 rounded-full bg-[var(--color-bg-darker)] flex items-center justify-center mx-auto mb-4">
-            <AudioOutlined className="text-3xl text-[var(--color-text-muted)]" />
-          </div>
-          <h3 className="text-xl font-semibold text-[var(--color-text-normal)] mb-2">{channel.name}</h3>
-          <p className="text-[var(--color-text-muted)] mb-6">语音频道</p>
-          <button onClick={() => setIsConnected(!isConnected)} className={cn("px-6 py-3 rounded font-medium transition-colors", isConnected ? "bg-[var(--color-dnd)] hover:opacity-90 text-white" : "bg-[var(--color-primary)] hover:opacity-90 text-white")}>
-            {isConnected ? '断开连接' : '加入语音'}
-          </button>
+        <div className="ml-auto flex items-center gap-2">
+          {isConnected && (
+            <>
+              <HeaderBtn
+                icon={isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
+                onClick={() => setIsMuted(!isMuted)}
+                active={isMuted}
+              />
+              <HeaderBtn
+                icon={<SoundOutlined />}
+                onClick={() => setIsDeafened(!isDeafened)}
+                active={isDeafened}
+              />
+            </>
+          )}
+          <HeaderBtn icon={<UserOutlined />} />
+          <HeaderBtn icon={<SettingOutlined />} />
         </div>
       </div>
+
+      {/* Content */}
+      <div className="flex-1 flex">
+        {/* Main Area */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-20 h-20 rounded-full bg-[var(--color-bg-darker)] flex items-center justify-center mx-auto mb-4">
+              <AudioOutlined className="text-3xl text-[var(--color-text-muted)]" />
+            </div>
+            <h3 className="text-xl font-semibold text-[var(--color-text-normal)] mb-2">{channel.name}</h3>
+            <p className="text-[var(--color-text-muted)] mb-6">
+              {isConnected ? '已连接' : '语音频道'}
+            </p>
+            <button
+              onClick={isConnected ? handleLeaveVoice : handleJoinVoice}
+              className={cn(
+                "px-6 py-3 rounded font-medium transition-colors",
+                isConnected
+                  ? "bg-[var(--color-dnd)] hover:opacity-90 text-white"
+                  : "bg-[var(--color-primary)] hover:opacity-90 text-white"
+              )}
+            >
+              {isConnected ? '断开连接' : '加入语音'}
+            </button>
+          </div>
+        </div>
+
+        {/* Participants Panel (when connected) */}
+        {isConnected && (
+          <div className="w-[240px] bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col">
+            <div className="p-3 border-b border-[var(--color-border)]">
+              <h4 className="text-sm font-semibold text-[var(--color-text-normal)]">
+                语音参与者 ({participants.length})
+              </h4>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {participants.map(p => (
+                <VoiceParticipant
+                  key={p.id}
+                  name={p.name}
+                  speaking={p.speaking}
+                  muted={false}
+                />
+              ))}
+            </div>
+
+            {/* Volume Control */}
+            <div className="p-3 border-t border-[var(--color-border)]">
+              <div className="flex items-center gap-2 mb-2">
+                <SoundOutlined className="text-[var(--color-text-muted)]" />
+                <span className="text-xs text-[var(--color-text-muted)]">音量</span>
+                <span className="text-xs text-[var(--color-text-muted)] ml-auto">{volume}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                className="w-full h-1 bg-[var(--color-bg-darker)] rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function VoiceParticipant({ name, speaking, muted }: { name: string; speaking: boolean; muted: boolean }) {
+  return (
+    <div className={cn(
+      "flex items-center gap-2 p-2 rounded",
+      speaking && "bg-[var(--color-primary)]/10"
+    )}>
+      <div className="relative">
+        <Avatar size={32} className="bg-gradient-to-br from-blue-500 to-purple-600">
+          {name.charAt(0)}
+        </Avatar>
+        {speaking && (
+          <div className="absolute inset-0 rounded-full border-2 border-[var(--color-primary)] animate-pulse" />
+        )}
+      </div>
+      <span className="flex-1 text-sm text-[var(--color-text-normal)] truncate">{name}</span>
+      {muted && <AudioMutedOutlined className="text-xs text-[var(--color-text-muted)]" />}
     </div>
   )
 }
