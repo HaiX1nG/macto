@@ -97,14 +97,19 @@ class ApiClient {
   }
 
   private async doRefreshToken(): Promise<string> {
-    const response = await this.instance.post<ApiResponse<RefreshTokenResponse>>(
-      '/auth/refresh',
-      { refreshToken: this.refreshToken }
-    )
+    try {
+      const response = await this.instance.post<ApiResponse<RefreshTokenResponse>>(
+        '/auth/refresh',
+        { refreshToken: this.refreshToken }
+      )
 
-    const { accessToken, refreshToken } = response.data.data
-    this.setTokens(accessToken, refreshToken)
-    return accessToken
+      const { accessToken, refreshToken } = response.data.data
+      this.setTokens(accessToken, refreshToken)
+      return accessToken
+    } catch (err) {
+      console.error('Token refresh failed:', err)
+      throw err
+    }
   }
 
   private loadTokensFromStorage() {
