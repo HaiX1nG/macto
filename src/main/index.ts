@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, screen } from 'electron'
 import path from 'node:path'
 import { createRequire } from 'node:module'
+import { IPCManager } from './ipc/index'
 
 const require = createRequire(import.meta.url)
 
@@ -137,6 +138,9 @@ app.whenReady().then(async () => {
     app.quit()
     process.exit(1)
   }
+
+  // Initialize IPC Manager for handling IPC calls
+  new IPCManager(win)
 
   createTray()
 

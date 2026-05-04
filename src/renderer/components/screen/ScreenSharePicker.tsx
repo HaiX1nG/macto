@@ -2,12 +2,7 @@ import { useState, useEffect } from 'react'
 import { Modal, Spin } from 'antd'
 import { DesktopOutlined, AppstoreOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
-
-interface ScreenSource {
-  id: string
-  name: string
-  thumbnail: string
-}
+import type { ScreenSource } from '@shared/types/ipc'
 
 interface ScreenSharePickerProps {
   open: boolean
@@ -18,20 +13,34 @@ interface ScreenSharePickerProps {
 export function ScreenSharePicker({ open, onSelect, onCancel }: ScreenSharePickerProps) {
   const [sources, setSources] = useState<ScreenSource[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setLoading(true)
+      setError(null)
       setSelectedId(null)
+
+      // Check if electronAPI is available
+      if (!window.electronAPI?.getScreenSources) {
+        console.error('electronAPI.getScreenSources is not available')
+        setError('屏幕捕获功能不可用')
+        setLoading(false)
+        return
+      }
+
       // Get screen sources from Electron
-      window.electronAPI?.getScreenSources?.().then((result) => {
-        setSources(result || [])
-        setLoading(false)
-      }).catch((err: unknown) => {
-        console.error('Failed to get screen sources:', err)
-        setLoading(false)
-      })
+      window.electronAPI.getScreenSources()
+        .then((result: ScreenSource[]) => {
+          setSources(result || [])
+          setLoading(false)
+        })
+        .catch((err: unknown) => {
+          console.error('Failed to get screen sources:', err)
+          setError('获取屏幕源失败: ' + (err instanceof Error ? err.message : String(err)))
+          setLoading(false)
+        })
     }
   }, [open])
 
@@ -58,6 +67,10 @@ export function ScreenSharePicker({ open, onSelect, onCancel }: ScreenSharePicke
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Spin />
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 text-[var(--color-dnd)]">
+          {error}
         </div>
       ) : sources.length === 0 ? (
         <div className="text-center py-12 text-[var(--color-text-muted)]">
