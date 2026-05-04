@@ -10,6 +10,7 @@ import { useThemeStore } from './stores/themeStore'
 import { useAuthStore } from './stores/authStore'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoginPage } from './components/auth/LoginPage'
+import { useUserStatusPolling } from './hooks/useUserStatusPolling'
 import './styles/index.css'
 
 // 主题颜色映射
@@ -22,6 +23,9 @@ const themeColors: Record<string, { primary: string; bg: string; text: string }>
 function AppContent() {
   const { theme: appTheme } = useThemeStore()
   const { isAuthenticated } = useAuthStore()
+
+  // Poll user status for sync with backend
+  useUserStatusPolling()
 
   const currentTheme = themeColors[appTheme] || themeColors.sakura
   const isDark = appTheme === 'ancient' || appTheme === 'tech'
