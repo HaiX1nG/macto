@@ -1,7 +1,7 @@
 import { Modal, Tabs } from 'antd'
 import { DesktopOutlined, AudioOutlined, VideoCameraOutlined, BellOutlined, InfoCircleOutlined, UserOutlined } from '@ant-design/icons'
 import { useThemeStore, type AppTheme } from '@renderer/stores/themeStore'
-import { SettingsProfile } from '@renderer/features/settings'
+import { SettingsProfile, SettingsAudio, SettingsVideo, SettingsNotifications } from '@renderer/features/settings'
 import { cn } from '@renderer/utils/cn'
 
 interface SettingsModalProps {
@@ -116,17 +116,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           <span>音频</span>
         </span>
       ),
-      children: (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">音频设置</h3>
-            <p className="text-sm text-[var(--color-text-muted)]">配置麦克风和扬声器</p>
-          </div>
-          <div className="p-4 rounded-lg bg-[var(--color-bg-tertiary)] text-center">
-            <p className="text-[var(--color-text-muted)]">音频设置功能开发中...</p>
-          </div>
-        </div>
-      ),
+      children: <SettingsAudio />,
     },
     {
       key: 'video',
@@ -136,17 +126,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           <span>视频</span>
         </span>
       ),
-      children: (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">视频设置</h3>
-            <p className="text-sm text-[var(--color-text-muted)]">配置摄像头和画质</p>
-          </div>
-          <div className="p-4 rounded-lg bg-[var(--color-bg-tertiary)] text-center">
-            <p className="text-[var(--color-text-muted)]">视频设置功能开发中...</p>
-          </div>
-        </div>
-      ),
+      children: <SettingsVideo />,
     },
     {
       key: 'notifications',
@@ -156,17 +136,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           <span>通知</span>
         </span>
       ),
-      children: (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">通知设置</h3>
-            <p className="text-sm text-[var(--color-text-muted)]">管理消息提醒</p>
-          </div>
-          <div className="p-4 rounded-lg bg-[var(--color-bg-tertiary)] text-center">
-            <p className="text-[var(--color-text-muted)]">通知设置功能开发中...</p>
-          </div>
-        </div>
-      ),
+      children: <SettingsNotifications />,
     },
     {
       key: 'about',
