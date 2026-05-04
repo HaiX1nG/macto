@@ -1,19 +1,30 @@
-import { useState } from 'react'
-import { Avatar } from 'antd'
+import { useState, useEffect, useCallback } from 'react'
+import { Avatar, Spin, App } from 'antd'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { useChatStore } from '@renderer/stores/chatStore'
+import { useAuthStore } from '@renderer/stores/authStore'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
-import { AudioOutlined, AudioMutedOutlined, BellOutlined, PushpinOutlined, NumberOutlined, UserOutlined, SearchOutlined, InboxOutlined, SoundOutlined, SettingOutlined } from '@ant-design/icons'
+import { AudioOutlined, AudioMutedOutlined, BellOutlined, PushpinOutlined, NumberOutlined, UserOutlined, SearchOutlined, InboxOutlined, SoundOutlined, SettingOutlined, LoadingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import type { Channel, Message } from '@shared/types/kook'
 
 export function ChatView() {
+  const { message: messageApi } = App.useApp()
   const { servers, currentServerId, currentChannelId } = useServerStore()
-  const { messages, addMessage } = useChatStore()
+  const { messages, fetchMessages, sendMessage, isLoading, hasMore, replyingTo, setReplyingTo, clearMessages } = useChatStore()
+  const { currentUser } = useAuthStore()
 
   const currentServer = servers.find(s => s.id === currentServerId)
   const currentChannel = currentServer?.channels.find(c => c.id === currentChannelId)
+
+  // Load messages when channel changes
+  useEffect(() => {
+    if (currentChannelId && currentChannel?.type !== 'voice') {
+      clearMessages()
+      fetchMessages(Number(currentChannelId), { pageSize: 50 })
+    }
+  }, [currentChannelId, currentChannel?.type, fetchMessages, clearMessages])
 
   // Convert API messages to KOOK format for display
   const channelMessages: Message[] = messages.map(msg => ({
@@ -24,25 +35,57 @@ export function ChatView() {
       id: String(msg.senderUserId),
       name: msg.senderName,
       displayName: msg.senderName,
+      avatar: currentUser?.avatarUrl,
       status: 'online' as const,
     },
     content: msg.content,
     timestamp: new Date(msg.createdAt).getTime(),
   }))
 
-  const handleSendMessage = (content: string) => {
-    if (!currentChannelId) return
-    // Add message optimistically
-    addMessage({
-      id: Date.now(),
-      roomId: Number(currentChannelId) || 0,
-      senderUserId: 0,
-      senderName: 'You',
-      messageType: 1,
-      content,
-      createdAt: new Date().toISOString(),
-    })
-  }
+  // Handle sending message
+  const handleSendMessage = useCallback(async (content: string) => {
+    if (!currentChannelId || !content.trim()) return
+
+    try {
+      await sendMessage(Number(currentChannelId), {
+        messageType: 1,
+        content: content.trim(),
+      })
+    } catch (_err) {
+      messageApi.error('发送消息失败')
+    }
+  }, [currentChannelId, sendMessage, messageApi])
+
+  // Handle load more messages (scroll to top)
+  const handleLoadMore = useCallback(() => {
+    if (currentChannelId && hasMore && !isLoading) {
+      fetchMessages(Number(currentChannelId), { page: 2, pageSize: 50 })
+    }
+  }, [currentChannelId, hasMore, isLoading, fetchMessages])
+
+  // Handle reply
+  const handleReply = useCallback((message: Message) => {
+    const originalMsg = messages.find(m => String(m.id) === message.id)
+    if (originalMsg) {
+      setReplyingTo(originalMsg)
+    }
+  }, [messages, setReplyingTo])
+
+  // Handle cancel reply
+  const handleCancelReply = useCallback(() => {
+    setReplyingTo(null)
+  }, [setReplyingTo])
+
+  // Handle edit message
+  const handleEditMessage = useCallback((messageId: string, content: string) => {
+    useChatStore.getState().updateMessage(Number(messageId), content)
+    messageApi.success('消息已更新')
+  }, [messageApi])
+
+  // Handle delete message
+  const handleDeleteMessage = useCallback((messageId: string) => {
+    useChatStore.getState().deleteMessage(Number(messageId))
+  }, [])
 
   if (!currentServer || !currentChannel) {
     return (
@@ -89,11 +132,49 @@ export function ChatView() {
         </div>
       </div>
 
+      {/* Reply indicator */}
+      {replyingTo && (
+        <div className="px-4 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] flex items-center gap-2">
+          <span className="text-xs text-[var(--color-text-muted)]">
+            回复 <span className="text-[var(--color-primary)] font-medium">{replyingTo.senderName}</span>:
+          </span>
+          <span className="text-sm text-[var(--color-text-normal)] truncate flex-1">
+            {replyingTo.content.slice(0, 50)}{replyingTo.content.length > 50 ? '...' : ''}
+          </span>
+          <button
+            onClick={handleCancelReply}
+            className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"
+          >
+            取消
+          </button>
+        </div>
+      )}
+
       {/* Messages */}
-      <MessageList messages={channelMessages} />
+      {isLoading && messages.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Spin indicator={<LoadingOutlined className="text-[var(--color-primary)]" spin />} />
+        </div>
+      ) : (
+        <MessageList
+          messages={channelMessages}
+          onAddReaction={() => {}}
+          onLoadMore={handleLoadMore}
+          hasMore={hasMore}
+          isLoading={isLoading}
+          onReply={handleReply}
+          onEdit={handleEditMessage}
+          onDelete={handleDeleteMessage}
+        />
+      )}
 
       {/* Input */}
-      <MessageInput onSend={handleSendMessage} channelName={currentChannel.name} />
+      <MessageInput
+        onSend={handleSendMessage}
+        channelName={currentChannel.name}
+        replyingTo={replyingTo ? { name: replyingTo.senderName, content: replyingTo.content } : null}
+        onCancelReply={handleCancelReply}
+      />
     </div>
   )
 }
