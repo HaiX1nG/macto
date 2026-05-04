@@ -7,7 +7,9 @@ import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { AudioOutlined, AudioMutedOutlined, BellOutlined, PushpinOutlined, NumberOutlined, UserOutlined, SearchOutlined, InboxOutlined, SoundOutlined, SettingOutlined, LoadingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
+import { voiceService } from '@renderer/services'
 import type { Channel, Message } from '@shared/types/kook'
+import type { VoiceSessionResponse } from '@shared/types/api'
 
 export function ChatView() {
   const { message: messageApi } = App.useApp()
@@ -196,28 +198,71 @@ function HeaderBtn({ icon, onClick, active }: { icon: React.ReactNode; onClick?:
 }
 
 function VoiceChannelView({ channel }: { channel: Channel }) {
+  const { message: messageApi } = App.useApp()
+  const { currentUser } = useAuthStore()
   const [isConnected, setIsConnected] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
   const [volume, setVolume] = useState(100)
-  const [participants, _setParticipants] = useState([
-    { id: '1', name: '用户1', avatar: '', speaking: false },
-    { id: '2', name: '用户2', avatar: '', speaking: true },
-  ])
+  const [participants, setParticipants] = useState<VoiceSessionResponse[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // Fetch voice participants when connected
+  useEffect(() => {
+    if (isConnected && channel.serverId) {
+      const fetchParticipants = async () => {
+        try {
+          const result = await voiceService.getVoiceParticipants(Number(channel.serverId))
+          setParticipants(result)
+        } catch (err) {
+          console.error('Failed to fetch voice participants:', err)
+        }
+      }
+      fetchParticipants()
+      // Poll for updates every 5 seconds
+      const interval = setInterval(fetchParticipants, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [isConnected, channel.serverId])
 
   const handleJoinVoice = async () => {
+    if (!channel.serverId) return
+    setLoading(true)
     try {
-      // TODO: Implement actual voice connection
+      await voiceService.joinVoice(Number(channel.serverId))
       setIsConnected(true)
+      messageApi.success('已加入语音频道')
     } catch (err) {
       console.error('Failed to join voice:', err)
+      messageApi.error('加入语音失败')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleLeaveVoice = () => {
-    setIsConnected(false)
-    setIsMuted(false)
-    setIsDeafened(false)
+  const handleLeaveVoice = async () => {
+    if (!channel.serverId) return
+    try {
+      await voiceService.leaveVoice(Number(channel.serverId))
+      setIsConnected(false)
+      setIsMuted(false)
+      setIsDeafened(false)
+      setParticipants([])
+      messageApi.success('已离开语音频道')
+    } catch (err) {
+      console.error('Failed to leave voice:', err)
+      messageApi.error('离开语音失败')
+    }
+  }
+
+  const handleSetMute = async () => {
+    if (!channel.serverId) return
+    try {
+      await voiceService.setMute(Number(channel.serverId), !isMuted)
+      setIsMuted(!isMuted)
+    } catch (err) {
+      console.error('Failed to set mute:', err)
+    }
   }
 
   return (
@@ -233,7 +278,7 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
             <>
               <HeaderBtn
                 icon={isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={handleSetMute}
                 active={isMuted}
               />
               <HeaderBtn
@@ -262,14 +307,16 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
             </p>
             <button
               onClick={isConnected ? handleLeaveVoice : handleJoinVoice}
+              disabled={loading}
               className={cn(
                 "px-6 py-3 rounded font-medium transition-colors",
                 isConnected
                   ? "bg-[var(--color-dnd)] hover:opacity-90 text-white"
-                  : "bg-[var(--color-primary)] hover:opacity-90 text-white"
+                  : "bg-[var(--color-primary)] hover:opacity-90 text-white",
+                loading && "opacity-50 cursor-not-allowed"
               )}
             >
-              {isConnected ? '断开连接' : '加入语音'}
+              {loading ? '连接中...' : isConnected ? '断开连接' : '加入语音'}
             </button>
           </div>
         </div>
@@ -286,11 +333,17 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
               {participants.map(p => (
                 <VoiceParticipant
                   key={p.id}
-                  name={p.name}
-                  speaking={p.speaking}
+                  name={p.username}
+                  speaking={false}
                   muted={false}
+                  isCurrentUser={p.userId === currentUser?.userId}
                 />
               ))}
+              {participants.length === 0 && (
+                <div className="text-center text-[var(--color-text-muted)] text-sm py-4">
+                  暂无参与者
+                </div>
+              )}
             </div>
 
             {/* Volume Control */}
@@ -316,7 +369,7 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
   )
 }
 
-function VoiceParticipant({ name, speaking, muted }: { name: string; speaking: boolean; muted: boolean }) {
+function VoiceParticipant({ name, speaking, muted, isCurrentUser }: { name: string; speaking: boolean; muted: boolean; isCurrentUser?: boolean }) {
   return (
     <div className={cn(
       "flex items-center gap-2 p-2 rounded",
@@ -330,7 +383,10 @@ function VoiceParticipant({ name, speaking, muted }: { name: string; speaking: b
           <div className="absolute inset-0 rounded-full border-2 border-[var(--color-primary)] animate-pulse" />
         )}
       </div>
-      <span className="flex-1 text-sm text-[var(--color-text-normal)] truncate">{name}</span>
+      <span className="flex-1 text-sm text-[var(--color-text-normal)] truncate">
+        {name}
+        {isCurrentUser && <span className="text-[var(--color-primary)] ml-1">(你)</span>}
+      </span>
       {muted && <AudioMutedOutlined className="text-xs text-[var(--color-text-muted)]" />}
     </div>
   )
