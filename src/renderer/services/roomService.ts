@@ -58,6 +58,10 @@ export const roomService = {
       return []
     }
   },
+
+  async deleteRoom(roomId: number): Promise<void> {
+    return apiClient.delete<void>(`/rooms/${roomId}`)
+  },
 }
 
 export default roomService

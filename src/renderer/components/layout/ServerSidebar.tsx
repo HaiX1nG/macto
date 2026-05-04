@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Tooltip, Modal, Input, App, Avatar, Dropdown } from 'antd'
-import { PlusOutlined, CompassOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
+import { PlusOutlined, CompassOutlined, SettingOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { useAuthStore } from '@renderer/stores/authStore'
@@ -11,7 +11,7 @@ import type { Server } from '@shared/types/kook'
 import type { UserStatus } from '@shared/types/kook'
 
 export function ServerSidebar() {
-  const { servers, currentServerId, setCurrentServer, addServer } = useServerStore()
+  const { servers, currentServerId, setCurrentServer, addServer, removeServer } = useServerStore()
   const { currentUser, setCustomStatus } = useAuthStore()
   const { status, setStatus } = useUserStore()
   const { message } = App.useApp()
@@ -22,6 +22,9 @@ export function ServerSidebar() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [serverToDelete, setServerToDelete] = useState<Server | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const handleCreateServer = async () => {
     if (!roomName.trim()) {
@@ -30,7 +33,7 @@ export function ServerSidebar() {
     }
     setLoading(true)
     try {
-      const room = await roomService.createRoom({ roomName: roomName.trim(), roomType: 1, isPrivate: false })
+      const room = await roomService.createRoom({ roomName: roomName.trim(), roomType: 2, isPrivate: false })
       addServer({
         id: String(room.id),
         name: room.roomName,
@@ -74,6 +77,39 @@ export function ServerSidebar() {
     setShowCustomStatusModal(false)
     setCustomStatusText('')
     message.success('自定义状态已设置')
+  }
+
+  const handleDeleteServer = (server: Server) => {
+    setServerToDelete(server)
+    setDeleteModalOpen(true)
+  }
+
+  const confirmDeleteServer = async () => {
+    if (!serverToDelete) return
+
+    setDeleteLoading(true)
+    try {
+      await roomService.deleteRoom(Number(serverToDelete.id))
+      removeServer(serverToDelete.id)
+      message.success('房间已删除')
+      setDeleteModalOpen(false)
+      setServerToDelete(null)
+    } catch (err) {
+      console.error('Failed to delete room:', err)
+      // Try to get error message from response
+      let errorMessage = '删除房间失败'
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { code?: number; message?: string } } }
+        if (axiosErr.response?.data?.code === 40004) {
+          errorMessage = '只有房主才能删除房间'
+        } else if (axiosErr.response?.data?.message) {
+          errorMessage = axiosErr.response.data.message
+        }
+      }
+      message.error(errorMessage)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const statusMenuItems = [
@@ -120,6 +156,7 @@ export function ServerSidebar() {
           name={server.name}
           isActive={currentServerId === server.id}
           onClick={() => setCurrentServer(server.id)}
+          onDelete={() => handleDeleteServer(server)}
           hasNotification={server.channels.some(c => c.unreadCount && c.unreadCount > 0)}
         />
       ))}
@@ -232,6 +269,32 @@ export function ServerSidebar() {
           />
         </div>
       </Modal>
+
+      {/* Delete Server Modal */}
+      <Modal
+        open={deleteModalOpen}
+        title="删除房间"
+        onCancel={() => {
+          setDeleteModalOpen(false)
+          setServerToDelete(null)
+        }}
+        onOk={confirmDeleteServer}
+        okText="删除"
+        cancelText="取消"
+        okButtonProps={{ danger: true, loading: deleteLoading }}
+        styles={{
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
+        }}
+      >
+        <div className="py-4">
+          <p className="text-[var(--color-text-normal)]">
+            确定要删除房间 <strong>"{serverToDelete?.name}"</strong> 吗？
+          </p>
+          <p className="text-[var(--color-text-muted)] text-sm mt-2">
+            此操作不可撤销，房间内的所有数据将被删除。
+          </p>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -242,58 +305,78 @@ interface ServerIconProps {
   name: string
   isActive?: boolean
   onClick?: () => void
+  onDelete?: () => void
   isAction?: boolean
   hasNotification?: boolean
 }
 
-function ServerIcon({ server, icon, name, isActive, onClick, isAction, hasNotification }: ServerIconProps) {
+function ServerIcon({ server, icon, name, isActive, onClick, onDelete, isAction, hasNotification }: ServerIconProps) {
   const [showTooltip, setShowTooltip] = useState(false)
 
+  const contextMenuItems = server && onDelete ? [
+    {
+      key: 'delete',
+      label: (
+        <div className="flex items-center gap-2 text-[var(--color-dnd)]">
+          <DeleteOutlined />
+          <span>删除房间</span>
+        </div>
+      ),
+      onClick: onDelete,
+    },
+  ] : []
+
   return (
-    <div className="relative flex items-center justify-center group">
-      {/* Active Indicator */}
-      <div
-        className={cn(
-          "absolute left-0 w-1 rounded-r-full transition-all duration-200",
-          "top-1/2 -translate-y-1/2",
-          isActive ? "h-10 bg-[var(--color-text-normal)]" : "h-5 bg-[var(--color-text-normal)] opacity-0 group-hover:opacity-100"
-        )}
-      />
-
-      {/* Notification Dot */}
-      {hasNotification && !isActive && (
-        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[var(--color-dnd)] rounded-full border-4 border-[var(--color-bg-darkest)] z-10" />
-      )}
-
-      <Tooltip
-        title={name}
-        placement="right"
-        open={showTooltip}
-        onOpenChange={setShowTooltip}
-        styles={{ container: { backgroundColor: 'var(--color-bg-darker)', borderRadius: '8px', padding: '8px 12px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-normal)' } }}
-      >
-        <button
-          onClick={onClick}
+    <Dropdown
+      menu={{ items: contextMenuItems }}
+      trigger={['contextMenu']}
+      disabled={!server}
+    >
+      <div className="relative flex items-center justify-center group">
+        {/* Active Indicator */}
+        <div
           className={cn(
-            "w-12 h-12 flex items-center justify-center overflow-hidden",
-            "transition-all duration-200",
-            isActive ? "rounded-2xl" : "rounded-full hover:rounded-2xl",
-            isAction && "bg-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/30",
-            !isAction && !server?.icon && !icon && "bg-[var(--color-accent)]",
-            server?.icon && "bg-transparent"
+            "absolute left-0 w-1 rounded-r-full transition-all duration-200",
+            "top-1/2 -translate-y-1/2",
+            isActive ? "h-10 bg-[var(--color-text-normal)]" : "h-5 bg-[var(--color-text-normal)] opacity-0 group-hover:opacity-100"
           )}
+        />
+
+        {/* Notification Dot */}
+        {hasNotification && !isActive && (
+          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[var(--color-dnd)] rounded-full border-4 border-[var(--color-bg-darkest)] z-10" />
+        )}
+
+        <Tooltip
+          title={name}
+          placement="right"
+          open={showTooltip}
+          onOpenChange={setShowTooltip}
+          styles={{ container: { backgroundColor: 'var(--color-bg-darker)', borderRadius: '8px', padding: '8px 12px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-normal)' } }}
         >
-          {server?.icon ? (
-            <img src={server.icon} alt={server.name} className="w-full h-full object-cover" />
-          ) : icon ? (
-            icon
-          ) : (
-            <span className="text-white font-semibold text-lg">
-              {server?.name?.charAt(0)?.toUpperCase() || name.charAt(0)}
-            </span>
-          )}
-        </button>
-      </Tooltip>
-    </div>
+          <button
+            onClick={onClick}
+            className={cn(
+              "w-12 h-12 flex items-center justify-center overflow-hidden",
+              "transition-all duration-200",
+              isActive ? "rounded-2xl" : "rounded-full hover:rounded-2xl",
+              isAction && "bg-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/30",
+              !isAction && !server?.icon && !icon && "bg-[var(--color-accent)]",
+              server?.icon && "bg-transparent"
+            )}
+          >
+            {server?.icon ? (
+              <img src={server.icon} alt={server.name} className="w-full h-full object-cover" />
+            ) : icon ? (
+              icon
+            ) : (
+              <span className="text-white font-semibold text-lg">
+                {server?.name?.charAt(0)?.toUpperCase() || name.charAt(0)}
+              </span>
+            )}
+          </button>
+        </Tooltip>
+      </div>
+    </Dropdown>
   )
 }

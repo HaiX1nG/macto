@@ -16,6 +16,8 @@ export class IPCManager {
     this.setupVoiceHandlers()
     // Screen IPC handlers
     this.setupScreenHandlers()
+    // Audio IPC handlers
+    this.setupAudioHandlers()
   }
 
   private setupSessionHandlers() {
@@ -106,6 +108,30 @@ export class IPCManager {
     ipcMain.handle('screen:set-control', async (event, payload: IPCPayloads['screen:set-control']) => {
       this.window.webContents.send('screen:control-changed', { enabled: payload.enabled })
       return { success: true }
+    })
+  }
+
+  private setupAudioHandlers() {
+    // Get audio sources (application audio)
+    ipcMain.handle('audio:get-sources', async () => {
+      try {
+        // Get all windows with audio capability
+        const sources = await desktopCapturer.getSources({
+          types: ['window', 'screen'],
+          thumbnailSize: { width: 1, height: 1 } // We don't need thumbnails for audio
+        })
+        // Log for debugging
+        // eslint-disable-next-line no-console
+        console.log('Audio sources found:', sources.map(s => s.name))
+        // Filter and return only id and name
+        return sources.map(source => ({
+          id: source.id,
+          name: source.name
+        }))
+      } catch (err) {
+        console.error('Failed to get audio sources:', err)
+        return []
+      }
     })
   }
 

@@ -3,6 +3,7 @@ import { ServerSidebar } from './ServerSidebar'
 import { ChannelSidebar } from './ChannelSidebar'
 import { ChatView } from '../chat/ChatView'
 import { MemberList } from '../members/MemberList'
+import { RemoteScreensContainer } from '../screen/RemoteScreensContainer'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { useAuthStore } from '@renderer/stores/authStore'
 import { useThemeStore } from '@renderer/stores/themeStore'
@@ -88,6 +89,8 @@ export function MainLayout() {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Remote screen shares */}
+        <RemoteScreensContainer />
         <ChatView />
       </div>
 

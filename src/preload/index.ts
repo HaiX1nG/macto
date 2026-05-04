@@ -19,6 +19,8 @@ export interface IPCPayloads {
   'screen:stop': { sessionId: string }
   'screen:set-control': { enabled: boolean }
 
+  'audio:get-sources': null
+
   'system:notification': { title: string; body: string }
   'system:tray-click': null
 }
@@ -38,6 +40,8 @@ export interface IPCResponders {
   'screen:start': { success: boolean; streamId: string }
   'screen:stop': { success: boolean }
   'screen:set-control': { success: boolean }
+
+  'audio:get-sources': { id: string; name: string }[]
 
   'system:notification': { success: boolean }
   'system:tray-click': null
@@ -62,6 +66,9 @@ const api = {
   startScreen: (sessionId: string) => ipcRenderer.invoke('screen:start', { sessionId }),
   stopScreen: (sessionId: string) => ipcRenderer.invoke('screen:stop', { sessionId }),
   setScreenControl: (enabled: boolean) => ipcRenderer.invoke('screen:set-control', { enabled }),
+
+  // Audio
+  getAudioSources: () => ipcRenderer.invoke('audio:get-sources'),
 
   // System
   sendNotification: (title: string, body: string) =>

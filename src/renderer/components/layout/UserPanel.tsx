@@ -1,20 +1,28 @@
 import { useState } from 'react'
 import { App } from 'antd'
-import { AudioOutlined, AudioMutedOutlined, SoundOutlined, DesktopOutlined, StopOutlined } from '@ant-design/icons'
+import { AudioOutlined, AudioMutedOutlined, SoundOutlined, DesktopOutlined, StopOutlined, CustomerServiceOutlined, SettingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
-import { screenShareService } from '@renderer/services'
+import { useScreenShare } from '@renderer/hooks/useScreenShare'
+import { useAudioShare } from '@renderer/hooks/useAudioShare'
 import { ScreenSharePicker } from '../screen/ScreenSharePicker'
+import { ScreenSharePreview } from '../screen/ScreenSharePreview'
+import { AudioSharePicker } from '../audio/AudioSharePicker'
+import { AudioSettings } from '../settings/AudioSettings'
 
 export function UserPanel() {
   const { message: messageApi } = App.useApp()
   const { currentServerId } = useServerStore()
+  const { localStream, isSharing, startScreenShare, stopScreenShare } = useScreenShare()
+  const { isAudioSharing, startAudioShare, stopAudioShare } = useAudioShare()
 
   const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
-  const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [screenShareLoading, setScreenShareLoading] = useState(false)
   const [showScreenPicker, setShowScreenPicker] = useState(false)
+  const [audioShareLoading, setAudioShareLoading] = useState(false)
+  const [showAudioPicker, setShowAudioPicker] = useState(false)
+  const [showAudioSettings, setShowAudioSettings] = useState(false)
 
   const handleScreenShareClick = () => {
     if (!currentServerId) {
@@ -22,7 +30,7 @@ export function UserPanel() {
       return
     }
 
-    if (isScreenSharing) {
+    if (isSharing) {
       // Stop screen share
       handleStopScreenShare()
     } else {
@@ -31,37 +39,43 @@ export function UserPanel() {
     }
   }
 
-  const handleStartScreenShare = async (_sourceId: string) => {
-    if (!currentServerId) return
-
+  const handleStartScreenShare = async (sourceId: string) => {
     setShowScreenPicker(false)
     setScreenShareLoading(true)
-    try {
-      await screenShareService.startScreenShare(Number(currentServerId))
-      setIsScreenSharing(true)
-      messageApi.success('屏幕共享已开始')
-    } catch (err) {
-      console.error('Screen share error:', err)
-      messageApi.error('开始屏幕共享失败')
-    } finally {
-      setScreenShareLoading(false)
-    }
+    await startScreenShare(sourceId)
+    setScreenShareLoading(false)
   }
 
   const handleStopScreenShare = async () => {
-    if (!currentServerId) return
-
     setScreenShareLoading(true)
-    try {
-      await screenShareService.stopScreenShare(Number(currentServerId))
-      setIsScreenSharing(false)
-      messageApi.success('屏幕共享已停止')
-    } catch (err) {
-      console.error('Screen share error:', err)
-      messageApi.error('停止屏幕共享失败')
-    } finally {
-      setScreenShareLoading(false)
+    await stopScreenShare()
+    setScreenShareLoading(false)
+  }
+
+  const handleAudioShareClick = () => {
+    if (!currentServerId) {
+      messageApi.warning('请先选择一个房间')
+      return
     }
+
+    if (isAudioSharing) {
+      handleStopAudioShare()
+    } else {
+      setShowAudioPicker(true)
+    }
+  }
+
+  const handleStartAudioShare = async (deviceId: string) => {
+    setShowAudioPicker(false)
+    setAudioShareLoading(true)
+    await startAudioShare(deviceId)
+    setAudioShareLoading(false)
+  }
+
+  const handleStopAudioShare = async () => {
+    setAudioShareLoading(true)
+    await stopAudioShare()
+    setAudioShareLoading(false)
   }
 
   return (
@@ -72,12 +86,24 @@ export function UserPanel() {
           disabled={screenShareLoading}
           className={cn(
             "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
-            isScreenSharing ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]",
+            isSharing ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]",
             screenShareLoading && "opacity-50 cursor-not-allowed"
           )}
-          title={isScreenSharing ? '停止屏幕共享' : '开始屏幕共享'}
+          title={isSharing ? '停止屏幕共享' : '开始屏幕共享'}
         >
-          {isScreenSharing ? <StopOutlined /> : <DesktopOutlined />}
+          {isSharing ? <StopOutlined /> : <DesktopOutlined />}
+        </button>
+        <button
+          onClick={handleAudioShareClick}
+          disabled={audioShareLoading}
+          className={cn(
+            "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
+            isAudioSharing ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]",
+            audioShareLoading && "opacity-50 cursor-not-allowed"
+          )}
+          title={isAudioSharing ? '停止音频分享' : '开始音频分享'}
+        >
+          {isAudioSharing ? <StopOutlined /> : <CustomerServiceOutlined />}
         </button>
         <button
           onClick={() => setIsMuted(!isMuted)}
@@ -99,12 +125,38 @@ export function UserPanel() {
         >
           <SoundOutlined />
         </button>
+        <button
+          onClick={() => setShowAudioSettings(true)}
+          className={cn(
+            "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
+            "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"
+          )}
+          title="音频设置"
+        >
+          <SettingOutlined />
+        </button>
       </div>
 
       <ScreenSharePicker
         open={showScreenPicker}
         onSelect={handleStartScreenShare}
         onCancel={() => setShowScreenPicker(false)}
+      />
+
+      <AudioSharePicker
+        open={showAudioPicker}
+        onSelect={handleStartAudioShare}
+        onCancel={() => setShowAudioPicker(false)}
+      />
+
+      <ScreenSharePreview
+        stream={isSharing ? localStream : null}
+        onStop={handleStopScreenShare}
+      />
+
+      <AudioSettings
+        open={showAudioSettings}
+        onClose={() => setShowAudioSettings(false)}
       />
     </>
   )

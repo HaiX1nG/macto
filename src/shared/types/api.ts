@@ -108,7 +108,7 @@ export interface RoomListRequest {
   roomType?: RoomType
 }
 
-export type RoomType = 1 | 2 | 3 | 4 // 1: 语音房, 2: 视频房, 3: 直播房, 4: 自定义
+export type RoomType = 1 | 2 // 1: 文字聊天房, 2: 语音房
 export type ParticipantRole = 1 | 2 | 3 // 1: 房主, 2: 管理员, 3: 普通用户
 
 // ==================== Playlist Types ====================

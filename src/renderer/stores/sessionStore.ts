@@ -73,12 +73,12 @@ export const useSessionStore = create<SessionState>((set) => ({
     }
   },
 
-  createSession: async (name, roomType = 1, isPrivate = false, maxParticipants = 10) => {
+  createSession: async (name, roomType = 2, isPrivate = false, maxParticipants = 10) => {
     set({ isCreating: true, error: null })
     try {
       const room = await roomService.createRoom({
         roomName: name,
-        roomType: roomType as 1 | 2 | 3 | 4,
+        roomType: roomType as 1 | 2,
         isPrivate,
         maxParticipants,
       })
