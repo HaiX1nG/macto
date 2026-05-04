@@ -1,0 +1,331 @@
+@import "tailwindcss";
+
+@theme {
+  /* 日本樱花风 - Sakura Theme */
+  --color-sakura-primary: #f8b4c4;
+  --color-sakura-secondary: #ffd6e0;
+  --color-sakura-accent: #e891a2;
+  --color-sakura-bg-base: #fff5f7;
+  --color-sakura-bg-secondary: #ffeef1;
+  --color-sakura-bg-tertiary: #ffe4e9;
+  --color-sakura-bg-darker: #ffdce3;
+  --color-sakura-bg-darkest: #ffd0d8;
+  --color-sakura-text-normal: #4a2c3a;
+  --color-sakura-text-muted: #7d5a68;
+  --color-sakura-border: #f5d0d8;
+  --color-sakura-online: #7ec699;
+  --color-sakura-idle: #f0b232;
+  --color-sakura-dnd: #e57373;
+
+  /* 中国古风 - Ancient Theme */
+  --color-ancient-primary: #c9a86c;
+  --color-ancient-secondary: #d4b896;
+  --color-ancient-accent: #8b6914;
+  --color-ancient-bg-base: #1a1612;
+  --color-ancient-bg-secondary: #231e19;
+  --color-ancient-bg-tertiary: #2d2620;
+  --color-ancient-bg-darker: #382f28;
+  --color-ancient-bg-darkest: #433a32;
+  --color-ancient-text-normal: #f0e6d8;
+  --color-ancient-text-muted: #c4b49c;
+  --color-ancient-border: #4a3f35;
+  --color-ancient-online: #6b8e5a;
+  --color-ancient-idle: #c9a86c;
+  --color-ancient-dnd: #a85454;
+
+  /* 科技风 - Tech Theme */
+  --color-tech-primary: #00d4ff;
+  --color-tech-secondary: #0099cc;
+  --color-tech-accent: #7b2dff;
+  --color-tech-bg-base: #0a0e17;
+  --color-tech-bg-secondary: #0f1520;
+  --color-tech-bg-tertiary: #151c2a;
+  --color-tech-bg-darker: #1a2335;
+  --color-tech-bg-darkest: #202b40;
+  --color-tech-text-normal: #f0faff;
+  --color-tech-text-muted: #8fa8c4;
+  --color-tech-border: #1e2d42;
+  --color-tech-online: #00ff88;
+  --color-tech-idle: #ffcc00;
+  --color-tech-dnd: #ff4757;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* 基础样式 */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==================== 日本樱花风 - Sakura Theme ==================== */
+[data-theme="sakura"] {
+  --color-primary: var(--color-sakura-primary);
+  --color-secondary: var(--color-sakura-secondary);
+  --color-accent: var(--color-sakura-accent);
+  --color-bg-base: var(--color-sakura-bg-base);
+  --color-bg-secondary: var(--color-sakura-bg-secondary);
+  --color-bg-tertiary: var(--color-sakura-bg-tertiary);
+  --color-bg-darker: var(--color-sakura-bg-darker);
+  --color-bg-darkest: var(--color-sakura-bg-darkest);
+  --color-text-normal: var(--color-sakura-text-normal);
+  --color-text-muted: var(--color-sakura-text-muted);
+  --color-border: var(--color-sakura-border);
+  --color-online: var(--color-sakura-online);
+  --color-idle: var(--color-sakura-idle);
+  --color-dnd: var(--color-sakura-dnd);
+}
+
+[data-theme="sakura"] body {
+  background-color: var(--color-sakura-bg-base);
+  color: var(--color-sakura-text-normal);
+}
+
+[data-theme="sakura"] ::-webkit-scrollbar-thumb {
+  background: rgba(248, 180, 196, 0.3);
+}
+
+[data-theme="sakura"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(248, 180, 196, 0.5);
+}
+
+/* ==================== 中国古风 - Ancient Theme ==================== */
+[data-theme="ancient"] {
+  --color-primary: var(--color-ancient-primary);
+  --color-secondary: var(--color-ancient-secondary);
+  --color-accent: var(--color-ancient-accent);
+  --color-bg-base: var(--color-ancient-bg-base);
+  --color-bg-secondary: var(--color-ancient-bg-secondary);
+  --color-bg-tertiary: var(--color-ancient-bg-tertiary);
+  --color-bg-darker: var(--color-ancient-bg-darker);
+  --color-bg-darkest: var(--color-ancient-bg-darkest);
+  --color-text-normal: var(--color-ancient-text-normal);
+  --color-text-muted: var(--color-ancient-text-muted);
+  --color-border: var(--color-ancient-border);
+  --color-online: var(--color-ancient-online);
+  --color-idle: var(--color-ancient-idle);
+  --color-dnd: var(--color-ancient-dnd);
+}
+
+[data-theme="ancient"] body {
+  background-color: var(--color-ancient-bg-base);
+  color: var(--color-ancient-text-normal);
+}
+
+[data-theme="ancient"] ::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 108, 0.3);
+}
+
+[data-theme="ancient"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 108, 0.5);
+}
+
+/* ==================== 科技风 - Tech Theme ==================== */
+[data-theme="tech"] {
+  --color-primary: var(--color-tech-primary);
+  --color-secondary: var(--color-tech-secondary);
+  --color-accent: var(--color-tech-accent);
+  --color-bg-base: var(--color-tech-bg-base);
+  --color-bg-secondary: var(--color-tech-bg-secondary);
+  --color-bg-tertiary: var(--color-tech-bg-tertiary);
+  --color-bg-darker: var(--color-tech-bg-darker);
+  --color-bg-darkest: var(--color-tech-bg-darkest);
+  --color-text-normal: var(--color-tech-text-normal);
+  --color-text-muted: var(--color-tech-text-muted);
+  --color-border: var(--color-tech-border);
+  --color-online: var(--color-tech-online);
+  --color-idle: var(--color-tech-idle);
+  --color-dnd: var(--color-tech-dnd);
+}
+
+[data-theme="tech"] body {
+  background-color: var(--color-tech-bg-base);
+  color: var(--color-tech-text-normal);
+}
+
+[data-theme="tech"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.3);
+}
+
+[data-theme="tech"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.5);
+}
+
+/* 科技风特效 - 霓虹发光效果 */
+[data-theme="tech"] .neon-glow {
+  box-shadow: 0 0 5px var(--color-tech-primary),
+              0 0 10px var(--color-tech-primary),
+              0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+[data-theme="tech"] .neon-text {
+  text-shadow: 0 0 5px var(--color-tech-primary),
+               0 0 10px var(--color-tech-primary);
+}
+
+/* ==================== Ant Design Modal 覆盖样式 ==================== */
+.ant-modal-root {
+  --antd-modal-content-bg: var(--color-bg-secondary) !important;
+}
+
+.ant-modal-wrap {
+  background-color: transparent !important;
+}
+
+.ant-modal {
+  padding: 0 !important;
+  margin: 0 auto !important;
+}
+
+.ant-modal-content {
+  background-color: var(--color-bg-secondary) !important;
+  border: none !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+}
+
+.ant-modal-header {
+  background-color: var(--color-bg-secondary) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  padding: 16px 24px !important;
+  margin: 0 !important;
+}
+
+.ant-modal-body {
+  background-color: var(--color-bg-secondary) !important;
+  padding: 16px 24px 24px !important;
+}
+
+.ant-modal-title {
+  color: var(--color-text-normal) !important;
+}
+
+.ant-modal-close {
+  color: var(--color-text-muted) !important;
+  top: 16px !important;
+  right: 16px !important;
+}
+
+.ant-modal-close:hover {
+  color: var(--color-text-normal) !important;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid var(--color-border) !important;
+  background-color: var(--color-bg-secondary) !important;
+}
+
+/* 移除 Modal focus 时的 outline */
+.ant-modal-focused::before {
+  display: none !important;
+}
+
+.ant-modal-content::before {
+  display: none !important;
+}
+
+/* ==================== Ant Design Tabs 覆盖样式 ==================== */
+.ant-tabs {
+  color: var(--color-text-normal) !important;
+}
+
+.ant-tabs-tab {
+  color: var(--color-text-muted) !important;
+}
+
+.ant-tabs-tab:hover {
+  color: var(--color-text-normal) !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--color-primary) !important;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--color-primary) !important;
+}
+
+.ant-tabs-content {
+  color: var(--color-text-normal) !important;
+}
+
+/* ==================== Ant Design Input 覆盖样式 ==================== */
+.ant-input {
+  background-color: var(--color-bg-tertiary) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-normal) !important;
+}
+
+.ant-input::placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+.ant-input:hover,
+.ant-input:focus {
+  border-color: var(--color-primary) !important;
+}
+
+/* ==================== Ant Design Button 覆盖样式 ==================== */
+.ant-btn {
+  border-color: var(--color-border) !important;
+  color: var(--color-text-normal) !important;
+}
+
+.ant-btn:hover {
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}
+
+.ant-btn-primary {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-bg-base) !important;
+}
+
+/* ==================== Ant Design Dropdown 覆盖样式 ==================== */
+.ant-dropdown-menu {
+  background-color: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+.ant-dropdown-menu-item {
+  color: var(--color-text-normal) !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: var(--color-bg-tertiary) !important;
+}
