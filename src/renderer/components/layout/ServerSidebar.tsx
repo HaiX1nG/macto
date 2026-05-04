@@ -1,16 +1,22 @@
 import { useState } from 'react'
-import { Tooltip, Modal, Input, App } from 'antd'
-import { PlusOutlined, CompassOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Tooltip, Modal, Input, App, Avatar, Dropdown } from 'antd'
+import { PlusOutlined, CompassOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
+import { useAuthStore } from '@renderer/stores/authStore'
+import { useUserStore } from '@renderer/stores/userStore'
 import { roomService } from '@renderer/services'
+import { SettingsModal } from './SettingsModal'
 import type { Server } from '@shared/types/kook'
 
 export function ServerSidebar() {
   const { servers, currentServerId, setCurrentServer, addServer } = useServerStore()
+  const { currentUser } = useAuthStore()
+  const { status, setStatus } = useUserStore()
   const { message } = App.useApp()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showExploreModal, setShowExploreModal] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -51,24 +57,24 @@ export function ServerSidebar() {
     setShowExploreModal(true)
   }
 
-  const handleDownloadApp = () => {
-    // Open download page or show info
-    Modal.info({
-      title: '下载 Macto 应用',
-      content: (
-        <div className="space-y-2">
-          <p>Macto 支持以下平台：</p>
-          <ul className="list-disc pl-4">
-            <li>Windows 10/11</li>
-            <li>macOS 10.15+</li>
-            <li>Linux (AppImage/Deb/RPM)</li>
-          </ul>
-          <p className="text-gray-500 text-sm mt-2">当前您正在使用网页版本</p>
-        </div>
-      ),
-      okText: '知道了',
-    })
+  const statusMenuItems = [
+    { key: 'online', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-online)]" /><span>在线</span></div>, onClick: () => setStatus('online') },
+    { key: 'idle', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-idle)]" /><span>空闲</span></div>, onClick: () => setStatus('idle') },
+    { key: 'dnd', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-dnd)]" /><span>请勿打扰</span></div>, onClick: () => setStatus('dnd') },
+    { key: 'offline', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-gray-500" /><span>隐身</span></div>, onClick: () => setStatus('offline') },
+    { type: 'divider' as const },
+    { key: 'custom', label: <div className="flex items-center gap-3 py-1"><EditOutlined className="text-[var(--color-text-muted)]" /><span>设置自定义状态</span></div> }
+  ]
+
+  const statusColors: Record<string, string> = {
+    online: 'bg-[var(--color-online)]',
+    idle: 'bg-[var(--color-idle)]',
+    dnd: 'bg-[var(--color-dnd)]',
+    offline: 'bg-gray-500'
   }
+
+  const displayName = currentUser?.username || '用户'
+  const avatar = currentUser?.avatarUrl || undefined
 
   return (
     <div className="w-[72px] bg-[var(--color-bg-darkest)] flex flex-col items-center py-3 gap-2 h-full flex-shrink-0">
@@ -114,12 +120,26 @@ export function ServerSidebar() {
         isAction
       />
 
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Settings Button */}
       <ServerIcon
-        icon={<DownloadOutlined className="text-[var(--color-primary)] text-xl" />}
-        name="下载应用"
-        onClick={handleDownloadApp}
+        icon={<SettingOutlined className="text-[var(--color-primary)] text-xl" />}
+        name="设置"
+        onClick={() => setSettingsOpen(true)}
         isAction
       />
+
+      {/* User Avatar */}
+      <Dropdown menu={{ items: statusMenuItems }} trigger={['click']} placement="topLeft">
+        <div className="relative cursor-pointer flex-shrink-0 mb-2">
+          <Avatar size={40} src={avatar} className="bg-gradient-to-br from-blue-500 to-purple-600 cursor-pointer hover:opacity-80 transition-opacity">
+            {displayName.charAt(0).toUpperCase()}
+          </Avatar>
+          <span className={cn("absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--color-bg-darkest)]", statusColors[status])} />
+        </div>
+      </Dropdown>
 
       {/* Create Server Modal */}
       <Modal
@@ -163,6 +183,9 @@ export function ServerSidebar() {
           </div>
         </div>
       </Modal>
+
+      {/* Settings Modal */}
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
