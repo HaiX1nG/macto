@@ -1,13 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useScreen } from '@renderer/hooks/useScreen'
-import { Card, Button, Input, message, Switch } from 'antd'
-import { DesktopOutlined, LockOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Card, Button, Input, Switch, Select, App } from 'antd'
+import { DesktopOutlined, LockOutlined, ReloadOutlined, StopOutlined, EyeOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 
 export const ScreenControl = () => {
-  const { isShared, controlEnabled, startSharing, stopSharing, enableControl, disableControl } = useScreen()
+  const { isShared, controlEnabled, startSharing, stopSharing, enableControl, disableControl, screenStream } = useScreen()
+  const { message: messageApi } = App.useApp()
   const [sessionId, setSessionId] = useState('')
   const [error, setError] = useState('')
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Update video preview when stream changes
+  useEffect(() => {
+    if (videoRef.current && screenStream) {
+      videoRef.current.srcObject = screenStream
+    }
+  }, [screenStream])
 
   const handleStartSharing = async () => {
     if (!sessionId.trim()) {
@@ -16,22 +25,20 @@ export const ScreenControl = () => {
     }
     setError('')
     try {
-      await startSharing(sessionId)
-      message.success('屏幕分享已开始')
-    } catch (err) {
-      console.error('Failed to start sharing:', err)
+      await startSharing(Number(sessionId))
+      messageApi.success('屏幕分享已开始')
+    } catch (_err) {
       setError('开始分享失败')
-      message.error('开始分享失败')
+      messageApi.error('开始分享失败')
     }
   }
 
   const handleStopSharing = async () => {
     try {
-      await stopSharing(sessionId)
-      message.success('屏幕分享已停止')
-    } catch (err) {
-      console.error('Failed to stop sharing:', err)
-      message.error('停止分享失败')
+      await stopSharing(Number(sessionId))
+      messageApi.success('屏幕分享已停止')
+    } catch (_err) {
+      messageApi.error('停止分享失败')
     }
   }
 
@@ -94,17 +101,57 @@ export const ScreenControl = () => {
               </Button>
             </div>
           ) : (
-            <Button
-              danger
-              icon={<DesktopOutlined />}
-              onClick={handleStopSharing}
-              className="rounded-xl px-6 font-semibold"
-            >
-              停止分享
-            </Button>
+            <div className="space-y-4">
+              <Button
+                danger
+                icon={<StopOutlined />}
+                onClick={handleStopSharing}
+                className="rounded-xl px-6 font-semibold"
+              >
+                停止分享
+              </Button>
+            </div>
           )}
         </div>
       </Card>
+
+      {/* Screen Preview */}
+      {isShared && screenStream && (
+        <Card
+          className={cn(
+            'rounded-2xl border-l-4 border-l-blue-500',
+            'hover:shadow-lg transition-shadow'
+          )}
+          styles={{ body: { padding: '24px' } }}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                屏幕预览
+              </h3>
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                className="rounded-xl"
+              >
+                全屏查看
+              </Button>
+            </div>
+            <div className="relative rounded-xl overflow-hidden bg-gray-900 aspect-video">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/50 rounded text-xs text-white">
+                正在分享
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Screen Controls */}
       {isShared && (
@@ -123,7 +170,7 @@ export const ScreenControl = () => {
               <Button
                 size="small"
                 icon={<ReloadOutlined />}
-                onClick={() => message.info('控制已刷新')}
+                onClick={() => messageApi.info('控制已刷新')}
                 className="rounded-xl"
               >
                 刷新
@@ -144,6 +191,39 @@ export const ScreenControl = () => {
                 onChange={controlEnabled ? disableControl : enableControl}
                 checkedChildren={<LockOutlined />}
                 unCheckedChildren={<DesktopOutlined />}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+              <div>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  分享音频
+                </span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  同时分享系统音频
+                </p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+              <div>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  画质设置
+                </span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  调整分享画质
+                </p>
+              </div>
+              <Select
+                defaultValue="auto"
+                options={[
+                  { value: 'auto', label: '自动' },
+                  { value: 'high', label: '高清' },
+                  { value: 'medium', label: '标清' },
+                  { value: 'low', label: '流畅' },
+                ]}
+                className="w-24"
               />
             </div>
           </div>

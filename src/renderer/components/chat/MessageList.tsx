@@ -1,14 +1,18 @@
-import { useRef, useEffect, useMemo } from 'react'
-import { Avatar, Dropdown } from 'antd'
-import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined } from '@ant-design/icons'
+import { useRef, useEffect, useMemo, useState } from 'react'
+import { Avatar, Dropdown, Popover, App } from 'antd'
+import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import type { Message } from '@shared/types/kook'
 
+// Quick reaction emojis
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '😡']
+
 interface MessageListProps {
   messages: Message[]
+  onAddReaction?: (messageId: string, emoji: string) => void
 }
 
-export function MessageList({ messages }: MessageListProps) {
+export function MessageList({ messages, onAddReaction }: MessageListProps) {
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,7 +43,7 @@ export function MessageList({ messages }: MessageListProps) {
             <div className="relative flex justify-center"><span className="px-2 bg-[var(--color-bg-base)] text-xs text-[var(--color-text-muted)] font-medium">{group.date}</span></div>
           </div>
           {group.messages.map((message, index) => (
-            <MessageItem key={message.id} message={message} isCompact={shouldCompact(message, group.messages[index - 1])} />
+            <MessageItem key={message.id} message={message} isCompact={shouldCompact(message, group.messages[index - 1])} onAddReaction={onAddReaction} />
           ))}
         </div>
       ))}
@@ -63,13 +67,66 @@ function shouldCompact(current: Message, previous?: Message): boolean {
 interface MessageItemProps {
   message: Message
   isCompact?: boolean
+  onAddReaction?: (messageId: string, emoji: string) => void
 }
 
-function MessageItem({ message, isCompact }: MessageItemProps) {
+function MessageItem({ message, isCompact, onAddReaction }: MessageItemProps) {
+  const { message: messageApi } = App.useApp()
+  const [showReactions, setShowReactions] = useState(false)
+
   const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 
+  const handleReaction = (emoji: string) => {
+    onAddReaction?.(message.id, emoji)
+    setShowReactions(false)
+  }
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content)
+    messageApi.success('已复制到剪贴板')
+  }
+
+  const handleReply = () => {
+    messageApi.info('回复功能开发中')
+  }
+
+  const handleEdit = () => {
+    messageApi.info('编辑功能开发中')
+  }
+
+  const handleDelete = () => {
+    messageApi.info('删除功能开发中')
+  }
+
+  const handlePin = () => {
+    messageApi.info('置顶功能开发中')
+  }
+
+  const menuItems = [
+    { key: 'reply', label: '回复', icon: <ExportOutlined />, onClick: handleReply },
+    { key: 'copy', label: '复制', icon: <CopyOutlined />, onClick: handleCopy },
+    { key: 'edit', label: '编辑', icon: <EditOutlined />, onClick: handleEdit },
+    { key: 'pin', label: '置顶', icon: <PushpinOutlined />, onClick: handlePin },
+    { type: 'divider' as const },
+    { key: 'delete', label: '删除消息', danger: true, icon: <DeleteOutlined />, onClick: handleDelete },
+  ]
+
+  const ReactionPicker = (
+    <div className="flex gap-1 p-1 bg-[var(--color-bg-secondary)] rounded-lg shadow-lg border border-[var(--color-border)]">
+      {QUICK_REACTIONS.map(emoji => (
+        <button
+          key={emoji}
+          onClick={() => handleReaction(emoji)}
+          className="w-8 h-8 flex items-center justify-center text-lg hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  )
+
   return (
-    <Dropdown menu={{ items: [{ key: 'reply', label: '回复' }, { key: 'edit', label: '编辑', icon: <EditOutlined /> }, { key: 'pin', label: '置顶', icon: <PushpinOutlined /> }, { type: 'divider' as const }, { key: 'delete', label: '删除消息', danger: true, icon: <DeleteOutlined /> }] }} trigger={['contextMenu']}>
+    <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
       <div className={cn("group relative flex gap-4 py-0.5 px-1 hover:bg-[var(--color-bg-darker)] rounded", isCompact && "mt-0")}>
         {!isCompact ? (
           <Avatar size={40} src={message.author.avatar || undefined} className="bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 cursor-pointer hover:opacity-80">
@@ -100,8 +157,11 @@ function MessageItem({ message, isCompact }: MessageItemProps) {
           )}
         </div>
         <div className="absolute -top-4 right-4 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-lg">
-          <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><SmileOutlined /></button>
-          <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><EditOutlined /></button>
+          <Popover content={ReactionPicker} trigger="click" open={showReactions} onOpenChange={setShowReactions}>
+            <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><SmileOutlined /></button>
+          </Popover>
+          <button onClick={handleReply} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><ExportOutlined /></button>
+          <button onClick={handleCopy} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><CopyOutlined /></button>
           <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><MoreOutlined /></button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useScreenStore } from '@renderer/stores/screenStore'
 interface ScreenContextType {
   isShared: boolean
   controlEnabled: boolean
+  screenStream: MediaStream | null
   startSharing: (roomId: number) => Promise<void>
   stopSharing: (roomId: number) => Promise<void>
   enableControl: () => void
@@ -13,7 +14,7 @@ interface ScreenContextType {
 const ScreenContext = createContext<ScreenContextType | undefined>(undefined)
 
 export const ScreenProvider = ({ children }: { children: React.ReactNode }) => {
-  const { isShared, controlEnabled, startSharing, stopSharing, enableControl, disableControl } = useScreenStore()
+  const { isShared, controlEnabled, screenStream, startSharing, stopSharing, enableControl, disableControl } = useScreenStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export const ScreenProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <ScreenContext.Provider value={{ isShared, controlEnabled, startSharing, stopSharing, enableControl, disableControl }}>
+    <ScreenContext.Provider value={{ isShared, controlEnabled, screenStream, startSharing, stopSharing, enableControl, disableControl }}>
       {children}
     </ScreenContext.Provider>
   )

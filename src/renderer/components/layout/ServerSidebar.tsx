@@ -1,12 +1,74 @@
 import { useState } from 'react'
-import { Tooltip } from 'antd'
+import { Tooltip, Modal, Input, App } from 'antd'
 import { PlusOutlined, CompassOutlined, DownloadOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
+import { roomService } from '@renderer/services'
 import type { Server } from '@shared/types/kook'
 
 export function ServerSidebar() {
-  const { servers, currentServerId, setCurrentServer } = useServerStore()
+  const { servers, currentServerId, setCurrentServer, addServer } = useServerStore()
+  const { message } = App.useApp()
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showExploreModal, setShowExploreModal] = useState(false)
+  const [roomName, setRoomName] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleCreateServer = async () => {
+    if (!roomName.trim()) {
+      message.warning('请输入房间名称')
+      return
+    }
+    setLoading(true)
+    try {
+      const room = await roomService.createRoom({ roomName: roomName.trim(), roomType: 1, isPrivate: false })
+      addServer({
+        id: String(room.id),
+        name: room.roomName,
+        icon: undefined,
+        banner: undefined,
+        description: undefined,
+        ownerId: String(room.hostUserId),
+        channels: [
+          { id: `${room.id}-text`, serverId: String(room.id), name: '聊天室', type: 'text' as const, position: 0 },
+          { id: `${room.id}-voice`, serverId: String(room.id), name: '语音室', type: 'voice' as const, position: 1 },
+        ],
+        roles: [],
+        memberCount: 1,
+        createdAt: new Date(room.createdAt).getTime(),
+      })
+      message.success('房间创建成功')
+      setShowCreateModal(false)
+      setRoomName('')
+    } catch (_err) {
+      message.error('创建房间失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExploreServers = () => {
+    setShowExploreModal(true)
+  }
+
+  const handleDownloadApp = () => {
+    // Open download page or show info
+    Modal.info({
+      title: '下载 Macto 应用',
+      content: (
+        <div className="space-y-2">
+          <p>Macto 支持以下平台：</p>
+          <ul className="list-disc pl-4">
+            <li>Windows 10/11</li>
+            <li>macOS 10.15+</li>
+            <li>Linux (AppImage/Deb/RPM)</li>
+          </ul>
+          <p className="text-gray-500 text-sm mt-2">当前您正在使用网页版本</p>
+        </div>
+      ),
+      okText: '知道了',
+    })
+  }
 
   return (
     <div className="w-[72px] bg-[var(--color-bg-darkest)] flex flex-col items-center py-3 gap-2 h-full flex-shrink-0">
@@ -41,23 +103,66 @@ export function ServerSidebar() {
       <ServerIcon
         icon={<PlusOutlined className="text-[var(--color-primary)] text-xl" />}
         name="添加服务器"
-        onClick={() => {}}
+        onClick={() => setShowCreateModal(true)}
         isAction
       />
 
       <ServerIcon
         icon={<CompassOutlined className="text-[var(--color-primary)] text-xl" />}
         name="探索服务器"
-        onClick={() => {}}
+        onClick={handleExploreServers}
         isAction
       />
 
       <ServerIcon
         icon={<DownloadOutlined className="text-[var(--color-primary)] text-xl" />}
         name="下载应用"
-        onClick={() => {}}
+        onClick={handleDownloadApp}
         isAction
       />
+
+      {/* Create Server Modal */}
+      <Modal
+        open={showCreateModal}
+        title="创建房间"
+        onCancel={() => setShowCreateModal(false)}
+        onOk={handleCreateServer}
+        okText="创建"
+        cancelText="取消"
+        confirmLoading={loading}
+        styles={{
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
+        }}
+      >
+        <div className="py-4">
+          <Input
+            value={roomName}
+            onChange={(e) => setRoomName(e.target.value)}
+            placeholder="输入房间名称"
+            prefix={<PlusOutlined className="text-[var(--color-text-muted)]" />}
+            className="rounded-lg"
+          />
+        </div>
+      </Modal>
+
+      {/* Explore Servers Modal */}
+      <Modal
+        open={showExploreModal}
+        title="探索房间"
+        onCancel={() => setShowExploreModal(false)}
+        footer={null}
+        styles={{
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
+        }}
+      >
+        <div className="py-4 space-y-4">
+          <p className="text-[var(--color-text-muted)]">公开房间列表功能开发中...</p>
+          <div className="text-center py-8">
+            <CompassOutlined className="text-4xl text-[var(--color-text-muted)] mb-2" />
+            <p className="text-sm text-[var(--color-text-muted)]">即将推出房间探索功能</p>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
