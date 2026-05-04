@@ -8,7 +8,7 @@ class ApiClient {
   private instance: AxiosInstance
   private accessToken: string | null = null
   private refreshToken: string | null = null
-  private refreshPromise: Promise<string> | null = null
+  private isRefreshing: boolean = false
 
   constructor() {
     this.instance = axios.create({
@@ -27,7 +27,9 @@ class ApiClient {
     // Request interceptor - add auth token
     this.instance.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        if (this.accessToken && config.headers) {
+        // Skip auth for login/register endpoints
+        const isAuthEndpoint = config.url?.includes('/auth/login') || config.url?.includes('/auth/register')
+        if (this.accessToken && config.headers && !isAuthEndpoint) {
           config.headers.Authorization = `Bearer ${this.accessToken}`
         }
         return config
@@ -39,20 +41,35 @@ class ApiClient {
     this.instance.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        const originalRequest = error.config
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-        // If 401, handle token refresh or logout
+        // Only handle 401 for requests that are NOT auth endpoints
         if (error.response?.status === 401 && originalRequest) {
-          // If we have a refresh token, try to refresh
-          if (this.refreshToken) {
-            // Prevent multiple refresh requests
-            if (!this.refreshPromise) {
-              this.refreshPromise = this.doRefreshToken()
-            }
+          // Check if this is a login/register request - don't retry these
+          const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+                                  originalRequest.url?.includes('/auth/register') ||
+                                  originalRequest.url?.includes('/auth/refresh')
+
+          if (isAuthEndpoint) {
+            // For auth endpoints, just reject - don't try to refresh
+            return Promise.reject(error)
+          }
+
+          // If already retried, don't try again
+          if (originalRequest._retry) {
+            this.clearTokens()
+            window.dispatchEvent(new CustomEvent('auth:logout'))
+            return Promise.reject(error)
+          }
+
+          // If we have a refresh token and not already refreshing, try to refresh
+          if (this.refreshToken && !this.isRefreshing) {
+            originalRequest._retry = true
+            this.isRefreshing = true
 
             try {
-              const newToken = await this.refreshPromise
-              this.refreshPromise = null
+              const newToken = await this.doRefreshToken()
+              this.isRefreshing = false
 
               // Retry original request with new token
               if (originalRequest.headers) {
@@ -60,16 +77,18 @@ class ApiClient {
               }
               return this.instance(originalRequest)
             } catch (refreshError) {
-              this.refreshPromise = null
+              this.isRefreshing = false
               this.clearTokens()
               window.dispatchEvent(new CustomEvent('auth:logout'))
               return Promise.reject(refreshError)
             }
           }
 
-          // No refresh token, clear and logout
-          this.clearTokens()
-          window.dispatchEvent(new CustomEvent('auth:logout'))
+          // No refresh token or already refreshing - clear and logout
+          if (!this.refreshToken) {
+            this.clearTokens()
+            window.dispatchEvent(new CustomEvent('auth:logout'))
+          }
         }
 
         return Promise.reject(error)
