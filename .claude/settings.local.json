@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -rf /Users/megumikato/ReactProject/macto/*)",
+      "Bash(npm create *)",
+      "Bash(pkill -f Electron)",
+      "Bash(rm -rf /Users/megumikato/ReactProject/macto/dist/*)"
+    ]
+  }
+}

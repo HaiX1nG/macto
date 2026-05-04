@@ -14,6 +14,7 @@ export interface IPCPayloads {
   'voice:set-volume': { volume: number }
   'voice:set-mute': { muted: boolean }
 
+  'screen:get-sources': null
   'screen:start': { sessionId: string }
   'screen:stop': { sessionId: string }
   'screen:set-control': { enabled: boolean }
@@ -33,6 +34,7 @@ export interface IPCResponders {
   'voice:set-volume': { success: boolean }
   'voice:set-mute': { success: boolean }
 
+  'screen:get-sources': { id: string; name: string; thumbnail: string }[]
   'screen:start': { success: boolean; streamId: string }
   'screen:stop': { success: boolean }
   'screen:set-control': { success: boolean }
@@ -56,6 +58,7 @@ const api = {
   setMute: (muted: boolean) => ipcRenderer.invoke('voice:set-mute', { muted }),
 
   // Screen
+  getScreenSources: () => ipcRenderer.invoke('screen:get-sources'),
   startScreen: (sessionId: string) => ipcRenderer.invoke('screen:start', { sessionId }),
   stopScreen: (sessionId: string) => ipcRenderer.invoke('screen:stop', { sessionId }),
   setScreenControl: (enabled: boolean) => ipcRenderer.invoke('screen:set-control', { enabled }),
@@ -80,8 +83,10 @@ const api = {
     ipcRenderer.once(channel, listener)
     return () => ipcRenderer.removeListener(channel, listener)
   },
-  off: (channel: string, listener?: Electron.Listener) => {
-    ipcRenderer.off(channel, listener)
+  off: (channel: string, listener?: (...args: unknown[]) => void) => {
+    if (listener) {
+      ipcRenderer.off(channel, listener as (...args: unknown[]) => void)
+    }
   },
 }
 

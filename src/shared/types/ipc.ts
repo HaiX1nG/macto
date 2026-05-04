@@ -36,6 +36,12 @@ export interface ScreenStream {
   controlEnabled: boolean
 }
 
+export interface ScreenSource {
+  id: string
+  name: string
+  thumbnail: string
+}
+
 // Settings
 export interface Settings {
   audioInputDeviceId: string
@@ -58,6 +64,7 @@ export interface IPCPayloads {
   'voice:set-volume': { volume: number }
   'voice:set-mute': { muted: boolean }
 
+  'screen:get-sources': null
   'screen:start': { sessionId: string }
   'screen:stop': { sessionId: string }
   'screen:set-control': { enabled: boolean }
@@ -77,6 +84,7 @@ export interface IPCResponders {
   'voice:set-volume': { success: boolean }
   'voice:set-mute': { success: boolean }
 
+  'screen:get-sources': ScreenSource[]
   'screen:start': { success: boolean; streamId: string }
   'screen:stop': { success: boolean }
   'screen:set-control': { success: boolean }

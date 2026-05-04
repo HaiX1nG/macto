@@ -1,4 +1,4 @@
-import type { BrowserWindow } from 'electron'
+import { ipcMain, desktopCapturer, type BrowserWindow } from 'electron'
 import type { IPCPayloads } from '@shared/types/ipc'
 
 export class IPCManager {
@@ -71,6 +71,24 @@ export class IPCManager {
   }
 
   private setupScreenHandlers() {
+    // Get screen sources for picker
+    ipcMain.handle('screen:get-sources', async () => {
+      try {
+        const sources = await desktopCapturer.getSources({
+          types: ['screen', 'window'],
+          thumbnailSize: { width: 200, height: 150 }
+        })
+        return sources.map(source => ({
+          id: source.id,
+          name: source.name,
+          thumbnail: source.thumbnail.toDataURL()
+        }))
+      } catch (err) {
+        console.error('Failed to get screen sources:', err)
+        return []
+      }
+    })
+
     // Start screen sharing
     ipcMain.handle('screen:start', async (event, payload: IPCPayloads['screen:start']) => {
       const streamId = crypto.randomUUID()
