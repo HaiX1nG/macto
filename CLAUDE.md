@@ -24,8 +24,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **Lint 检查**: 运行 `pnpm lint` 确保代码无错误
 2. **类型检查**: 运行 `pnpm build` 或 TypeScript 检查确保无类型错误
 3. **功能验证**: 启动开发服务器 `pnpm dev` 验证功能正常运行
-4. **修复问题**: 如有报错，先修复再提交
-5. **推送分支**: 所有检查通过后，再提交并推送到远程分支
+4. **样式验证**: 检查 Tailwind CSS 和 CSS 样式是否正确显示，确保 UI 渲染符合预期
+5. **修复问题**: 如有报错，先修复再提交
+6. **推送分支**: 所有检查通过后，再提交并推送到远程分支
 
 ---
 
