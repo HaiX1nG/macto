@@ -19,7 +19,8 @@ function roomToServer(room: RoomInfoResponse) {
     description: undefined,
     ownerId: String(room.hostUserId),
     channels: [
-      { id: `${room.id}-text`, serverId: String(room.id), name: '聊天室', type: 'text' as const, position: 0 },
+      // Use actual roomId for text channel to match backend API
+      { id: String(room.id), serverId: String(room.id), name: '聊天室', type: 'text' as const, position: 0, topic: '' },
       { id: `${room.id}-voice`, serverId: String(room.id), name: '语音室', type: 'voice' as const, position: 1 },
     ],
     roles: [],
@@ -56,9 +57,10 @@ export function MainLayout() {
         // Select first server and channel by default
         if (convertedServers.length > 0) {
           useServerStore.getState().setCurrentServer(convertedServers[0].id)
-          const firstTextChannel = convertedServers[0].channels.find(c => c.type === 'text')
-          if (firstTextChannel) {
-            useServerStore.getState().setCurrentChannel(firstTextChannel.id)
+          // Select the text channel (which uses the actual roomId)
+          const textChannel = convertedServers[0].channels.find(c => c.type === 'text')
+          if (textChannel) {
+            useServerStore.getState().setCurrentChannel(textChannel.id)
           }
         }
       } catch (err) {
