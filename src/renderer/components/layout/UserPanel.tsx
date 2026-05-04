@@ -1,18 +1,24 @@
 import { useState } from 'react'
-import { Dropdown, Avatar } from 'antd'
-import { AudioOutlined, AudioMutedOutlined, SoundOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
+import { Dropdown, Avatar, App } from 'antd'
+import { AudioOutlined, AudioMutedOutlined, SoundOutlined, SettingOutlined, EditOutlined, DesktopOutlined, StopOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useAuthStore } from '@renderer/stores/authStore'
 import { useUserStore } from '@renderer/stores/userStore'
+import { useServerStore } from '@renderer/stores/serverStore'
+import { screenShareService } from '@renderer/services'
 import { SettingsModal } from './SettingsModal'
 
 export function UserPanel() {
+  const { message: messageApi } = App.useApp()
   const { currentUser } = useAuthStore()
   const { status, setStatus } = useUserStore()
+  const { currentServerId } = useServerStore()
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
+  const [screenShareLoading, setScreenShareLoading] = useState(false)
 
   const statusMenuItems = [
     { key: 'online', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-online)]" /><span>在线</span></div>, onClick: () => setStatus('online') },
@@ -34,6 +40,31 @@ export function UserPanel() {
   const displayName = currentUser?.username || '用户'
   const avatar = currentUser?.avatarUrl || undefined
 
+  const handleScreenShare = async () => {
+    if (!currentServerId) {
+      messageApi.warning('请先选择一个房间')
+      return
+    }
+
+    setScreenShareLoading(true)
+    try {
+      if (isScreenSharing) {
+        await screenShareService.stopScreenShare(Number(currentServerId))
+        setIsScreenSharing(false)
+        messageApi.success('屏幕共享已停止')
+      } else {
+        await screenShareService.startScreenShare(Number(currentServerId))
+        setIsScreenSharing(true)
+        messageApi.success('屏幕共享已开始')
+      }
+    } catch (err) {
+      console.error('Screen share error:', err)
+      messageApi.error(isScreenSharing ? '停止屏幕共享失败' : '开始屏幕共享失败')
+    } finally {
+      setScreenShareLoading(false)
+    }
+  }
+
   return (
     <>
       <div className="h-[52px] bg-[var(--color-bg-darker)] px-2 flex items-center gap-2 flex-shrink-0">
@@ -52,6 +83,18 @@ export function UserPanel() {
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={handleScreenShare}
+            disabled={screenShareLoading}
+            className={cn(
+              "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
+              isScreenSharing ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]",
+              screenShareLoading && "opacity-50 cursor-not-allowed"
+            )}
+            title={isScreenSharing ? '停止屏幕共享' : '开始屏幕共享'}
+          >
+            {isScreenSharing ? <StopOutlined /> : <DesktopOutlined />}
+          </button>
           <button onClick={() => setIsMuted(!isMuted)} className={cn("w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]", isMuted ? "text-[var(--color-dnd)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]")}>
             {isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
           </button>
