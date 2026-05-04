@@ -30,7 +30,7 @@ export function ServerSidebar() {
         description: undefined,
         ownerId: String(room.hostUserId),
         channels: [
-          { id: `${room.id}-text`, serverId: String(room.id), name: '聊天室', type: 'text' as const, position: 0 },
+          { id: String(room.id), serverId: String(room.id), name: '聊天室', type: 'text' as const, position: 0, topic: '' },
           { id: `${room.id}-voice`, serverId: String(room.id), name: '语音室', type: 'voice' as const, position: 1 },
         ],
         roles: [],
