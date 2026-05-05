@@ -168,14 +168,18 @@ IPC channels and payloads are defined in `shared/types/ipc.ts`. The preload scri
 ### Completed Components
 - **UI Components**: Button, Input, Card, Badge, Tooltip, Modal
 - **Layout Components**: Sidebar, Header, Content, Container, Grid
-- **Stores**: themeStore, audioStore, screenStore, sessionStore, settingsStore
-- **Hooks**: useTheme, useAudio, useScreen, useSession
+- **Stores**: themeStore, audioStore, screenStore, sessionStore, settingsStore, authStore, chatStore, serverStore
+- **Hooks**: useTheme, useAudio, useScreen, useSession, useSettings, useAuth, useUserStatusPolling, useRoomWebSocket
 - **IPC Manager**: IPCManager class for main process communication
+- **Services**: apiClient, authService, roomService, chatService, uploadService, voiceService, screenShareService, webrtcService, websocketService
+
+### Completed Feature Modules
+- **Session**: SessionList, CreateSessionModal, JoinSessionModal
+- **Voice**: VoiceSettings (audio controls, device selection, mic test)
+- **Screen**: ScreenControl (screen sharing controls, preview, quality settings)
+- **Settings**: SettingsGeneral, SettingsAudio, SettingsProfile, SettingsNotifications, SettingsVideo
 
 ### To Be Implemented
-- Session feature module (session list, create/join modals)
-- Voice feature module (audio controls, device selection)
-- Screen feature module (screen sharing controls)
-- Settings feature module (preferences UI)
+- Tray icon assets
 - Tray icon assets
 - Electron auto-updater integration
