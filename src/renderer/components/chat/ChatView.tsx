@@ -45,14 +45,26 @@ export function ChatView() {
   }))
 
   // Handle sending message
-  const handleSendMessage = useCallback(async (content: string) => {
-    if (!currentChannelId || !content.trim()) return
+  const handleSendMessage = useCallback(async (content: string, attachments?: { url: string; type: 'image' | 'video' | 'audio' | 'file'; filename: string; size: number }[]) => {
+    if (!currentChannelId) return
 
     try {
-      await sendMessage(Number(currentChannelId), {
-        messageType: 1,
-        content: content.trim(),
-      })
+      // If has attachments, send as attachment message
+      if (attachments && attachments.length > 0) {
+        for (const attachment of attachments) {
+          const messageType = attachment.type === 'image' ? 2 : 1
+          await sendMessage(Number(currentChannelId), {
+            messageType,
+            content: attachment.url,
+          })
+        }
+      } else if (content.trim()) {
+        // Send text message
+        await sendMessage(Number(currentChannelId), {
+          messageType: 1,
+          content: content.trim(),
+        })
+      }
     } catch (_err) {
       messageApi.error('发送消息失败')
     }

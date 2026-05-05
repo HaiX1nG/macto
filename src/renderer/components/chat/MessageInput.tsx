@@ -1,18 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
-import { GiftOutlined, PictureOutlined, FileAddOutlined, SendOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons'
+import { GiftOutlined, PictureOutlined, FileAddOutlined, SendOutlined, PlusOutlined, CloseOutlined, LoadingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { EmojiPicker } from '@renderer/components/ui/EmojiPicker'
+import { uploadService } from '@renderer/services'
+import { App } from 'antd'
 
 interface MessageInputProps {
-  onSend: (content: string) => void
+  onSend: (content: string, attachments?: { url: string; type: 'image' | 'video' | 'audio' | 'file'; filename: string; size: number }[]) => void
   channelName: string
   replyingTo?: { name: string; content: string } | null
   onCancelReply?: () => void
 }
 
 export function MessageInput({ onSend, channelName, replyingTo, onCancelReply }: MessageInputProps) {
+  const { message: messageApi } = App.useApp()
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Focus textarea when reply changes
@@ -58,8 +63,36 @@ export function MessageInput({ onSend, channelName, replyingTo, onCancelReply }:
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         e.preventDefault()
-        // TODO: Handle image paste - upload and send
+        const file = item.getAsFile()
+        if (file) {
+          await handleFileUpload(file, true)
+        }
+        break
       }
+    }
+  }
+
+  const handleFileUpload = async (file: File, isImage = false) => {
+    setIsUploading(true)
+    setUploadProgress(isImage ? '上传图片中...' : '上传文件中...')
+
+    try {
+      const result = await (isImage ? uploadService.uploadImage(file) : uploadService.uploadAttachment(file))
+
+      // Send message with attachment
+      onSend('', [{
+        url: result.url,
+        type: result.type,
+        filename: result.filename,
+        size: result.size,
+      }])
+      messageApi.success(isImage ? '图片上传成功' : '文件上传成功')
+    } catch (err) {
+      console.error('Upload failed:', err)
+      messageApi.error(err instanceof Error ? err.message : '上传失败')
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(null)
     }
   }
 
@@ -70,19 +103,19 @@ export function MessageInput({ onSend, channelName, replyingTo, onCancelReply }:
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
-        // TODO: Upload image and send
+        handleFileUpload(file, true)
       }
     }
     input.click()
   }
 
-  const handleFileUpload = () => {
+  const handleFileUploadClick = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
-        // TODO: Upload file and send
+        handleFileUpload(file, false)
       }
     }
     input.click()
@@ -136,24 +169,31 @@ export function MessageInput({ onSend, channelName, replyingTo, onCancelReply }:
           <button onClick={handleImageUpload} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded hover:bg-[var(--color-bg-tertiary)]" title="图片">
             <PictureOutlined className="text-lg" />
           </button>
-          <button onClick={handleFileUpload} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded hover:bg-[var(--color-bg-tertiary)]" title="文件">
+          <button onClick={handleFileUploadClick} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded hover:bg-[var(--color-bg-tertiary)]" title="文件">
             <FileAddOutlined className="text-lg" />
           </button>
           <EmojiPicker onSelect={handleEmojiSelect} />
           <div className="w-px h-5 bg-[var(--color-border)] mx-1" />
-          <button
-            onClick={handleSubmit}
-            disabled={!message.trim() || isSending}
-            className={cn(
-              "w-8 h-8 flex items-center justify-center rounded",
-              message.trim() && !isSending
-                ? "text-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]"
-                : "text-[var(--color-text-muted)] cursor-not-allowed"
-            )}
-            title="发送"
-          >
-            <SendOutlined className="text-lg" />
-          </button>
+          {isUploading ? (
+            <div className="flex items-center gap-1 px-2 text-xs text-[var(--color-text-muted)]">
+              <LoadingOutlined className="animate-spin" />
+              <span>{uploadProgress}</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={!message.trim() || isSending || isUploading}
+              className={cn(
+                "w-8 h-8 flex items-center justify-center rounded",
+                message.trim() && !isSending && !isUploading
+                  ? "text-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]"
+                  : "text-[var(--color-text-muted)] cursor-not-allowed"
+              )}
+              title="发送"
+            >
+              <SendOutlined className="text-lg" />
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,8 +1,8 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { Avatar, Dropdown, Popover, App, Spin, Modal, Input } from 'antd'
-import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined, LoadingOutlined } from '@ant-design/icons'
+import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined, LoadingOutlined, FileOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
-import type { Message } from '@shared/types/kook'
+import type { Message, Attachment } from '@shared/types/kook'
 
 // Quick reaction emojis
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '😡']
@@ -99,6 +99,111 @@ function shouldCompact(current: Message, previous?: Message): boolean {
   if (!previous) return false
   if (previous.authorId !== current.authorId) return false
   return current.timestamp - previous.timestamp < 5 * 60 * 1000
+}
+
+// Check if content is a URL (for image/file display)
+function isImageUrl(content: string): boolean {
+  return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(content) || content.includes('/image/') || content.startsWith('data:image/')
+}
+
+// Message content renderer
+function MessageContent({ content, attachments }: { content: string; attachments?: Attachment[] }) {
+  // If has attachments, show them
+  if (attachments && attachments.length > 0) {
+    return (
+      <div className="space-y-2">
+        {content && <p className="text-[var(--color-text-normal)] break-words whitespace-pre-wrap leading-relaxed">{content}</p>}
+        <div className="flex flex-wrap gap-2">
+          {attachments.map((attachment, index) => (
+            <AttachmentView key={attachment.id || index} attachment={attachment} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Check if content is an image URL
+  if (isImageUrl(content)) {
+    return (
+      <div className="max-w-md">
+        <img
+          src={content}
+          alt="图片"
+          className="rounded-lg max-h-96 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => window.open(content, '_blank')}
+          onError={(e) => {
+            // If image fails to load, show as text
+            e.currentTarget.style.display = 'none'
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Regular text message
+  return <p className="text-[var(--color-text-normal)] break-words whitespace-pre-wrap leading-relaxed">{content}</p>
+}
+
+// Attachment view component
+function AttachmentView({ attachment }: { attachment: Attachment }) {
+  const { message: messageApi } = App.useApp()
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(attachment.url)
+    messageApi.success('链接已复制')
+  }
+
+  if (attachment.type === 'image') {
+    return (
+      <div className="max-w-md">
+        <img
+          src={attachment.url}
+          alt={attachment.filename}
+          className="rounded-lg max-h-96 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => window.open(attachment.url, '_blank')}
+        />
+      </div>
+    )
+  }
+
+  if (attachment.type === 'video') {
+    return (
+      <div className="max-w-md">
+        <video
+          src={attachment.url}
+          controls
+          className="rounded-lg max-h-96"
+        />
+      </div>
+    )
+  }
+
+  if (attachment.type === 'audio') {
+    return (
+      <div className="max-w-md bg-[var(--color-bg-tertiary)] rounded-lg p-3">
+        <audio src={attachment.url} controls className="w-full" />
+      </div>
+    )
+  }
+
+  // File attachment
+  return (
+    <div className="flex items-center gap-3 p-3 bg-[var(--color-bg-tertiary)] rounded-lg max-w-sm hover:bg-[var(--color-bg-darker)] transition-colors cursor-pointer" onClick={handleCopyUrl}>
+      <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center">
+        <FileOutlined className="text-xl text-[var(--color-primary)]" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-[var(--color-text-normal)] truncate">{attachment.filename}</p>
+        <p className="text-xs text-[var(--color-text-muted)]">{formatFileSize(attachment.size)}</p>
+      </div>
+    </div>
+  )
 }
 
 interface MessageItemProps {
@@ -202,7 +307,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
                 <span className="text-xs text-[var(--color-text-muted)]">{formatTime(message.timestamp)}</span>
               </div>
             )}
-            <p className="text-[var(--color-text-normal)] break-words whitespace-pre-wrap leading-relaxed">{message.content}</p>
+            <MessageContent content={message.content} attachments={message.attachments} />
             {message.reactions && message.reactions.length > 0 && (
               <div className="flex gap-1 mt-1 flex-wrap">
                 {message.reactions.map(reaction => (
