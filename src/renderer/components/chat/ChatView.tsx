@@ -3,6 +3,7 @@ import { Avatar, Spin, App } from 'antd'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { useAuthStore } from '@renderer/stores/authStore'
+import { useAudioStore } from '@renderer/stores/audioStore'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { AudioOutlined, AudioMutedOutlined, BellOutlined, PushpinOutlined, NumberOutlined, UserOutlined, SearchOutlined, InboxOutlined, SoundOutlined, SettingOutlined, LoadingOutlined } from '@ant-design/icons'
@@ -247,12 +248,17 @@ function HeaderBtn({ icon, onClick, active }: { icon: React.ReactNode; onClick?:
 function VoiceChannelView({ channel }: { channel: Channel }) {
   const { message: messageApi } = App.useApp()
   const { currentUser } = useAuthStore()
+  const { isCapturing, isSpeaking, audioLevel, joinVoice: storeJoinVoice, leaveVoice: storeLeaveVoice, isMuted: storeMuted, setMute: storeSetMute } = useAudioStore()
   const [isConnected, setIsConnected] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
   const [volume, setVolume] = useState(100)
   const [participants, setParticipants] = useState<VoiceSessionResponse[]>([])
   const [loading, setLoading] = useState(false)
+
+  // Sync connected state with audio store
+  useEffect(() => {
+    setIsConnected(isCapturing)
+  }, [isCapturing])
 
   // Fetch voice participants when connected
   useEffect(() => {
@@ -276,8 +282,7 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
     if (!channel.serverId) return
     setLoading(true)
     try {
-      await voiceService.joinVoice(Number(channel.serverId))
-      setIsConnected(true)
+      await storeJoinVoice(Number(channel.serverId))
       messageApi.success('已加入语音频道')
     } catch (err) {
       console.error('Failed to join voice:', err)
@@ -290,9 +295,7 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
   const handleLeaveVoice = async () => {
     if (!channel.serverId) return
     try {
-      await voiceService.leaveVoice(Number(channel.serverId))
-      setIsConnected(false)
-      setIsMuted(false)
+      await storeLeaveVoice(Number(channel.serverId))
       setIsDeafened(false)
       setParticipants([])
       messageApi.success('已离开语音频道')
@@ -305,8 +308,7 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
   const handleSetMute = async () => {
     if (!channel.serverId) return
     try {
-      await voiceService.setMute(Number(channel.serverId), !isMuted)
-      setIsMuted(!isMuted)
+      await storeSetMute(!storeMuted)
     } catch (err) {
       console.error('Failed to set mute:', err)
     }
@@ -324,9 +326,9 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
           {isConnected && (
             <>
               <HeaderBtn
-                icon={isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
+                icon={storeMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
                 onClick={handleSetMute}
-                active={isMuted}
+                active={storeMuted}
               />
               <HeaderBtn
                 icon={<SoundOutlined />}
@@ -377,16 +379,26 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
               </h4>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
-              {participants.map(p => (
+              {/* Current user with audio level visualization */}
+              {currentUser && (
+                <VoiceParticipant
+                  name={currentUser.username}
+                  speaking={isSpeaking}
+                  muted={storeMuted}
+                  isCurrentUser={true}
+                  audioLevel={audioLevel}
+                />
+              )}
+              {participants.filter(p => p.userId !== currentUser?.userId).map(p => (
                 <VoiceParticipant
                   key={p.id}
                   name={p.username}
                   speaking={false}
                   muted={false}
-                  isCurrentUser={p.userId === currentUser?.userId}
+                  isCurrentUser={false}
                 />
               ))}
-              {participants.length === 0 && (
+              {participants.length === 0 && !currentUser && (
                 <div className="text-center text-[var(--color-text-muted)] text-sm py-4">
                   暂无参与者
                 </div>
@@ -416,7 +428,7 @@ function VoiceChannelView({ channel }: { channel: Channel }) {
   )
 }
 
-function VoiceParticipant({ name, speaking, muted, isCurrentUser }: { name: string; speaking: boolean; muted: boolean; isCurrentUser?: boolean }) {
+function VoiceParticipant({ name, speaking, muted, isCurrentUser, audioLevel }: { name: string; speaking: boolean; muted: boolean; isCurrentUser?: boolean; audioLevel?: number }) {
   return (
     <div className={cn(
       "flex items-center gap-2 p-2 rounded",
@@ -429,12 +441,31 @@ function VoiceParticipant({ name, speaking, muted, isCurrentUser }: { name: stri
         {speaking && (
           <div className="absolute inset-0 rounded-full border-2 border-[var(--color-primary)] animate-pulse" />
         )}
+        {/* Audio level ring */}
+        {audioLevel !== undefined && audioLevel > 0 && !muted && (
+          <div
+            className="absolute inset-0 rounded-full border-2 border-[var(--color-primary)] transition-all duration-75"
+            style={{
+              transform: `scale(${1 + audioLevel / 200})`,
+              opacity: 0.3 + (audioLevel / 100) * 0.7,
+            }}
+          />
+        )}
       </div>
       <span className="flex-1 text-sm text-[var(--color-text-normal)] truncate">
         {name}
         {isCurrentUser && <span className="text-[var(--color-primary)] ml-1">(你)</span>}
       </span>
       {muted && <AudioMutedOutlined className="text-xs text-[var(--color-text-muted)]" />}
+      {/* Audio level bar */}
+      {audioLevel !== undefined && !muted && (
+        <div className="w-12 h-1.5 bg-[var(--color-bg-darker)] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-75"
+            style={{ width: `${audioLevel}%` }}
+          />
+        </div>
+      )}
     </div>
   )
 }

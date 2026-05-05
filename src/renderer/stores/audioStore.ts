@@ -10,6 +10,8 @@ export interface AudioState {
   devices: MediaDeviceInfo[]
   stream: MediaStream | null
   currentRoomId: number | null
+  audioLevel: number
+  isSpeaking: boolean
 
   // Actions
   startCapture: () => Promise<void>
@@ -20,8 +22,57 @@ export interface AudioState {
   setInputDevice: (deviceId: string) => void
   setOutputDevice: (deviceId: string) => void
   setStream: (stream: MediaStream | null) => void
+  setAudioLevel: (level: number) => void
+  setIsSpeaking: (speaking: boolean) => void
   joinVoice: (roomId: number) => Promise<void>
   leaveVoice: (roomId: number) => Promise<void>
+}
+
+// Audio analysis context
+let audioContext: AudioContext | null = null
+let analyser: AnalyserNode | null = null
+let animationFrameId: number | null = null
+
+const startAudioAnalysis = (stream: MediaStream, onLevelChange: (level: number) => void) => {
+  // Clean up previous analysis
+  stopAudioAnalysis()
+
+  try {
+    audioContext = new AudioContext()
+    analyser = audioContext.createAnalyser()
+    const source = audioContext.createMediaStreamSource(stream)
+    source.connect(analyser)
+    analyser.fftSize = 256
+    analyser.smoothingTimeConstant = 0.8
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+    const updateLevel = () => {
+      if (!analyser) return
+      analyser.getByteFrequencyData(dataArray)
+      // Calculate average volume
+      const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length
+      // Normalize to 0-100
+      const level = Math.min(100, Math.round(average * 100 / 128))
+      onLevelChange(level)
+      animationFrameId = requestAnimationFrame(updateLevel)
+    }
+    updateLevel()
+  } catch (err) {
+    console.error('Failed to start audio analysis:', err)
+  }
+}
+
+const stopAudioAnalysis = () => {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+  if (audioContext) {
+    audioContext.close().catch(() => {})
+    audioContext = null
+  }
+  analyser = null
 }
 
 export const useAudioStore = create<AudioState>((set, get) => ({
@@ -33,6 +84,8 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   devices: [],
   stream: null,
   currentRoomId: null,
+  audioLevel: 0,
+  isSpeaking: false,
 
   startCapture: async () => {
     try {
@@ -40,6 +93,11 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       const devices = await navigator.mediaDevices.enumerateDevices()
       const audioInputDevices = devices.filter(device => device.kind === 'audioinput')
       const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput')
+
+      // Start audio level analysis
+      startAudioAnalysis(stream, (level) => {
+        set({ audioLevel: level, isSpeaking: level > 10 })
+      })
 
       set({
         isCapturing: true,
@@ -56,6 +114,10 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
   stopCapture: async () => {
     const { stream, currentRoomId } = get()
+
+    // Stop audio analysis
+    stopAudioAnalysis()
+
     if (stream) {
       stream.getTracks().forEach(track => track.stop())
     }
@@ -74,6 +136,8 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       stream: null,
       inputDeviceId: '',
       currentRoomId: null,
+      audioLevel: 0,
+      isSpeaking: false,
     })
   },
 
@@ -104,6 +168,8 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   setInputDevice: (deviceId) => set({ inputDeviceId: deviceId }),
   setOutputDevice: (deviceId) => set({ outputDeviceId: deviceId }),
   setStream: (stream) => set({ stream }),
+  setAudioLevel: (level) => set({ audioLevel: level }),
+  setIsSpeaking: (speaking) => set({ isSpeaking: speaking }),
 
   joinVoice: async (roomId) => {
     try {
@@ -114,6 +180,11 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
       // Join voice room on backend
       await voiceService.joinVoice(roomId)
+
+      // Start audio level analysis
+      startAudioAnalysis(stream, (level) => {
+        set({ audioLevel: level, isSpeaking: level > 10 })
+      })
 
       set({
         isCapturing: true,
@@ -130,6 +201,9 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
   leaveVoice: async (roomId) => {
     const { stream } = get()
+
+    // Stop audio analysis
+    stopAudioAnalysis()
 
     // Stop local stream
     if (stream) {
@@ -148,6 +222,8 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       stream: null,
       inputDeviceId: '',
       currentRoomId: null,
+      audioLevel: 0,
+      isSpeaking: false,
     })
   },
 }))
