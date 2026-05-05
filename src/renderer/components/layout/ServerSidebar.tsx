@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Tooltip, Modal, Input, App, Avatar, Dropdown } from 'antd'
-import { PlusOutlined, CompassOutlined, SettingOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Tooltip, Modal, Input, App, Avatar, Dropdown, Spin, Button } from 'antd'
+import { PlusOutlined, CompassOutlined, SettingOutlined, EditOutlined, DeleteOutlined, LoadingOutlined, UserOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { useAuthStore } from '@renderer/stores/authStore'
@@ -9,6 +9,7 @@ import { roomService } from '@renderer/services'
 import { SettingsModal } from './SettingsModal'
 import type { Server } from '@shared/types/kook'
 import type { UserStatus } from '@shared/types/kook'
+import type { RoomInfoResponse } from '@shared/types/api'
 
 export function ServerSidebar() {
   const { servers, currentServerId, setCurrentServer, addServer, removeServer } = useServerStore()
@@ -25,6 +26,8 @@ export function ServerSidebar() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [serverToDelete, setServerToDelete] = useState<Server | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [publicRooms, setPublicRooms] = useState<RoomInfoResponse[]>([])
+  const [exploreLoading, setExploreLoading] = useState(false)
 
   const handleCreateServer = async () => {
     if (!roomName.trim()) {
@@ -59,8 +62,49 @@ export function ServerSidebar() {
     }
   }
 
-  const handleExploreServers = () => {
+  const handleExploreServers = async () => {
     setShowExploreModal(true)
+    setExploreLoading(true)
+    try {
+      const rooms = await roomService.getPublicRooms()
+      setPublicRooms(rooms)
+    } catch (err) {
+      console.error('Failed to fetch public rooms:', err)
+      message.error('获取公开房间列表失败')
+    } finally {
+      setExploreLoading(false)
+    }
+  }
+
+  const handleJoinPublicRoom = async (roomId: number) => {
+    try {
+      await roomService.joinRoom(roomId)
+      message.success('已加入房间')
+      // Refresh room list
+      const rooms = await roomService.getRoomList()
+      const newRoom = rooms.find(r => r.id === roomId)
+      if (newRoom) {
+        addServer({
+          id: String(newRoom.id),
+          name: newRoom.roomName,
+          icon: undefined,
+          banner: undefined,
+          description: undefined,
+          ownerId: String(newRoom.hostUserId),
+          channels: [
+            { id: String(newRoom.id), serverId: String(newRoom.id), name: '聊天室', type: 'text' as const, position: 0, topic: '' },
+            { id: `${newRoom.id}-voice`, serverId: String(newRoom.id), name: '语音室', type: 'voice' as const, position: 1 },
+          ],
+          roles: [],
+          memberCount: newRoom.participantCount,
+          createdAt: new Date(newRoom.createdAt).getTime(),
+        })
+      }
+      setShowExploreModal(false)
+    } catch (err) {
+      console.error('Failed to join room:', err)
+      message.error('加入房间失败')
+    }
   }
 
   const handleStatusChange = async (newStatus: UserStatus) => {
@@ -227,16 +271,51 @@ export function ServerSidebar() {
         title="探索房间"
         onCancel={() => setShowExploreModal(false)}
         footer={null}
+        width={500}
         styles={{
-          body: { backgroundColor: 'var(--color-bg-secondary)' },
+          body: { backgroundColor: 'var(--color-bg-secondary)', maxHeight: '60vh', overflowY: 'auto' },
         }}
       >
         <div className="py-4 space-y-4">
-          <p className="text-[var(--color-text-muted)]">公开房间列表功能开发中...</p>
-          <div className="text-center py-8">
-            <CompassOutlined className="text-4xl text-[var(--color-text-muted)] mb-2" />
-            <p className="text-sm text-[var(--color-text-muted)]">即将推出房间探索功能</p>
-          </div>
+          {exploreLoading ? (
+            <div className="flex justify-center py-8">
+              <Spin indicator={<LoadingOutlined className="text-[var(--color-primary)]" spin />} />
+            </div>
+          ) : publicRooms.length === 0 ? (
+            <div className="text-center py-8">
+              <CompassOutlined className="text-4xl text-[var(--color-text-muted)] mb-2" />
+              <p className="text-sm text-[var(--color-text-muted)]">暂无公开房间</p>
+            </div>
+          ) : (
+            publicRooms.map(room => (
+              <div
+                key={room.id}
+                className="flex items-center gap-3 p-3 bg-[var(--color-bg-tertiary)] rounded-lg hover:bg-[var(--color-bg-darker)] transition-colors"
+              >
+                <Avatar
+                  size={48}
+                  className="bg-gradient-to-br from-[var(--color-primary)] to-purple-600 flex-shrink-0"
+                >
+                  {room.roomName.charAt(0).toUpperCase()}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-[var(--color-text-normal)] truncate">{room.roomName}</h4>
+                  <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                    <UserOutlined />
+                    <span>{room.participantCount} 人</span>
+                  </div>
+                </div>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => handleJoinPublicRoom(room.id)}
+                  className="rounded-lg"
+                >
+                  加入
+                </Button>
+              </div>
+            ))
+          )}
         </div>
       </Modal>
 

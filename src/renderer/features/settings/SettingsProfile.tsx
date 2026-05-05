@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Avatar, Button, Input, Upload, Modal, App } from 'antd'
 import { UserOutlined, CameraOutlined, MailOutlined, LockOutlined, LogoutOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { useAuthStore } from '@renderer/stores/authStore'
+import { authService } from '@renderer/services'
 import { cn } from '@renderer/utils/cn'
 import type { UploadProps } from 'antd'
 
@@ -112,6 +113,17 @@ export const SettingsProfile = () => {
   const handleLogout = () => {
     logout()
     message.success('已退出登录')
+  }
+
+  const handleDeleteAccount = async () => {
+    try {
+      await authService.deleteAccount()
+      message.success('账户已删除')
+      setShowDeleteModal(false)
+      logout()
+    } catch (_err) {
+      message.error('删除账户失败')
+    }
   }
 
   const uploadProps: UploadProps = {
@@ -370,9 +382,7 @@ export const SettingsProfile = () => {
           </Button>,
         ]}
         styles={{
-          content: { borderRadius: '12px', backgroundColor: 'var(--color-bg-secondary)' },
-          header: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
-          body: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
         }}
       >
         <div className="space-y-3 py-4">
@@ -412,17 +422,12 @@ export const SettingsProfile = () => {
           <Button key="cancel" onClick={() => setShowDeleteModal(false)} className="rounded-lg">
             取消
           </Button>,
-          <Button key="delete" type="primary" danger onClick={() => {
-            message.info('账户删除功能暂未实现')
-            setShowDeleteModal(false)
-          }} className="rounded-lg">
+          <Button key="delete" type="primary" danger onClick={handleDeleteAccount} loading={isLoading} className="rounded-lg">
             确认删除
           </Button>,
         ]}
         styles={{
-          content: { borderRadius: '12px', backgroundColor: 'var(--color-bg-secondary)' },
-          header: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
-          body: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
         }}
       >
         <div className="py-4">

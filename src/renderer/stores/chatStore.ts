@@ -8,6 +8,7 @@ import type {
 
 interface ChatState {
   messages: MessageResponse[]
+  pinnedMessages: MessageResponse[]
   isLoading: boolean
   hasMore: boolean
   error: string | null
@@ -21,6 +22,8 @@ interface ChatState {
   addMessage: (message: MessageResponse) => void
   updateMessage: (messageId: number, content: string) => void
   deleteMessage: (messageId: number) => void
+  pinMessage: (messageId: number) => void
+  unpinMessage: (messageId: number) => void
   clearMessages: () => void
   setReplyingTo: (message: MessageResponse | null) => void
   setEditingMessage: (message: MessageResponse | null) => void
@@ -30,6 +33,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
+  pinnedMessages: [],
   isLoading: false,
   hasMore: true,
   error: null,
@@ -90,10 +94,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
   deleteMessage: (messageId) => {
     set((state) => ({
       messages: state.messages.filter(msg => msg.id !== messageId),
+      pinnedMessages: state.pinnedMessages.filter(msg => msg.id !== messageId),
     }))
   },
 
-  clearMessages: () => set({ messages: [], hasMore: true, currentRoomId: null }),
+  pinMessage: (messageId) => {
+    set((state) => {
+      const message = state.messages.find(msg => msg.id === messageId)
+      if (!message) return state
+      // Don't pin if already pinned
+      if (state.pinnedMessages.some(msg => msg.id === messageId)) return state
+      return {
+        pinnedMessages: [...state.pinnedMessages, message],
+      }
+    })
+  },
+
+  unpinMessage: (messageId) => {
+    set((state) => ({
+      pinnedMessages: state.pinnedMessages.filter(msg => msg.id !== messageId),
+    }))
+  },
+
+  clearMessages: () => set({ messages: [], pinnedMessages: [], hasMore: true, currentRoomId: null }),
 
   setReplyingTo: (message) => set({ replyingTo: message }),
 

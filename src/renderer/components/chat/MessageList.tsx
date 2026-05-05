@@ -16,9 +16,12 @@ interface MessageListProps {
   onReply?: (message: Message) => void
   onEdit?: (messageId: string, content: string) => void
   onDelete?: (messageId: string) => void
+  onPin?: (messageId: string) => void
+  onUnpin?: (messageId: string) => void
+  pinnedMessages?: Message[]
 }
 
-export function MessageList({ messages, onAddReaction, onLoadMore, hasMore, isLoading, onReply, onEdit, onDelete }: MessageListProps) {
+export function MessageList({ messages, onAddReaction, onLoadMore, hasMore, isLoading, onReply, onEdit, onDelete, onPin, onUnpin, pinnedMessages }: MessageListProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
 
@@ -57,6 +60,33 @@ export function MessageList({ messages, onAddReaction, onLoadMore, hasMore, isLo
 
   return (
     <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin">
+      {/* Pinned messages section */}
+      {pinnedMessages && pinnedMessages.length > 0 && (
+        <div className="mb-4 p-3 bg-[var(--color-primary)]/10 rounded-lg border border-[var(--color-primary)]/20">
+          <div className="flex items-center gap-2 mb-2">
+            <PushpinOutlined className="text-[var(--color-primary)]" />
+            <span className="text-sm font-medium text-[var(--color-primary)]">置顶消息</span>
+          </div>
+          <div className="space-y-2">
+            {pinnedMessages.map(message => (
+              <div key={message.id} className="flex items-start gap-2 p-2 bg-[var(--color-bg-secondary)] rounded">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-[var(--color-text-normal)]">{message.author.displayName || message.author.name}</span>
+                  <p className="text-sm text-[var(--color-text-normal)] truncate">{message.content}</p>
+                </div>
+                <button
+                  onClick={() => onUnpin?.(message.id)}
+                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
+                  title="取消置顶"
+                >
+                  取消置顶
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Load more indicator */}
       {(hasMore || isLoadingMore) && (
         <div className="flex justify-center py-2 mb-2">
@@ -80,7 +110,7 @@ export function MessageList({ messages, onAddReaction, onLoadMore, hasMore, isLo
             <div className="relative flex justify-center"><span className="px-2 bg-[var(--color-bg-base)] text-xs text-[var(--color-text-muted)] font-medium">{group.date}</span></div>
           </div>
           {group.messages.map((message, index) => (
-            <MessageItem key={message.id} message={message} isCompact={shouldCompact(message, group.messages[index - 1])} onAddReaction={onAddReaction} onReply={onReply} onEdit={onEdit} onDelete={onDelete} />
+            <MessageItem key={message.id} message={message} isCompact={shouldCompact(message, group.messages[index - 1])} onAddReaction={onAddReaction} onReply={onReply} onEdit={onEdit} onDelete={onDelete} onPin={onPin} pinnedMessageIds={pinnedMessages?.map(m => m.id)} />
           ))}
         </div>
       ))}
@@ -213,9 +243,11 @@ interface MessageItemProps {
   onReply?: (message: Message) => void
   onEdit?: (messageId: string, content: string) => void
   onDelete?: (messageId: string) => void
+  onPin?: (messageId: string) => void
+  pinnedMessageIds?: string[]
 }
 
-function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete }: MessageItemProps) {
+function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, pinnedMessageIds }: MessageItemProps) {
   const { message: messageApi } = App.useApp()
   const [showReactions, setShowReactions] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -260,15 +292,18 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
     messageApi.success('消息已删除')
   }
 
+  const isPinned = pinnedMessageIds?.includes(message.id)
+
   const handlePin = () => {
-    messageApi.info('置顶功能开发中')
+    onPin?.(message.id)
+    messageApi.success(isPinned ? '消息已取消置顶' : '消息已置顶')
   }
 
   const menuItems = [
     { key: 'reply', label: '回复', icon: <ExportOutlined />, onClick: handleReply },
     { key: 'copy', label: '复制', icon: <CopyOutlined />, onClick: handleCopy },
     { key: 'edit', label: '编辑', icon: <EditOutlined />, onClick: handleEdit },
-    { key: 'pin', label: '置顶', icon: <PushpinOutlined />, onClick: handlePin },
+    { key: 'pin', label: isPinned ? '取消置顶' : '置顶', icon: <PushpinOutlined />, onClick: handlePin },
     { type: 'divider' as const },
     { key: 'delete', label: '删除消息', danger: true, icon: <DeleteOutlined />, onClick: handleDelete },
   ]

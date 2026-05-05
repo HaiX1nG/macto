@@ -62,6 +62,22 @@ export const roomService = {
   async deleteRoom(roomId: number): Promise<void> {
     return apiClient.delete<void>(`/rooms/${roomId}`)
   },
+
+  async getPublicRooms(params?: RoomListRequest): Promise<RoomInfoResponse[]> {
+    try {
+      const result = await apiClient.get<PaginatedData<RoomInfoResponse> | RoomInfoResponse[]>('/rooms/public', params as Record<string, unknown> | undefined)
+      if (Array.isArray(result)) {
+        return result
+      }
+      if (result && 'list' in result) {
+        return result.list || []
+      }
+      return []
+    } catch (err) {
+      console.error('Failed to fetch public rooms:', err)
+      return []
+    }
+  },
 }
 
 export default roomService

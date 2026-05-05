@@ -14,7 +14,7 @@ import type { VoiceSessionResponse } from '@shared/types/api'
 export function ChatView() {
   const { message: messageApi } = App.useApp()
   const { servers, currentServerId, currentChannelId } = useServerStore()
-  const { messages, fetchMessages, sendMessage, isLoading, hasMore, replyingTo, setReplyingTo, clearMessages } = useChatStore()
+  const { messages, pinnedMessages, fetchMessages, sendMessage, isLoading, hasMore, replyingTo, setReplyingTo, clearMessages, pinMessage, unpinMessage } = useChatStore()
   const { currentUser } = useAuthStore()
 
   const currentServer = servers.find(s => s.id === currentServerId)
@@ -101,6 +101,38 @@ export function ChatView() {
     useChatStore.getState().deleteMessage(Number(messageId))
   }, [])
 
+  // Handle pin message
+  const handlePinMessage = useCallback((messageId: string) => {
+    const isPinned = pinnedMessages.some(m => String(m.id) === messageId)
+    if (isPinned) {
+      unpinMessage(Number(messageId))
+    } else {
+      pinMessage(Number(messageId))
+    }
+  }, [pinnedMessages, pinMessage, unpinMessage])
+
+  // Handle unpin message
+  const handleUnpinMessage = useCallback((messageId: string) => {
+    unpinMessage(Number(messageId))
+  }, [unpinMessage])
+
+  // Convert pinned messages to KOOK format
+  const pinnedKookMessages: Message[] = pinnedMessages.map(msg => ({
+    id: String(msg.id),
+    channelId: String(msg.roomId),
+    authorId: String(msg.senderUserId),
+    author: {
+      id: String(msg.senderUserId),
+      name: msg.senderName,
+      displayName: msg.senderName,
+      avatar: currentUser?.avatarUrl,
+      status: 'online' as const,
+    },
+    content: msg.content,
+    timestamp: new Date(msg.createdAt).getTime(),
+    pinned: true,
+  }))
+
   if (!currentServer || !currentChannel) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-base)]">
@@ -179,6 +211,9 @@ export function ChatView() {
           onReply={handleReply}
           onEdit={handleEditMessage}
           onDelete={handleDeleteMessage}
+          onPin={handlePinMessage}
+          onUnpin={handleUnpinMessage}
+          pinnedMessages={pinnedKookMessages}
         />
       )}
 
