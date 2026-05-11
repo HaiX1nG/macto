@@ -9,6 +9,7 @@ interface VideoSettings {
   mirror: boolean
   showPreview: boolean
   frameRate: number
+  hardwareAcceleration: boolean
 }
 
 const qualityOptions = [
@@ -27,6 +28,7 @@ export const SettingsVideo = () => {
     mirror: true,
     showPreview: true,
     frameRate: 30,
+    hardwareAcceleration: true,
   })
 
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([])
@@ -282,7 +284,10 @@ export const SettingsVideo = () => {
           <span className="font-medium text-[var(--color-text-normal)]">硬件加速</span>
           <p className="text-xs text-[var(--color-text-muted)]">使用 GPU 加速视频处理</p>
         </div>
-        <Switch defaultChecked />
+        <Switch
+          checked={settings.hardwareAcceleration}
+          onChange={(checked) => updateSetting('hardwareAcceleration', checked)}
+        />
       </div>
 
       {/* Screen Share Quality */}
