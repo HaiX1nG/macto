@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
-import rehypeSanitize from 'rehype-sanitize'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { cn } from '@renderer/utils/cn'
 
 interface MarkdownRendererProps {
@@ -11,65 +11,39 @@ interface MarkdownRendererProps {
   className?: string
 }
 
-// Complete HTML5 sanitize schema - supports all standard HTML5 elements
+// Extended sanitize schema based on default - supports all standard HTML5 elements
 const sanitizeSchema = {
+  ...defaultSchema,
   tagNames: [
-    // Document structure
-    'html', 'head', 'body', 'title', 'base', 'link', 'meta', 'style',
-
-    // Sections
-    'article', 'aside', 'footer', 'header', 'main', 'nav', 'section',
-
-    // Headings
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hgroup',
-
-    // Content grouping
-    'address', 'blockquote', 'dd', 'div', 'dl', 'dt', 'figcaption', 'figure',
-    'hr', 'li', 'ol', 'p', 'pre', 'ul',
-
-    // Text-level semantics
-    'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'data', 'dfn',
-    'em', 'i', 'kbd', 'mark', 'q', 'rp', 'rt', 'ruby', 's', 'samp',
-    'small', 'span', 'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr',
-
-    // Edits
-    'del', 'ins',
-
-    // Embedded content
-    'audio', 'canvas', 'embed', 'iframe', 'img', 'object', 'picture',
-    'portal', 'source', 'track', 'video',
-
-    // Tables
-    'caption', 'col', 'colgroup', 'table', 'tbody', 'td', 'tfoot', 'th',
-    'thead', 'tr',
-
+    // Use all default tags plus additional ones
+    ...(defaultSchema.tagNames || []),
+    // Additional sections
+    'article', 'aside', 'footer', 'header', 'main', 'nav', 'section', 'hgroup',
+    // Additional text-level semantics
+    'bdi', 'bdo', 'data', 'mark', 'q', 'ruby', 'rp', 'rt', 'time', 'wbr',
+    // Additional embedded content
+    'audio', 'canvas', 'embed', 'iframe', 'object', 'picture', 'portal', 'source', 'track', 'video',
+    // Interactive elements
+    'details', 'dialog', 'menu', 'summary',
     // Forms
     'button', 'datalist', 'fieldset', 'form', 'input', 'label', 'legend',
     'meter', 'optgroup', 'option', 'output', 'progress', 'select', 'textarea',
-
-    // Interactive elements
-    'details', 'dialog', 'menu', 'summary',
-
-    // SVG and MathML (basic support)
+    // SVG elements
     'svg', 'path', 'circle', 'rect', 'line', 'polygon', 'polyline', 'ellipse',
     'g', 'defs', 'use', 'symbol', 'text', 'tspan', 'image', 'clipPath',
     'linearGradient', 'radialGradient', 'stop', 'filter', 'feGaussianBlur',
+    // MathML
     'math', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub', 'mfrac',
-
     // Deprecated but commonly used
-    'center', 'font', 'strike', 'tt', 'big', 'small',
+    'center', 'font', 'strike', 'tt', 'big',
   ],
   attributes: {
+    ...defaultSchema.attributes,
     '*': [
       // Global attributes
       'className', 'class', 'style', 'id', 'title', 'lang', 'dir',
       'hidden', 'tabindex', 'accesskey', 'contenteditable', 'draggable',
-      'spellcheck', 'translate', 'data-*', 'role', 'aria-*',
-      // Event handlers (for interactive content)
-      'onclick', 'ondblclick', 'onmousedown', 'onmouseup', 'onmouseover',
-      'onmousemove', 'onmouseout', 'onmouseenter', 'onmouseleave',
-      'onkeydown', 'onkeyup', 'onkeypress', 'onfocus', 'onblur',
-      'onchange', 'oninput', 'onsubmit', 'onreset', 'onselect',
+      'spellcheck', 'translate', 'role',
     ],
     // Links
     a: ['href', 'target', 'rel', 'download', 'hreflang', 'type', 'ping'],
@@ -149,13 +123,10 @@ const sanitizeSchema = {
     feGaussianBlur: ['in', 'stdDeviation', 'result'],
     // Font (deprecated but supported)
     font: ['color', 'size', 'face'],
-    // Meta
-    meta: ['name', 'content', 'charset', 'http-equiv'],
-    link: ['rel', 'href', 'type', 'media'],
-    style: ['type', 'media'],
   },
-  protocols: {
-    href: ['http', 'https', 'mailto', 'tel', 'ftp', 'javascript'],
+  protocol: {
+    ...defaultSchema.protocol,
+    href: ['http', 'https', 'mailto', 'tel', 'ftp'],
     src: ['http', 'https', 'data', 'blob'],
     action: ['http', 'https'],
     poster: ['http', 'https', 'data'],
