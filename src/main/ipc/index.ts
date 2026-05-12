@@ -1,5 +1,7 @@
-import { ipcMain, desktopCapturer, type BrowserWindow } from 'electron'
+import { ipcMain, desktopCapturer, Notification, type BrowserWindow } from 'electron'
+import fs from 'node:fs'
 import type { IPCPayloads } from '@shared/types/ipc'
+import { notificationManager } from '../notifications'
 
 export class IPCManager {
   private readonly window: BrowserWindow
@@ -18,24 +20,26 @@ export class IPCManager {
     this.setupScreenHandlers()
     // Audio IPC handlers
     this.setupAudioHandlers()
+    // System IPC handlers
+    this.setupSystemHandlers()
   }
 
   private setupSessionHandlers() {
     // Create session
-    ipcMain.handle('session:create', async (event, payload: IPCPayloads['session:create']) => {
+    ipcMain.handle('session:create', async (_event, payload: IPCPayloads['session:create']) => {
       const sessionId = crypto.randomUUID()
       this.window.webContents.send('session:created', { sessionId, name: payload.name })
       return { sessionId }
     })
 
     // Join session
-    ipcMain.handle('session:join', async (event, payload: IPCPayloads['session:join']) => {
+    ipcMain.handle('session:join', async (_event, payload: IPCPayloads['session:join']) => {
       this.window.webContents.send('session:joined', { sessionId: payload.sessionId })
       return { success: true }
     })
 
     // Leave session
-    ipcMain.handle('session:leave', async (event, payload: IPCPayloads['session:leave']) => {
+    ipcMain.handle('session:leave', async (_event, payload: IPCPayloads['session:leave']) => {
       this.window.webContents.send('session:left', { sessionId: payload.sessionId })
       return { success: true }
     })
@@ -60,13 +64,13 @@ export class IPCManager {
     })
 
     // Set volume
-    ipcMain.handle('voice:set-volume', async (event, payload: IPCPayloads['voice:set-volume']) => {
+    ipcMain.handle('voice:set-volume', async (_event, payload: IPCPayloads['voice:set-volume']) => {
       this.window.webContents.send('voice:volume-changed', { volume: payload.volume })
       return { success: true }
     })
 
     // Set mute
-    ipcMain.handle('voice:set-mute', async (event, payload: IPCPayloads['voice:set-mute']) => {
+    ipcMain.handle('voice:set-mute', async (_event, payload: IPCPayloads['voice:set-mute']) => {
       this.window.webContents.send('voice:mute-changed', { muted: payload.muted })
       return { success: true }
     })
@@ -92,20 +96,20 @@ export class IPCManager {
     })
 
     // Start screen sharing
-    ipcMain.handle('screen:start', async (event, payload: IPCPayloads['screen:start']) => {
+    ipcMain.handle('screen:start', async (_event, payload: IPCPayloads['screen:start']) => {
       const streamId = crypto.randomUUID()
       this.window.webContents.send('screen:started', { streamId, sessionId: payload.sessionId })
       return { success: true, streamId }
     })
 
     // Stop screen sharing
-    ipcMain.handle('screen:stop', async (event, payload: IPCPayloads['screen:stop']) => {
+    ipcMain.handle('screen:stop', async (_event, payload: IPCPayloads['screen:stop']) => {
       this.window.webContents.send('screen:stopped', { sessionId: payload.sessionId })
       return { success: true }
     })
 
     // Set screen control
-    ipcMain.handle('screen:set-control', async (event, payload: IPCPayloads['screen:set-control']) => {
+    ipcMain.handle('screen:set-control', async (_event, payload: IPCPayloads['screen:set-control']) => {
       this.window.webContents.send('screen:control-changed', { enabled: payload.enabled })
       return { success: true }
     })
@@ -131,6 +135,67 @@ export class IPCManager {
       } catch (err) {
         console.error('Failed to get audio sources:', err)
         return []
+      }
+    })
+  }
+
+  private setupSystemHandlers() {
+    // Show desktop notification
+    ipcMain.handle('system:notification', async (_event, payload: IPCPayloads['system:notification']) => {
+      try {
+        const notification = notificationManager.showNotification({
+          title: payload.title,
+          body: payload.body,
+          roomId: payload.roomId,
+          senderId: payload.senderId,
+        })
+
+        // Send notification click event to renderer
+        notification?.on('click', () => {
+          this.window.webContents.send('system:notification-click', {
+            roomId: payload.roomId,
+            senderId: payload.senderId,
+          })
+        })
+
+        return { success: true }
+      } catch (err) {
+        console.error('Failed to show notification:', err)
+        return { success: false }
+      }
+    })
+
+    // Check if notifications are supported
+    ipcMain.handle('system:notification-supported', async () => {
+      return Notification.isSupported()
+    })
+
+    // Set notification enabled state
+    ipcMain.handle('system:notification-set-enabled', async (_event, payload: { enabled: boolean }) => {
+      // Store in app user data for persistence
+      const { app } = await import('electron')
+      const settingsPath = `${app.getPath('userData')}/notification-settings.json`
+      try {
+        const settings = { enabled: payload.enabled }
+        fs.writeFileSync(settingsPath, JSON.stringify(settings))
+        return { success: true }
+      } catch {
+        return { success: false }
+      }
+    })
+
+    // Get notification enabled state
+    ipcMain.handle('system:notification-get-enabled', async () => {
+      const { app } = await import('electron')
+      const settingsPath = `${app.getPath('userData')}/notification-settings.json`
+      try {
+        if (fs.existsSync(settingsPath)) {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+          return { enabled: settings.enabled ?? true }
+        }
+        return { enabled: true }
+      } catch {
+        return { enabled: true }
       }
     })
   }

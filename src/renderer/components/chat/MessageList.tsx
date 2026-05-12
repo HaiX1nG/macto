@@ -2,6 +2,7 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { Avatar, Dropdown, Popover, App, Spin, Modal, Input } from 'antd'
 import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined, LoadingOutlined, FileOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
+import { EmptyMessages } from '@renderer/components/ui/EmptyState'
 import type { Message, Attachment } from '@shared/types/kook'
 
 // Quick reaction emojis
@@ -115,11 +116,7 @@ export function MessageList({ messages, onAddReaction, onLoadMore, hasMore, isLo
         </div>
       ))}
       {messages.length === 0 && !isLoading && (
-        <div className="flex flex-col items-center justify-center h-full text-center">
-          <div className="w-16 h-16 rounded-full bg-[var(--color-bg-darker)] flex items-center justify-center mb-4"><span className="text-2xl">💬</span></div>
-          <h3 className="text-lg font-semibold text-[var(--color-text-normal)] mb-2">开始聊天</h3>
-          <p className="text-[var(--color-text-muted)]">发送第一条消息开始对话</p>
-        </div>
+        <EmptyMessages />
       )}
     </div>
   )

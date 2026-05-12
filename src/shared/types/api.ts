@@ -161,6 +161,20 @@ export interface MessageListRequest {
 
 export type MessageType = 1 | 2 | 3 // 1: 文本, 2: 图片, 3: 系统
 
+// ==================== Search Types ====================
+
+export interface SearchMessagesRequest {
+  query: string
+  roomId?: number
+  page?: number
+  pageSize?: number
+}
+
+export interface SearchMessagesResponse {
+  messages: MessageResponse[]
+  total: number
+}
+
 // ==================== Screen Share Types ====================
 
 export interface ScreenShareResponse {

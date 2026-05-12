@@ -21,7 +21,10 @@ export interface IPCPayloads {
 
   'audio:get-sources': null
 
-  'system:notification': { title: string; body: string }
+  'system:notification': { title: string; body: string; roomId?: number; senderId?: number }
+  'system:notification-supported': null
+  'system:notification-set-enabled': { enabled: boolean }
+  'system:notification-get-enabled': null
   'system:tray-click': null
 }
 
@@ -44,6 +47,9 @@ export interface IPCResponders {
   'audio:get-sources': { id: string; name: string }[]
 
   'system:notification': { success: boolean }
+  'system:notification-supported': boolean
+  'system:notification-set-enabled': { success: boolean }
+  'system:notification-get-enabled': { enabled: boolean }
   'system:tray-click': null
 }
 
@@ -92,8 +98,18 @@ const api = {
   getAudioSources: () => ipcRenderer.invoke('audio:get-sources'),
 
   // System
-  sendNotification: (title: string, body: string) =>
-    ipcRenderer.invoke('system:notification', { title, body }),
+  sendNotification: (title: string, body: string, options?: { roomId?: number; senderId?: number }) =>
+    ipcRenderer.invoke('system:notification', { title, body, ...options }),
+  isNotificationSupported: () => ipcRenderer.invoke('system:notification-supported'),
+  setNotificationEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('system:notification-set-enabled', { enabled }),
+  getNotificationEnabled: () => ipcRenderer.invoke('system:notification-get-enabled'),
+  onNotificationClick: (callback: (data: { roomId?: number; senderId?: number }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: { roomId?: number; senderId?: number }) =>
+      callback(data)
+    ipcRenderer.on('system:notification-click', listener)
+    return () => ipcRenderer.removeListener('system:notification-click', listener)
+  },
   onTrayClick: (callback: () => void) => {
     const listener = (_event: Electron.IpcRendererEvent) => callback()
     ipcRenderer.on('system:tray-click', listener)

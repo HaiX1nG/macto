@@ -3,6 +3,8 @@ import { Avatar, Dropdown } from 'antd'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
 import { roomService, authService } from '@renderer/services'
+import { EmptyMembers } from '@renderer/components/ui/EmptyState'
+import { SkeletonMember } from '@renderer/components/ui/Skeleton'
 import type { ParticipantResponse, UserOnlineStatusResponse } from '@shared/types/api'
 import type { ServerMember, UserStatus } from '@shared/types/kook'
 
@@ -149,8 +151,22 @@ export function MemberList() {
 
   if (loading) {
     return (
-      <div className="w-[240px] bg-[var(--color-bg-secondary)] flex items-center justify-center h-full flex-shrink-0">
-        <div className="text-[var(--color-text-muted)]">加载中...</div>
+      <div className="w-[240px] bg-[var(--color-bg-secondary)] flex flex-col h-full flex-shrink-0">
+        <div className="flex-1 overflow-hidden px-2 py-4 space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonMember key={i} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!currentServerId || serverMembers.length === 0) {
+    return (
+      <div className="w-[240px] bg-[var(--color-bg-secondary)] flex flex-col h-full flex-shrink-0">
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyMembers />
+        </div>
       </div>
     )
   }

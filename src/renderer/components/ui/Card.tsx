@@ -2,13 +2,15 @@ import type { CardProps as AntdCardProps } from 'antd';
 import { Card as AntdCard } from 'antd'
 import { cn } from '@renderer/utils/cn'
 
-interface CardProps extends Omit<AntdCardProps, 'className'> {
+type CardVariant = 'default' | 'bordered' | 'elevated' | 'glass'
+
+interface CardProps extends Omit<AntdCardProps, 'className' | 'variant' | 'bordered'> {
   className?: string
   title?: React.ReactNode
   subtitle?: string
   extra?: React.ReactNode
   children: React.ReactNode
-  variant?: 'default' | 'bordered' | 'elevated' | 'glass'
+  variant?: CardVariant
   hoverable?: boolean
   padding?: 'none' | 'sm' | 'md' | 'lg'
   borderColor?: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'default'

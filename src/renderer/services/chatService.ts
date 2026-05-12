@@ -4,12 +4,14 @@ import type {
   MessageResponse,
   MessageListRequest,
   PaginatedData,
+  SearchMessagesRequest,
+  SearchMessagesResponse,
 } from '@shared/types/api'
 
 export const chatService = {
   async getMessages(roomId: number, params?: MessageListRequest): Promise<MessageResponse[]> {
     try {
-      const result = await apiClient.get<MessageResponse[] | PaginatedData<MessageResponse>>(`/rooms/${roomId}/messages`, params as Record<string, unknown>)
+      const result = await apiClient.get<MessageResponse[] | PaginatedData<MessageResponse>>(`/rooms/${roomId}/messages`, params as unknown as Record<string, unknown>)
       // Handle both paginated and direct array responses
       if (Array.isArray(result)) {
         return result
@@ -26,6 +28,16 @@ export const chatService = {
 
   async sendMessage(roomId: number, data: SendMessageRequest): Promise<MessageResponse> {
     return apiClient.post<MessageResponse>(`/rooms/${roomId}/messages`, data)
+  },
+
+  async searchMessages(params: SearchMessagesRequest): Promise<SearchMessagesResponse> {
+    try {
+      const result = await apiClient.get<SearchMessagesResponse>('/messages/search', params as unknown as Record<string, unknown>)
+      return result
+    } catch (err) {
+      console.error('Failed to search messages:', err)
+      return { messages: [], total: 0 }
+    }
   },
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Switch, Select, Button, Divider, App } from 'antd'
 import { BellOutlined, SoundOutlined, DesktopOutlined, MessageOutlined, UserOutlined, SettingOutlined } from '@ant-design/icons'
 
@@ -25,6 +25,19 @@ export const SettingsNotifications = () => {
     roomInviteNotification: true,
   })
 
+  const [notificationSupported, setNotificationSupported] = useState(true)
+
+  // Check if Electron notifications are supported
+  useEffect(() => {
+    const checkSupport = async () => {
+      if (window.electronAPI?.isNotificationSupported) {
+        const supported = await window.electronAPI.isNotificationSupported()
+        setNotificationSupported(supported)
+      }
+    }
+    checkSupport()
+  }, [])
+
   // Load settings from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('notification-settings')
@@ -42,32 +55,61 @@ export const SettingsNotifications = () => {
     const newSettings = { ...settings, [key]: value }
     setSettings(newSettings)
     localStorage.setItem('notification-settings', JSON.stringify(newSettings))
+
+    // Sync with Electron main process
+    if (key === 'enableDesktop' && window.electronAPI?.setNotificationEnabled) {
+      window.electronAPI.setNotificationEnabled(value as boolean).catch((err: unknown) => {
+        console.error('Failed to sync notification setting:', err)
+      })
+    }
   }
 
-  // Request notification permission
-  const requestNotificationPermission = async () => {
+  // Request notification permission / test notification
+  const testNotification = useCallback(async () => {
+    if (window.electronAPI?.sendNotification) {
+      try {
+        const result = await window.electronAPI.sendNotification(
+          'Macto 测试通知',
+          '桌面通知功能正常工作！'
+        )
+        if (result.success) {
+          message.success('测试通知已发送')
+        } else {
+          message.error('发送通知失败')
+        }
+      } catch (err) {
+        console.error('Failed to send test notification:', err)
+        message.error('发送通知失败')
+      }
+      return
+    }
+
+    // Fallback to browser notification
     if (!('Notification' in window)) {
       message.warning('您的浏览器不支持桌面通知')
       return
     }
 
     if (Notification.permission === 'granted') {
-      message.success('已获得通知权限')
+      new Notification('Macto 测试通知', {
+        body: '桌面通知功能正常工作！',
+        icon: '/favicon.ico'
+      })
+      message.success('测试通知已发送')
       return
     }
 
     const permission = await Notification.requestPermission()
     if (permission === 'granted') {
-      message.success('已获得通知权限')
-      // Show a test notification
-      new Notification('Macto 通知', {
-        body: '通知权限已开启！',
+      new Notification('Macto 测试通知', {
+        body: '桌面通知功能正常工作！',
         icon: '/favicon.ico'
       })
+      message.success('已获得通知权限')
     } else {
-      message.warning('通知权限被拒绝，请在浏览器设置中允许通知')
+      message.warning('通知权限被拒绝，请在系统设置中允许通知')
     }
-  }
+  }, [message])
 
   // Test notification sound
   const testNotificationSound = () => {
@@ -78,8 +120,6 @@ export const SettingsNotifications = () => {
       message.error('无法播放提示音')
     })
   }
-
-  const notificationPermission = typeof Notification !== 'undefined' ? Notification.permission : 'denied'
 
   return (
     <div className="space-y-6">
@@ -220,17 +260,23 @@ export const SettingsNotifications = () => {
                 <Switch
                   checked={settings.enableDesktop}
                   onChange={(checked) => updateSetting('enableDesktop', checked)}
+                  disabled={!notificationSupported}
                 />
                 <Button
                   size="small"
-                  onClick={requestNotificationPermission}
-                  disabled={!settings.enableDesktop}
-                  type={notificationPermission === 'granted' ? 'default' : 'primary'}
+                  onClick={testNotification}
+                  disabled={!settings.enableDesktop || !notificationSupported}
                 >
-                  {notificationPermission === 'granted' ? '已授权' : '授权'}
+                  测试
                 </Button>
               </div>
             </div>
+
+            {!notificationSupported && (
+              <p className="text-xs text-[var(--color-text-muted)] italic">
+                * 当前系统不支持桌面通知
+              </p>
+            )}
           </div>
 
           {/* Notification Preview */}
@@ -242,7 +288,7 @@ export const SettingsNotifications = () => {
             <p className="text-xs text-[var(--color-text-muted)]">
               当前设置：{settings.messageNotification === 'all' ? '所有消息' : settings.messageNotification === 'mentions' ? '仅@提及' : '关闭'}通知
               {settings.enableSound && ' · 提示音'}
-              {settings.enableDesktop && notificationPermission === 'granted' && ' · 桌面通知'}
+              {settings.enableDesktop && notificationSupported && ' · 桌面通知'}
             </p>
           </div>
         </>

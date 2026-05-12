@@ -90,7 +90,10 @@ export interface IPCPayloads {
   'screen:stop': { sessionId: string }
   'screen:set-control': { enabled: boolean }
 
-  'system:notification': { title: string; body: string }
+  'system:notification': { title: string; body: string; roomId?: number; senderId?: number }
+  'system:notification-supported': null
+  'system:notification-set-enabled': { enabled: boolean }
+  'system:notification-get-enabled': null
   'system:tray-click': null
 }
 
@@ -111,5 +114,8 @@ export interface IPCResponders {
   'screen:set-control': { success: boolean }
 
   'system:notification': { success: boolean }
+  'system:notification-supported': boolean
+  'system:notification-set-enabled': { success: boolean }
+  'system:notification-get-enabled': { enabled: boolean }
   'system:tray-click': null
 }

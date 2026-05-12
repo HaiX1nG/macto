@@ -2,8 +2,10 @@ import type { ButtonProps as AntdButtonProps } from 'antd';
 import { Button as AntdButton } from 'antd'
 import { cn } from '@renderer/utils/cn'
 
-interface ButtonProps extends Omit<AntdButtonProps, 'className'> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success' | 'warning' | 'outline'
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'success' | 'warning' | 'outline'
+
+interface ButtonProps extends Omit<AntdButtonProps, 'className' | 'variant' | 'size'> {
+  variant?: ButtonVariant
   size?: 'small' | 'middle' | 'large'
   fullWidth?: boolean
   loading?: boolean

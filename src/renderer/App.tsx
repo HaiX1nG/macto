@@ -11,6 +11,7 @@ import { useAuthStore } from './stores/authStore'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoginPage } from './components/auth/LoginPage'
 import { UpdateNotification } from './components/UpdateNotification'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { useUserStatusPolling } from './hooks/useUserStatusPolling'
 import './styles/index.css'
 
@@ -46,7 +47,6 @@ function AppContent() {
           Modal: {
             contentBg: currentTheme.bg,
             headerBg: currentTheme.bg,
-            bodyBg: currentTheme.bg,
             footerBg: currentTheme.bg,
             titleColor: currentTheme.text,
           },
@@ -67,5 +67,9 @@ function AppContent() {
 }
 
 export default function App() {
-  return <AppContent />
+  return (
+    <ErrorBoundary showDetails={process.env.NODE_ENV === 'development'}>
+      <AppContent />
+    </ErrorBoundary>
+  )
 }

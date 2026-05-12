@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import { IPCManager } from './ipc/index'
 import { appUpdater } from './updater'
+import { notificationManager } from './notifications'
 
 const require = createRequire(import.meta.url)
 
@@ -158,7 +159,7 @@ const getTrayIconPath = (): string => {
 /**
  * Create tray icon with proper sizing for the platform
  */
-const createTrayIcon = (): nativeImage => {
+const createTrayIcon = (): ReturnType<typeof nativeImage.createFromPath> => {
   const iconPath = getTrayIconPath()
 
   // Check if file exists
@@ -272,6 +273,10 @@ app.whenReady().then(async () => {
 
   // Initialize auto-updater with window reference
   appUpdater.setWindow(win)
+
+  // Initialize notification manager with window reference
+  notificationManager.setWindow(win)
+  notificationManager.setDebug(isDebug)
 
   createTray()
 

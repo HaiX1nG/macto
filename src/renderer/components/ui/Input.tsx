@@ -1,15 +1,19 @@
 import type { InputProps as AntdInputProps } from 'antd';
+import type { TextAreaProps as AntdTextAreaProps } from 'antd/es/input/TextArea';
 import { Input as AntdInput } from 'antd'
 import { cn } from '@renderer/utils/cn'
 
-interface InputProps extends Omit<AntdInputProps, 'className'> {
+type InputSize = 'small' | 'middle' | 'large'
+type InputVariant = 'default' | 'filled' | 'borderless'
+
+interface InputProps extends Omit<AntdInputProps, 'className' | 'size' | 'variant'> {
   label?: string
   error?: string
   hint?: string
   icon?: React.ReactNode
   suffix?: React.ReactNode
-  size?: 'small' | 'middle' | 'large'
-  variant?: 'default' | 'filled' | 'borderless'
+  size?: InputSize
+  variant?: InputVariant
   fullWidth?: boolean
   className?: string
 }
@@ -104,7 +108,7 @@ export const Input = ({
   )
 }
 
-interface TextAreaProps extends Omit<AntdInputProps, 'className'> {
+interface TextAreaProps extends Omit<AntdTextAreaProps, 'className'> {
   label?: string
   error?: string
   hint?: string
