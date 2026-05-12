@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
+import rehypeHighlight from 'rehype-highlight'
 import { cn } from '@renderer/utils/cn'
 
 interface MarkdownRendererProps {
@@ -39,8 +40,9 @@ const sanitizeSchema = {
   attributes: {
     ...defaultSchema.attributes,
     '*': [
-      // Global attributes
-      'className', 'class', 'style', 'id', 'title', 'lang', 'dir',
+      // Global attributes - use defaultSchema's pattern for className
+      ...(defaultSchema.attributes?.['*'] || []),
+      'style', 'id', 'title', 'lang', 'dir',
       'hidden', 'tabindex', 'accesskey', 'contenteditable', 'draggable',
       'spellcheck', 'translate', 'role',
     ],
@@ -122,6 +124,19 @@ const sanitizeSchema = {
     feGaussianBlur: ['in', 'stdDeviation', 'result'],
     // Font (deprecated but supported)
     font: ['color', 'size', 'face'],
+    // Code highlighting classes
+    code: [
+      ...(defaultSchema.attributes?.code || []),
+      ['className', 'hljs', 'language-js', 'language-css', 'language-html', 'language-ts', 'language-python', 'language-go', 'language-java', 'language-c', 'language-cpp', 'language-rust', 'language-json', 'language-yaml', 'language-md', 'language-bash', 'language-shell'],
+    ],
+    span: [
+      ...(defaultSchema.attributes?.span || []),
+      ['className', 'hljs-addition', 'hljs-attr', 'hljs-attribute', 'hljs-built_in', 'hljs-bullet', 'hljs-char', 'hljs-code', 'hljs-comment', 'hljs-deletion', 'hljs-doctag', 'hljs-emphasis', 'hljs-formula', 'hljs-keyword', 'hljs-link', 'hljs-literal', 'hljs-meta', 'hljs-name', 'hljs-number', 'hljs-operator', 'hljs-params', 'hljs-property', 'hljs-punctuation', 'hljs-quote', 'hljs-regexp', 'hljs-section', 'hljs-selector-attr', 'hljs-selector-class', 'hljs-selector-id', 'hljs-selector-pseudo', 'hljs-selector-tag', 'hljs-string', 'hljs-strong', 'hljs-subst', 'hljs-symbol', 'hljs-tag', 'hljs-template-tag', 'hljs-template-variable', 'hljs-title', 'hljs-type', 'hljs-variable'],
+    ],
+    pre: [
+      ...(defaultSchema.attributes?.pre || []),
+      ['className', 'hljs'],
+    ],
   },
   protocols: {
     ...defaultSchema.protocols,
@@ -152,6 +167,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
         rehypePlugins={[
           rehypeRaw,
           [rehypeSanitize, sanitizeSchema],
+          rehypeHighlight,
         ]}
         components={{
           // Handle links - open in external browser in Electron
@@ -233,7 +249,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           // Small text
           small: ({ children, ...props }) => <small className="text-xs text-[var(--color-text-muted)]" {...props}>{children}</small>,
           // Big text (deprecated but supported)
-          big: ({ children, ...props }) => <big className="text-lg" {...props}>{children}</big>,
+          big: ({ children, ...props }) => <span className="text-lg" {...props}>{children}</span>,
           // Subscript and Superscript
           sub: ({ children, ...props }) => <sub className="text-xs" {...props}>{children}</sub>,
           sup: ({ children, ...props }) => <sup className="text-xs" {...props}>{children}</sup>,
@@ -375,17 +391,17 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           picture: ({ children, ...props }) => <picture {...props}>{children}</picture>,
           // Strikethrough (GFM)
           del: ({ children, ...props }) => <del className="line-through opacity-70" {...props}>{children}</del>,
-          // Strike (deprecated)
-          strike: ({ children, ...props }) => <strike className="line-through opacity-70" {...props}>{children}</strike>,
+          // Strike (deprecated) - use span with styling
+          strike: ({ children, ...props }) => <span className="line-through opacity-70" {...props}>{children}</span>,
           s: ({ children, ...props }) => <s className="line-through opacity-70" {...props}>{children}</s>,
           // Insert
           ins: ({ children, ...props }) => <ins className="underline decoration-green-500" {...props}>{children}</ins>,
-          // Teletype (deprecated)
-          tt: ({ children, ...props }) => <tt className="font-mono" {...props}>{children}</tt>,
-          // Font (deprecated)
-          font: ({ children, ...props }) => <font {...props}>{children}</font>,
+          // Teletype (deprecated) - use span with font-mono
+          tt: ({ children, ...props }) => <span className="font-mono" {...props}>{children}</span>,
+          // Font (deprecated) - pass through
+          font: ({ children, ...props }) => <span {...props}>{children}</span>,
           // Center (deprecated)
-          center: ({ children, ...props }) => <center className="text-center" {...props}>{children}</center>,
+          center: ({ children, ...props }) => <div className="text-center" {...props}>{children}</div>,
           // Task list items (GFM)
           input: (props) => {
             const inputProps = props as { type?: string; checked?: boolean }
