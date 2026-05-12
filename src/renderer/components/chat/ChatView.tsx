@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Avatar, App } from 'antd'
 import { useServerStore } from '@renderer/stores/serverStore'
-import { useChatStore } from '@renderer/stores/chatStore'
+import { useChatStore, type MessageWithStatus } from '@renderer/stores/chatStore'
 import { useAuthStore } from '@renderer/stores/authStore'
 import { useAudioStore } from '@renderer/stores/audioStore'
 import { MessageList } from './MessageList'
@@ -17,12 +17,37 @@ import type { VoiceSessionResponse, MessageResponse } from '@shared/types/api'
 
 export function ChatView() {
   const { message: messageApi } = App.useApp()
-  const { servers, currentServerId, currentChannelId } = useServerStore()
-  const { messages, pinnedMessages, fetchMessages, sendMessage, isLoading, hasMore, replyingTo, setReplyingTo, clearMessages, pinMessage, unpinMessage } = useChatStore()
+  const { servers, currentServerId, currentChannelId, getServerMembers } = useServerStore()
+  const {
+    messages,
+    pinnedMessages,
+    fetchMessages,
+    sendMessage,
+    isLoading,
+    hasMore,
+    replyingTo,
+    setReplyingTo,
+    clearMessages,
+    pinMessage,
+    unpinMessage,
+    retryMessage,
+  } = useChatStore()
   const { currentUser } = useAuthStore()
 
   const currentServer = servers.find(s => s.id === currentServerId)
   const currentChannel = currentServer?.channels.find(c => c.id === currentChannelId)
+
+  // Get server members for mention autocomplete
+  const serverMembers = useMemo(() => {
+    if (!currentServerId) return []
+    const members = getServerMembers(currentServerId)
+    return members.map(m => ({
+      id: m.userId,
+      username: m.user.name,
+      displayName: m.nickname || m.user.displayName,
+      avatar: m.user.avatar,
+    }))
+  }, [currentServerId, getServerMembers])
 
   // Load messages when channel changes
   useEffect(() => {
@@ -32,8 +57,14 @@ export function ChatView() {
     }
   }, [currentChannelId, currentChannel?.type, fetchMessages, clearMessages])
 
-  // Convert API messages to KOOK format for display
-  const channelMessages: Message[] = messages.map(msg => ({
+  // Convert API messages with status to KOOK format for display
+  const channelMessages: MessageWithStatus[] = messages.map(msg => ({
+    ...msg,
+    // Keep the original message with status
+  }))
+
+  // Convert pinned messages to KOOK format
+  const pinnedKookMessages: Message[] = pinnedMessages.map(msg => ({
     id: String(msg.id),
     channelId: String(msg.roomId),
     authorId: String(msg.senderUserId),
@@ -46,6 +77,7 @@ export function ChatView() {
     },
     content: msg.content,
     timestamp: new Date(msg.createdAt).getTime(),
+    pinned: true,
   }))
 
   // Handle sending message
@@ -120,22 +152,16 @@ export function ChatView() {
     unpinMessage(Number(messageId))
   }, [unpinMessage])
 
-  // Convert pinned messages to KOOK format
-  const pinnedKookMessages: Message[] = pinnedMessages.map(msg => ({
-    id: String(msg.id),
-    channelId: String(msg.roomId),
-    authorId: String(msg.senderUserId),
-    author: {
-      id: String(msg.senderUserId),
-      name: msg.senderName,
-      displayName: msg.senderName,
-      avatar: currentUser?.avatarUrl,
-      status: 'online' as const,
-    },
-    content: msg.content,
-    timestamp: new Date(msg.createdAt).getTime(),
-    pinned: true,
-  }))
+  // Handle retry failed message
+  const handleRetryMessage = useCallback((retryId: string) => {
+    const msg = messages.find(m => m._retryId === retryId)
+    if (msg && currentChannelId) {
+      retryMessage(retryId, Number(currentChannelId), {
+        messageType: msg.messageType,
+        content: msg.content,
+      })
+    }
+  }, [messages, currentChannelId, retryMessage])
 
   // Search state - must be before conditional returns
   const [searchOpen, setSearchOpen] = useState(false)
@@ -149,6 +175,9 @@ export function ChatView() {
       useServerStore.getState().setCurrentChannel(String(message.roomId))
     }
   }, [currentServer])
+
+  // Typing users display
+  const typingIndicator = useTypingIndicator(currentChannelId ? Number(currentChannelId) : null)
 
   if (!currentServer || !currentChannel) {
     return (
@@ -209,6 +238,15 @@ export function ChatView() {
         </div>
       )}
 
+      {/* Typing indicator */}
+      {typingIndicator && (
+        <div className="px-4 py-1 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
+          <span className="text-xs text-[var(--color-text-muted)]">
+            <span className="text-[var(--color-primary)]">{typingIndicator}</span> 正在输入...
+          </span>
+        </div>
+      )}
+
       {/* Messages */}
       {isLoading && messages.length === 0 ? (
         <SkeletonMessageList count={8} />
@@ -225,6 +263,7 @@ export function ChatView() {
           onPin={handlePinMessage}
           onUnpin={handleUnpinMessage}
           pinnedMessages={pinnedKookMessages}
+          onRetry={handleRetryMessage}
         />
       )}
 
@@ -234,6 +273,7 @@ export function ChatView() {
         channelName={currentChannel.name}
         replyingTo={replyingTo ? { name: replyingTo.senderName, content: replyingTo.content } : null}
         onCancelReply={handleCancelReply}
+        members={serverMembers}
       />
     </div>
 
@@ -245,6 +285,23 @@ export function ChatView() {
       />
     </>
   )
+}
+
+// Typing indicator hook
+function useTypingIndicator(roomId: number | null) {
+  const typingUsers = useChatStore(state => state.typingUsers)
+  const currentUser = useAuthStore(state => state.currentUser)
+
+  const usersTyping = useMemo(() => {
+    if (!roomId) return []
+    const roomTyping = typingUsers.get(roomId) || []
+    return roomTyping.filter(u => u.userId !== currentUser?.userId)
+  }, [roomId, typingUsers, currentUser?.userId])
+
+  if (usersTyping.length === 0) return null
+  if (usersTyping.length === 1) return usersTyping[0].username
+  if (usersTyping.length === 2) return `${usersTyping[0].username} 和 ${usersTyping[1].username}`
+  return `${usersTyping[0].username} 和其他 ${usersTyping.length - 1} 人`
 }
 
 function HeaderBtn({ icon, onClick, active }: { icon: React.ReactNode; onClick?: () => void; active?: boolean }) {

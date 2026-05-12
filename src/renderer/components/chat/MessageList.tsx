@@ -1,15 +1,18 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
-import { Avatar, Dropdown, Popover, App, Spin, Modal, Input } from 'antd'
-import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined, LoadingOutlined, FileOutlined } from '@ant-design/icons'
+import { Avatar, Dropdown, Popover, App, Spin, Modal, Tooltip } from 'antd'
+import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined, LoadingOutlined, FileOutlined, ReloadOutlined, DownOutlined, CheckOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { EmptyMessages } from '@renderer/components/ui/EmptyState'
+import { MarkdownRenderer } from '@renderer/components/ui/MarkdownRenderer'
+import { formatRelativeTime, formatTime, formatFullDateTime, formatDateDivider } from '@renderer/utils/timeFormat'
 import type { Message, Attachment } from '@shared/types/kook'
+import type { MessageWithStatus } from '@renderer/stores/chatStore'
 
 // Quick reaction emojis
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '😡']
 
 interface MessageListProps {
-  messages: Message[]
+  messages: MessageWithStatus[]
   onAddReaction?: (messageId: string, emoji: string) => void
   onLoadMore?: () => void
   hasMore?: boolean
@@ -20,35 +23,78 @@ interface MessageListProps {
   onPin?: (messageId: string) => void
   onUnpin?: (messageId: string) => void
   pinnedMessages?: Message[]
+  onRetry?: (retryId: string) => void
+  // Unread messages
+  unreadCount?: number
+  firstUnreadMessageId?: number | null
+  onScrollToBottom?: () => void
+  onScrollToUnread?: () => void
 }
 
-export function MessageList({ messages, onAddReaction, onLoadMore, hasMore, isLoading, onReply, onEdit, onDelete, onPin, onUnpin, pinnedMessages }: MessageListProps) {
+export function MessageList({
+  messages,
+  onAddReaction,
+  onLoadMore,
+  hasMore,
+  isLoading,
+  onReply,
+  onEdit,
+  onDelete,
+  onPin,
+  onUnpin,
+  pinnedMessages,
+  onRetry,
+  unreadCount = 0,
+  firstUnreadMessageId,
+  onScrollToBottom,
+}: MessageListProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isAtBottom, setIsAtBottom] = useState(true)
+  const [showScrollButton, setShowScrollButton] = useState(false)
 
-  // Handle scroll to top for loading more
+  // Handle scroll events
   const handleScroll = useCallback(() => {
-    if (!listRef.current || !onLoadMore || !hasMore || isLoading || isLoadingMore) return
+    if (!listRef.current) return
 
-    const { scrollTop } = listRef.current
-    if (scrollTop < 100) {
+    const { scrollTop, scrollHeight, clientHeight } = listRef.current
+    const isBottom = scrollHeight - scrollTop - clientHeight < 100
+
+    setIsAtBottom(isBottom)
+    setShowScrollButton(!isBottom && scrollHeight > clientHeight + 200)
+
+    // Load more when scrolled to top
+    if (scrollTop < 100 && onLoadMore && hasMore && !isLoading && !isLoadingMore) {
       setIsLoadingMore(true)
       onLoadMore()
       setTimeout(() => setIsLoadingMore(false), 500)
     }
   }, [onLoadMore, hasMore, isLoading, isLoadingMore])
 
+  // Scroll to bottom on new messages (only if already at bottom)
   useEffect(() => {
-    if (listRef.current) {
+    if (listRef.current && isAtBottom && messages.length > 0) {
       listRef.current.scrollTop = listRef.current.scrollHeight
     }
-  }, [messages.length])
+  }, [messages.length, isAtBottom])
 
+  // Scroll to bottom function
+  const scrollToBottom = useCallback(() => {
+    if (listRef.current) {
+      listRef.current.scrollTo({
+        top: listRef.current.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
+    onScrollToBottom?.()
+  }, [onScrollToBottom])
+
+  // Group messages by date
   const groupedMessages = useMemo(() => {
-    const groups: { date: string; messages: Message[] }[] = []
+    const groups: { date: string; messages: MessageWithStatus[] }[] = []
     let currentDate = ''
     messages.forEach(message => {
-      const date = new Date(message.timestamp).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+      const date = formatDateDivider(message.createdAt)
       if (date !== currentDate) {
         currentDate = date
         groups.push({ date, messages: [message] })
@@ -60,72 +106,110 @@ export function MessageList({ messages, onAddReaction, onLoadMore, hasMore, isLo
   }, [messages])
 
   return (
-    <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin">
-      {/* Pinned messages section */}
-      {pinnedMessages && pinnedMessages.length > 0 && (
-        <div className="mb-4 p-3 bg-[var(--color-primary)]/10 rounded-lg border border-[var(--color-primary)]/20">
-          <div className="flex items-center gap-2 mb-2">
-            <PushpinOutlined className="text-[var(--color-primary)]" />
-            <span className="text-sm font-medium text-[var(--color-primary)]">置顶消息</span>
-          </div>
-          <div className="space-y-2">
-            {pinnedMessages.map(message => (
-              <div key={message.id} className="flex items-start gap-2 p-2 bg-[var(--color-bg-secondary)] rounded">
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium text-[var(--color-text-normal)]">{message.author.displayName || message.author.name}</span>
-                  <p className="text-sm text-[var(--color-text-normal)] truncate">{message.content}</p>
+    <div className="relative flex-1 flex flex-col min-h-0">
+      <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin">
+        {/* Pinned messages section */}
+        {pinnedMessages && pinnedMessages.length > 0 && (
+          <div className="mb-4 p-3 bg-[var(--color-primary)]/10 rounded-lg border border-[var(--color-primary)]/20">
+            <div className="flex items-center gap-2 mb-2">
+              <PushpinOutlined className="text-[var(--color-primary)]" />
+              <span className="text-sm font-medium text-[var(--color-primary)]">置顶消息</span>
+            </div>
+            <div className="space-y-2">
+              {pinnedMessages.map(message => (
+                <div key={message.id} className="flex items-start gap-2 p-2 bg-[var(--color-bg-secondary)] rounded">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium text-[var(--color-text-normal)]">{message.author.displayName || message.author.name}</span>
+                    <p className="text-sm text-[var(--color-text-normal)] truncate">{message.content}</p>
+                  </div>
+                  <button
+                    onClick={() => onUnpin?.(message.id)}
+                    className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
+                    title="取消置顶"
+                  >
+                    取消置顶
+                  </button>
                 </div>
-                <button
-                  onClick={() => onUnpin?.(message.id)}
-                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
-                  title="取消置顶"
-                >
-                  取消置顶
-                </button>
-              </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Load more indicator */}
+        {(hasMore || isLoadingMore) && (
+          <div className="flex justify-center py-2 mb-2">
+            {isLoadingMore || isLoading ? (
+              <Spin indicator={<LoadingOutlined className="text-[var(--color-primary)]" spin />} />
+            ) : (
+              <button
+                onClick={onLoadMore}
+                className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
+              >
+                加载更多消息
+              </button>
+            )}
+          </div>
+        )}
+
+        {groupedMessages.map(group => (
+          <div key={group.date}>
+            <div className="relative my-4">
+              <div className="absolute left-0 right-0 top-1/2 h-px bg-[var(--color-border)]" />
+              <div className="relative flex justify-center"><span className="px-2 bg-[var(--color-bg-base)] text-xs text-[var(--color-text-muted)] font-medium">{group.date}</span></div>
+            </div>
+            {group.messages.map((message, index) => (
+              <MessageItem
+                key={`${message.id}-${message._retryId || ''}`}
+                message={message}
+                isCompact={shouldCompact(message, group.messages[index - 1])}
+                onAddReaction={onAddReaction}
+                onReply={onReply}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onPin={onPin}
+                onRetry={onRetry}
+                pinnedMessageIds={pinnedMessages?.map(m => m.id)}
+                isFirstUnread={firstUnreadMessageId === message.id}
+              />
             ))}
           </div>
-        </div>
+        ))}
+        {messages.length === 0 && !isLoading && (
+          <EmptyMessages />
+        )}
+      </div>
+
+      {/* Unread messages indicator */}
+      {unreadCount > 0 && (
+        <button
+          onClick={onScrollToBottom}
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-full shadow-lg hover:opacity-90 transition-opacity flex items-center gap-1 z-10"
+        >
+          <span>{unreadCount} 条新消息</span>
+          <DownOutlined className="text-xs" />
+        </button>
       )}
 
-      {/* Load more indicator */}
-      {(hasMore || isLoadingMore) && (
-        <div className="flex justify-center py-2 mb-2">
-          {isLoadingMore || isLoading ? (
-            <Spin indicator={<LoadingOutlined className="text-[var(--color-primary)]" spin />} />
-          ) : (
-            <button
-              onClick={onLoadMore}
-              className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
-            >
-              加载更多消息
-            </button>
-          )}
-        </div>
-      )}
-
-      {groupedMessages.map(group => (
-        <div key={group.date}>
-          <div className="relative my-4">
-            <div className="absolute left-0 right-0 top-1/2 h-px bg-[var(--color-border)]" />
-            <div className="relative flex justify-center"><span className="px-2 bg-[var(--color-bg-base)] text-xs text-[var(--color-text-muted)] font-medium">{group.date}</span></div>
-          </div>
-          {group.messages.map((message, index) => (
-            <MessageItem key={message.id} message={message} isCompact={shouldCompact(message, group.messages[index - 1])} onAddReaction={onAddReaction} onReply={onReply} onEdit={onEdit} onDelete={onDelete} onPin={onPin} pinnedMessageIds={pinnedMessages?.map(m => m.id)} />
-          ))}
-        </div>
-      ))}
-      {messages.length === 0 && !isLoading && (
-        <EmptyMessages />
+      {/* Scroll to bottom button */}
+      {showScrollButton && unreadCount === 0 && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-20 right-4 w-10 h-10 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-full shadow-lg hover:bg-[var(--color-bg-tertiary)] transition-colors flex items-center justify-center z-10"
+          title="滚动到最新消息"
+        >
+          <DownOutlined className="text-[var(--color-text-muted)]" />
+        </button>
       )}
     </div>
   )
 }
 
-function shouldCompact(current: Message, previous?: Message): boolean {
+function shouldCompact(current: MessageWithStatus, previous?: MessageWithStatus): boolean {
   if (!previous) return false
-  if (previous.authorId !== current.authorId) return false
-  return current.timestamp - previous.timestamp < 5 * 60 * 1000
+  if (previous.senderUserId !== current.senderUserId) return false
+  const currentTime = new Date(current.createdAt).getTime()
+  const prevTime = new Date(previous.createdAt).getTime()
+  return currentTime - prevTime < 5 * 60 * 1000
 }
 
 // Check if content is a URL (for image/file display)
@@ -139,7 +223,7 @@ function MessageContent({ content, attachments }: { content: string; attachments
   if (attachments && attachments.length > 0) {
     return (
       <div className="space-y-2">
-        {content && <p className="text-[var(--color-text-normal)] break-words whitespace-pre-wrap leading-relaxed">{content}</p>}
+        {content && <MarkdownRenderer content={content} />}
         <div className="flex flex-wrap gap-2">
           {attachments.map((attachment, index) => (
             <AttachmentView key={attachment.id || index} attachment={attachment} />
@@ -167,8 +251,8 @@ function MessageContent({ content, attachments }: { content: string; attachments
     )
   }
 
-  // Regular text message
-  return <p className="text-[var(--color-text-normal)] break-words whitespace-pre-wrap leading-relaxed">{content}</p>
+  // Render as Markdown
+  return <MarkdownRenderer content={content} />
 }
 
 // Attachment view component
@@ -234,27 +318,42 @@ function AttachmentView({ attachment }: { attachment: Attachment }) {
 }
 
 interface MessageItemProps {
-  message: Message
+  message: MessageWithStatus
   isCompact?: boolean
   onAddReaction?: (messageId: string, emoji: string) => void
   onReply?: (message: Message) => void
   onEdit?: (messageId: string, content: string) => void
   onDelete?: (messageId: string) => void
   onPin?: (messageId: string) => void
+  onRetry?: (retryId: string) => void
   pinnedMessageIds?: string[]
+  isFirstUnread?: boolean
 }
 
-function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, pinnedMessageIds }: MessageItemProps) {
+function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, onRetry, pinnedMessageIds, isFirstUnread }: MessageItemProps) {
   const { message: messageApi } = App.useApp()
   const [showReactions, setShowReactions] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  const timestamp = new Date(message.createdAt).getTime()
+  const isPinned = pinnedMessageIds?.includes(String(message.id))
+  const isFailed = message._status === 'failed'
+  const isSending = message._status === 'sending'
+  const isSent = message._status === 'sent'
+
+  // Focus textarea when editing starts
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus()
+      textareaRef.current.setSelectionRange(message.content.length, message.content.length)
+    }
+  }, [isEditing, message.content])
 
   const handleReaction = (emoji: string) => {
-    onAddReaction?.(message.id, emoji)
+    onAddReaction?.(String(message.id), emoji)
     setShowReactions(false)
   }
 
@@ -264,19 +363,46 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   }
 
   const handleReply = () => {
-    onReply?.(message)
+    onReply?.({
+      id: String(message.id),
+      channelId: String(message.roomId),
+      authorId: String(message.senderUserId),
+      author: {
+        id: String(message.senderUserId),
+        name: message.senderName,
+        displayName: message.senderName,
+        status: 'online',
+      },
+      content: message.content,
+      timestamp,
+    })
   }
 
   const handleEdit = () => {
     setEditContent(message.content)
-    setShowEditModal(true)
+    setIsEditing(true)
   }
 
   const handleSaveEdit = () => {
     if (editContent.trim() && editContent !== message.content) {
-      onEdit?.(message.id, editContent.trim())
+      onEdit?.(String(message.id), editContent.trim())
+      messageApi.success('消息已更新')
     }
-    setShowEditModal(false)
+    setIsEditing(false)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditContent(message.content)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSaveEdit()
+    } else if (e.key === 'Escape') {
+      handleCancelEdit()
+    }
   }
 
   const handleDelete = () => {
@@ -284,16 +410,20 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   }
 
   const confirmDelete = () => {
-    onDelete?.(message.id)
+    onDelete?.(String(message.id))
     setShowDeleteModal(false)
     messageApi.success('消息已删除')
   }
 
-  const isPinned = pinnedMessageIds?.includes(message.id)
-
   const handlePin = () => {
-    onPin?.(message.id)
+    onPin?.(String(message.id))
     messageApi.success(isPinned ? '消息已取消置顶' : '消息已置顶')
+  }
+
+  const handleRetry = () => {
+    if (message._retryId && onRetry) {
+      onRetry(message._retryId)
+    }
   }
 
   const menuItems = [
@@ -321,64 +451,114 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
 
   return (
     <>
+      {/* Unread indicator */}
+      {isFirstUnread && (
+        <div className="relative my-4">
+          <div className="absolute left-0 right-0 top-1/2 h-px bg-[var(--color-primary)]" />
+          <div className="relative flex justify-center">
+            <span className="px-2 bg-[var(--color-bg-base)] text-xs text-[var(--color-primary)] font-medium">
+              新消息
+            </span>
+          </div>
+        </div>
+      )}
+
       <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
-        <div className={cn("group relative flex gap-4 py-0.5 px-1 hover:bg-[var(--color-bg-darker)] rounded", isCompact && "mt-0")}>
+        <div
+          className={cn(
+            "group relative flex gap-4 py-0.5 px-1 hover:bg-[var(--color-bg-darker)] rounded transition-colors",
+            isCompact && "mt-0",
+            isSent && "animate-pulse-once"
+          )}
+        >
           {!isCompact ? (
-            <Avatar size={40} src={message.author.avatar || undefined} className="bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 cursor-pointer hover:opacity-80">
-              {message.author.name.charAt(0).toUpperCase()}
+            <Avatar size={40} className="bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 cursor-pointer hover:opacity-80">
+              {message.senderName.charAt(0).toUpperCase()}
             </Avatar>
           ) : (
-            <div className="w-10 flex-shrink-0 flex items-end justify-center opacity-0 group-hover:opacity-100">
-              <span className="text-[10px] text-[var(--color-text-muted)] leading-none">{formatTime(message.timestamp)}</span>
-            </div>
+            <Tooltip title={formatFullDateTime(timestamp)} placement="right">
+              <div className="w-10 flex-shrink-0 flex items-end justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-default">
+                <span className="text-[10px] text-[var(--color-text-muted)] leading-none">{formatTime(timestamp)}</span>
+              </div>
+            </Tooltip>
           )}
           <div className="flex-1 min-w-0">
             {!isCompact && (
               <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="font-medium text-[var(--color-text-normal)] hover:underline cursor-pointer">{message.author.displayName || message.author.name}</span>
-                <span className="text-xs text-[var(--color-text-muted)]">{formatTime(message.timestamp)}</span>
+                <span className="font-medium text-[var(--color-text-normal)] hover:underline cursor-pointer">{message.senderName}</span>
+                <Tooltip title={formatFullDateTime(timestamp)}>
+                  <span className="text-xs text-[var(--color-text-muted)] cursor-default">{formatRelativeTime(timestamp)}</span>
+                </Tooltip>
               </div>
             )}
-            <MessageContent content={message.content} attachments={message.attachments} />
-            {message.reactions && message.reactions.length > 0 && (
-              <div className="flex gap-1 mt-1 flex-wrap">
-                {message.reactions.map(reaction => (
-                  <button key={reaction.emoji} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--color-bg-darker)] text-sm hover:bg-[var(--color-bg-tertiary)]">
-                    <span>{reaction.emoji}</span>
-                    <span className="text-[var(--color-text-muted)]">{reaction.count}</span>
+
+            {/* Inline editing */}
+            {isEditing ? (
+              <div className="relative">
+                <textarea
+                  ref={textareaRef}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full bg-[var(--color-bg-tertiary)] rounded-lg p-2 text-[var(--color-text-normal)] outline-none resize-none min-h-[60px] border border-[var(--color-primary)]"
+                  rows={3}
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-3 py-1 bg-[var(--color-primary)] text-white text-sm rounded hover:opacity-90 flex items-center gap-1"
+                  >
+                    <CheckOutlined />
+                    保存
                   </button>
-                ))}
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-3 py-1 bg-[var(--color-bg-tertiary)] text-[var(--color-text-normal)] text-sm rounded hover:bg-[var(--color-bg-darker)]"
+                  >
+                    取消
+                  </button>
+                  <span className="text-xs text-[var(--color-text-muted)]">Enter 保存，Esc 取消</span>
+                </div>
               </div>
+            ) : (
+              <>
+                <MessageContent content={message.content} />
+                {/* Send status indicators */}
+                {isSending && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-[var(--color-text-muted)]">
+                    <LoadingOutlined className="animate-spin" />
+                    <span>发送中...</span>
+                  </div>
+                )}
+                {isFailed && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-[var(--color-dnd)]">发送失败</span>
+                    <button
+                      onClick={handleRetry}
+                      className="text-xs text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                    >
+                      <ReloadOutlined />
+                      重试
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
-          <div className="absolute -top-4 right-4 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-lg">
+
+          {/* Hover actions */}
+          <div className="absolute -top-4 right-4 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-lg transition-opacity">
             <Popover content={ReactionPicker} trigger="click" open={showReactions} onOpenChange={setShowReactions}>
               <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><SmileOutlined /></button>
             </Popover>
             <button onClick={handleReply} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><ExportOutlined /></button>
             <button onClick={handleCopy} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><CopyOutlined /></button>
-            <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><MoreOutlined /></button>
+            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+              <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><MoreOutlined /></button>
+            </Dropdown>
           </div>
         </div>
       </Dropdown>
-
-      {/* Edit Modal */}
-      <Modal
-        open={showEditModal}
-        title="编辑消息"
-        onCancel={() => setShowEditModal(false)}
-        onOk={handleSaveEdit}
-        okText="保存"
-        cancelText="取消"
-        styles={{ body: { backgroundColor: 'var(--color-bg-secondary)' } }}
-      >
-        <Input.TextArea
-          value={editContent}
-          onChange={(e) => setEditContent(e.target.value)}
-          rows={4}
-          className="mt-4"
-        />
-      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

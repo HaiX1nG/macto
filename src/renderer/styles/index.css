@@ -426,6 +426,17 @@ body {
   50% { transform: scaleY(1.5); }
 }
 
+@keyframes pulse-once {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fade-in-success {
+  0% { opacity: 0.7; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 /* 动画类 */
 .animate-fade-in {
   animation: fade-in 0.2s ease-out forwards;
@@ -477,6 +488,14 @@ body {
 
 .animate-shimmer {
   animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-pulse-once {
+  animation: pulse-once 0.3s ease-out forwards;
+}
+
+.animate-fade-in-success {
+  animation: fade-in-success 0.3s ease-out forwards;
 }
 
 /* 页面切换动画 */
@@ -945,4 +964,171 @@ body {
 .sidebar-toggle-btn.right {
   right: -24px;
   border-radius: 8px 0 0 8px;
+}
+
+/* ==================== Markdown 内容样式 ==================== */
+.markdown-content {
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.markdown-content > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* 代码高亮主题 - One Dark 风格 */
+.hljs {
+  background: transparent !important;
+  color: var(--color-text-normal) !important;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #5c6370 !important;
+  font-style: italic;
+}
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-formula {
+  color: #c678dd !important;
+}
+
+.hljs-section,
+.hljs-name,
+.hljs-selector-tag,
+.hljs-deletion,
+.hljs-subst {
+  color: #e06c75 !important;
+}
+
+.hljs-literal {
+  color: #56b6c2 !important;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: #98c379 !important;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-type,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-number {
+  color: #d19a66 !important;
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-selector-id,
+.hljs-title {
+  color: #61aeee !important;
+}
+
+.hljs-built_in,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+  color: #e6c07b !important;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* 行内代码 */
+.markdown-content code:not(.hljs) {
+  background: var(--color-bg-darker);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: 'Fira Code', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* 代码块 */
+.markdown-content pre {
+  background: var(--color-bg-darker);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* 任务列表 */
+.markdown-content input[type="checkbox"] {
+  margin-right: 0.5rem;
+  accent-color: var(--color-primary);
+}
+
+.markdown-content ul input[type="checkbox"] {
+  list-style: none;
+}
+
+/* 链接悬停效果 */
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+/* 表格样式 */
+.markdown-content table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
+}
+
+.markdown-content th {
+  background: var(--color-bg-darker);
+  font-weight: 600;
+}
+
+.markdown-content tr:hover {
+  background: var(--color-bg-tertiary);
+}
+
+/* 删除线 */
+.markdown-content del {
+  opacity: 0.7;
+}
+
+/* 图片样式 */
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+}
+
+/* 水平分割线 */
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1rem 0;
 }
