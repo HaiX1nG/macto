@@ -178,8 +178,9 @@ IPC channels and payloads are defined in `shared/types/ipc.ts`. The preload scri
 - **Voice**: VoiceSettings (audio controls, device selection, mic test)
 - **Screen**: ScreenControl (screen sharing controls, preview, quality settings)
 - **Settings**: SettingsGeneral, SettingsAudio, SettingsProfile, SettingsNotifications, SettingsVideo
+- **Tray**: System tray icon with platform-specific support (macOS/Windows/Linux)
+- **Auto-Update**: electron-updater integration with update notifications
 
-### To Be Implemented
-- Tray icon assets
-- Tray icon assets
-- Electron auto-updater integration
+### Future Enhancements
+- Production-ready tray icon assets (replace placeholders with designed icons)
+- Configure GitHub repository for auto-updater publish settings
