@@ -52,6 +52,27 @@ export interface Settings {
   theme: 'light' | 'dark' | 'system'
 }
 
+// Update types
+export interface UpdateInfo {
+  version: string
+  releaseDate: string
+  releaseNotes?: string | null
+}
+
+export interface UpdateProgress {
+  bytesPerSecond: number
+  percent: number
+  total: number
+  transferred: number
+}
+
+export interface UpdateStatus {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+  updateDownloaded: boolean
+}
+
 // IPC Types
 export interface IPCPayloads {
   'session:create': { name: string }

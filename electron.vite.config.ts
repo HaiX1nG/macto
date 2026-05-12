@@ -11,7 +11,12 @@ export default defineConfig({
       },
       outDir: 'out/main',
       sourcemap: true,
+      rollupOptions: {
+        external: ['electron', 'fsevents'],
+      },
     },
+    // Use vite's assetsInclude to treat icons as assets
+    assetsInclude: ['**/*.png', '**/*.ico', '**/*.icns'],
   },
   preload: {
     build: {

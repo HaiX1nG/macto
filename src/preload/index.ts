@@ -47,6 +47,27 @@ export interface IPCResponders {
   'system:tray-click': null
 }
 
+// Update types
+export interface UpdateInfo {
+  version: string
+  releaseDate: string
+  releaseNotes?: string | null
+}
+
+export interface UpdateProgress {
+  bytesPerSecond: number
+  percent: number
+  total: number
+  transferred: number
+}
+
+export interface UpdateStatus {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+  updateDownloaded: boolean
+}
+
 // Safe API exposure
 const api = {
   // Session
@@ -77,6 +98,45 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent) => callback()
     ipcRenderer.on('system:tray-click', listener)
     return () => ipcRenderer.removeListener('system:tray-click', listener)
+  },
+
+  // Updates
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  quitAndInstall: () => ipcRenderer.invoke('update:install'),
+  getUpdateVersion: () => ipcRenderer.invoke('update:get-version'),
+  onUpdateChecking: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('update:checking', listener)
+    return () => ipcRenderer.removeListener('update:checking', listener)
+  },
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update:available', listener)
+    return () => ipcRenderer.removeListener('update:available', listener)
+  },
+  onUpdateNotAvailable: (callback: (info: { version: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: { version: string }) =>
+      callback(info)
+    ipcRenderer.on('update:not-available', listener)
+    return () => ipcRenderer.removeListener('update:not-available', listener)
+  },
+  onUpdateProgress: (callback: (progress: UpdateProgress) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: UpdateProgress) =>
+      callback(progress)
+    ipcRenderer.on('update:progress', listener)
+    return () => ipcRenderer.removeListener('update:progress', listener)
+  },
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update:downloaded', listener)
+    return () => ipcRenderer.removeListener('update:downloaded', listener)
+  },
+  onUpdateError: (callback: (error: { message: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, error: { message: string }) =>
+      callback(error)
+    ipcRenderer.on('update:error', listener)
+    return () => ipcRenderer.removeListener('update:error', listener)
   },
 
   // General

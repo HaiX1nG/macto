@@ -10,6 +10,7 @@ import { useThemeStore } from './stores/themeStore'
 import { useAuthStore } from './stores/authStore'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoginPage } from './components/auth/LoginPage'
+import { UpdateNotification } from './components/UpdateNotification'
 import { useUserStatusPolling } from './hooks/useUserStatusPolling'
 import './styles/index.css'
 
@@ -59,6 +60,7 @@ function AppContent() {
     >
       <AntdApp>
         {isAuthenticated ? <MainLayout /> : <LoginPage />}
+        <UpdateNotification />
       </AntdApp>
     </ConfigProvider>
   )

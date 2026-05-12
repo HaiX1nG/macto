@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Macto Tray Icon - Template Version for macOS -->
+  <!-- Template icons should be black shapes with transparent background -->
+  <!-- macOS automatically adjusts color based on menu bar appearance -->
+
+  <!-- Microphone icon - simple black shape -->
+  <g fill="#000000">
+    <!-- Mic body -->
+    <rect x="6" y="2" width="4" height="6" rx="2" ry="2"/>
+    <!-- Mic base -->
+    <path d="M3 8v2c0 2.761 2.239 5 5 5s5-2.239 5-5v-2h-1v2c0 2.209-1.791 4-4 4s-4-1.791-4-4v-2h-1z"/>
+    <!-- Mic stand -->
+    <rect x="7" y="13" width="2" height="2"/>
+    <rect x="5" y="14" width="6" height="1" rx="0.5"/>
+  </g>
+</svg>
