@@ -5,6 +5,7 @@ import { cn } from '@renderer/utils/cn'
 import { EmptyMessages } from '@renderer/components/ui/EmptyState'
 import { MarkdownRenderer } from '@renderer/components/ui/MarkdownRenderer'
 import { formatRelativeTime, formatTime, formatFullDateTime, formatDateDivider } from '@renderer/utils/timeFormat'
+import { useAuthStore } from '@renderer/stores/authStore'
 import type { Message, Attachment } from '@shared/types/kook'
 import type { MessageWithStatus } from '@renderer/stores/chatStore'
 
@@ -332,6 +333,7 @@ interface MessageItemProps {
 
 function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, onRetry, pinnedMessageIds, isFirstUnread }: MessageItemProps) {
   const { message: messageApi } = App.useApp()
+  const { currentUser } = useAuthStore()
   const [showReactions, setShowReactions] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
@@ -343,6 +345,9 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   const isFailed = message._status === 'failed'
   const isSending = message._status === 'sending'
   const isSent = message._status === 'sent'
+
+  // Check if this message is from the current user (for bubble alignment)
+  const isOwnMessage = currentUser && message.senderUserId === currentUser.userId
 
   // Focus textarea when editing starts
   useEffect(() => {
@@ -463,38 +468,51 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
         </div>
       )}
 
+      {/* WeChat style bubble message */}
       <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
         <div
           className={cn(
-            "group relative flex gap-4 py-0.5 px-1 hover:bg-[var(--color-bg-darker)] rounded transition-colors",
-            isCompact && "mt-0",
+            "group relative flex gap-2 py-1 px-4 transition-colors",
+            isOwnMessage ? "justify-end" : "justify-start",
             isSent && "animate-pulse-once"
           )}
         >
-          {!isCompact ? (
-            <Avatar size={40} className="bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 cursor-pointer hover:opacity-80">
-              {message.senderName.charAt(0).toUpperCase()}
-            </Avatar>
-          ) : (
-            <Tooltip title={formatFullDateTime(timestamp)} placement="right">
-              <div className="w-10 flex-shrink-0 flex items-end justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-default">
-                <span className="text-[10px] text-[var(--color-text-muted)] leading-none">{formatTime(timestamp)}</span>
-              </div>
-            </Tooltip>
-          )}
-          <div className="flex-1 min-w-0">
+          {/* Avatar - left side for others, right side for own */}
+          <Avatar
+            size={36}
+            className={cn(
+              "bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 cursor-pointer hover:opacity-80 self-start",
+              isOwnMessage ? "order-2" : "order-1"
+            )}
+          >
+            {message.senderName.charAt(0).toUpperCase()}
+          </Avatar>
+
+          {/* Message content area */}
+          <div className={cn(
+            "flex flex-col max-w-[60%]",
+            isOwnMessage ? "items-end order-1" : "items-start order-2"
+          )}>
+            {/* Sender name and time */}
             {!isCompact && (
-              <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="font-medium text-[var(--color-text-normal)] hover:underline cursor-pointer">{message.senderName}</span>
+              <div className={cn(
+                "flex items-center gap-2 mb-1",
+                isOwnMessage ? "flex-row-reverse" : "flex-row"
+              )}>
+                <span className="font-medium text-sm text-[var(--color-text-normal)]">
+                  {message.senderName}
+                </span>
                 <Tooltip title={formatFullDateTime(timestamp)}>
-                  <span className="text-xs text-[var(--color-text-muted)] cursor-default">{formatRelativeTime(timestamp)}</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">
+                    {formatRelativeTime(timestamp)}
+                  </span>
                 </Tooltip>
               </div>
             )}
 
             {/* Inline editing */}
             {isEditing ? (
-              <div className="relative">
+              <div className="relative w-full">
                 <textarea
                   ref={textareaRef}
                   value={editContent}
@@ -517,44 +535,98 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
                   >
                     取消
                   </button>
-                  <span className="text-xs text-[var(--color-text-muted)]">Enter 保存，Esc 取消</span>
                 </div>
               </div>
             ) : (
               <>
-                <MessageContent content={message.content} />
-                {/* Send status indicators */}
-                {isSending && (
-                  <div className="flex items-center gap-1 mt-1 text-xs text-[var(--color-text-muted)]">
-                    <LoadingOutlined className="animate-spin" />
-                    <span>发送中...</span>
+                {/* Message bubble with WeChat style */}
+                <div className="relative">
+                  {/* Bubble tail/notch */}
+                  <div
+                    className={cn(
+                      "absolute top-2 w-3 h-3",
+                      isOwnMessage
+                        ? "right-[-8px] bg-[#95EC69]"
+                        : "left-[-8px] bg-[var(--color-bg-secondary)]",
+                    )}
+                    style={{
+                      clipPath: isOwnMessage
+                        ? "polygon(0 0, 100% 0, 0 100%)"
+                        : "polygon(100% 0, 100% 100%, 0 0)",
+                    }}
+                  />
+                  {/* Bubble content */}
+                  <div
+                    className={cn(
+                      "relative px-3 py-2 max-w-full",
+                      "break-words",
+                      isOwnMessage
+                        ? "bg-[#95EC69] text-black rounded-2xl"
+                        : "bg-[var(--color-bg-secondary)] text-[var(--color-text-normal)] rounded-2xl",
+                      isPinned && "ring-2 ring-[var(--color-primary)]"
+                    )}
+                  >
+                    <MessageContent content={message.content} />
+
+                    {/* Send status indicators */}
+                    {isSending && (
+                      <div className="flex items-center gap-1 mt-1 text-xs opacity-70">
+                        <LoadingOutlined className="animate-spin" />
+                        <span>发送中...</span>
+                      </div>
+                    )}
+                    {isFailed && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-red-500">发送失败</span>
+                        <button
+                          onClick={handleRetry}
+                          className="text-xs underline flex items-center gap-1"
+                        >
+                          <ReloadOutlined />
+                          重试
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-                {isFailed && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-[var(--color-dnd)]">发送失败</span>
-                    <button
-                      onClick={handleRetry}
-                      className="text-xs text-[var(--color-primary)] hover:underline flex items-center gap-1"
-                    >
-                      <ReloadOutlined />
-                      重试
-                    </button>
-                  </div>
+                </div>
+
+                {/* Time for compact messages */}
+                {isCompact && (
+                  <Tooltip title={formatFullDateTime(timestamp)}>
+                    <span className={cn(
+                      "text-[10px] text-[var(--color-text-muted)] mt-0.5",
+                      isOwnMessage ? "text-right" : "text-left"
+                    )}>
+                      {formatTime(timestamp)}
+                    </span>
+                  </Tooltip>
                 )}
               </>
             )}
           </div>
 
           {/* Hover actions */}
-          <div className="absolute -top-4 right-4 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-lg transition-opacity">
+          <div
+            className={cn(
+              "absolute -top-3 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-full shadow-lg transition-opacity px-1 py-0.5",
+              isOwnMessage ? "left-4" : "right-4"
+            )}
+          >
             <Popover content={ReactionPicker} trigger="click" open={showReactions} onOpenChange={setShowReactions}>
-              <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><SmileOutlined /></button>
+              <button className="w-6 h-6 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded-full hover:bg-[var(--color-bg-tertiary)]">
+                <SmileOutlined className="text-sm" />
+              </button>
             </Popover>
-            <button onClick={handleReply} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><ExportOutlined /></button>
-            <button onClick={handleCopy} className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><CopyOutlined /></button>
+            <button onClick={handleReply} className="w-6 h-6 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded-full hover:bg-[var(--color-bg-tertiary)]">
+              <ExportOutlined className="text-sm" />
+            </button>
+            <button onClick={handleCopy} className="w-6 h-6 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded-full hover:bg-[var(--color-bg-tertiary)]">
+              <CopyOutlined className="text-sm" />
+            </button>
             <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-              <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"><MoreOutlined /></button>
+              <button className="w-6 h-6 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded-full hover:bg-[var(--color-bg-tertiary)]">
+                <MoreOutlined className="text-sm" />
+              </button>
             </Dropdown>
           </div>
         </div>

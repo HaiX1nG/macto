@@ -11,7 +11,7 @@ import type {
 export const roomService = {
   async getRoomList(params?: RoomListRequest): Promise<RoomInfoResponse[]> {
     try {
-      const result = await apiClient.get<PaginatedData<RoomInfoResponse> | RoomInfoResponse[]>('/rooms', params)
+      const result = await apiClient.get<PaginatedData<RoomInfoResponse> | RoomInfoResponse[]>('/rooms', params as unknown as Record<string, unknown> | undefined)
       // Handle both paginated and direct array responses
       if (Array.isArray(result)) {
         return result

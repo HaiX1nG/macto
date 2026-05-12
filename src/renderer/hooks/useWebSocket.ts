@@ -13,17 +13,17 @@ interface UseWebSocketOptions {
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const wsRef = useRef<WebSocketService | null>(null)
-  const { isAuthenticated, getAccessToken } = useAuthStore()
+  const { isAuthenticated } = useAuthStore()
   const { onMessage, autoConnect = true } = options
 
   const connect = useCallback(() => {
     if (wsRef.current?.isConnected()) return
 
-    const token = getAccessToken()
+    const token = localStorage.getItem('accessToken')
     wsRef.current = createWebSocketConnection()
 
     wsRef.current.connect(token || undefined)
-  }, [getAccessToken])
+  }, [])
 
   const disconnect = useCallback(() => {
     wsRef.current?.disconnect()

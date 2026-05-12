@@ -1,5 +1,4 @@
-import React from 'react'
-import { Button, Input, Card, Tag, Badge, Avatar } from 'antd'
+import { Button, Input, Card, Tag, Badge, Avatar, Space, Switch, Progress, Tabs } from 'antd'
 import { UserOutlined, SearchOutlined } from '@ant-design/icons'
 import '../styles/index.css'
 

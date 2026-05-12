@@ -2,151 +2,12 @@ import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import rehypeHighlight from 'rehype-highlight'
 import { cn } from '@renderer/utils/cn'
 
 interface MarkdownRendererProps {
   content: string
   className?: string
-}
-
-// Extended sanitize schema based on default - supports all standard HTML5 elements
-const sanitizeSchema = {
-  ...defaultSchema,
-  tagNames: [
-    // Use all default tags plus additional ones
-    ...(defaultSchema.tagNames || []),
-    // Additional sections
-    'article', 'aside', 'footer', 'header', 'main', 'nav', 'section', 'hgroup',
-    // Additional text-level semantics
-    'bdi', 'bdo', 'data', 'mark', 'q', 'ruby', 'rp', 'rt', 'time', 'wbr',
-    // Additional embedded content
-    'audio', 'canvas', 'embed', 'iframe', 'object', 'picture', 'portal', 'source', 'track', 'video',
-    // Interactive elements
-    'details', 'dialog', 'menu', 'summary',
-    // Forms
-    'button', 'datalist', 'fieldset', 'form', 'input', 'label', 'legend',
-    'meter', 'optgroup', 'option', 'output', 'progress', 'select', 'textarea',
-    // SVG elements
-    'svg', 'path', 'circle', 'rect', 'line', 'polygon', 'polyline', 'ellipse',
-    'g', 'defs', 'use', 'symbol', 'text', 'tspan', 'image', 'clipPath',
-    'linearGradient', 'radialGradient', 'stop', 'filter', 'feGaussianBlur',
-    // MathML
-    'math', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub', 'mfrac',
-    // Deprecated but commonly used
-    'center', 'font', 'strike', 'tt', 'big',
-  ],
-  attributes: {
-    ...defaultSchema.attributes,
-    '*': [
-      // Global attributes - use defaultSchema's pattern for className
-      ...(defaultSchema.attributes?.['*'] || []),
-      'style', 'id', 'title', 'lang', 'dir',
-      'hidden', 'tabindex', 'accesskey', 'contenteditable', 'draggable',
-      'spellcheck', 'translate', 'role',
-    ],
-    // Links
-    a: ['href', 'target', 'rel', 'download', 'hreflang', 'type', 'ping'],
-    // Images
-    img: ['src', 'alt', 'width', 'height', 'loading', 'decoding', 'srcset', 'sizes', 'usemap', 'ismap'],
-    // Audio/Video
-    audio: ['src', 'controls', 'autoplay', 'loop', 'muted', 'preload'],
-    video: ['src', 'controls', 'autoplay', 'loop', 'muted', 'preload', 'poster', 'width', 'height', 'playsinline'],
-    source: ['src', 'type', 'srcset', 'sizes', 'media'],
-    track: ['src', 'kind', 'srclang', 'label', 'default'],
-    // Iframe
-    iframe: ['src', 'srcdoc', 'width', 'height', 'allow', 'allowfullscreen', 'loading', 'sandbox', 'name'],
-    // Object/Embed
-    object: ['data', 'type', 'width', 'height', 'name', 'form'],
-    embed: ['src', 'type', 'width', 'height'],
-    // Tables
-    td: ['colspan', 'rowspan', 'headers', 'align', 'valign'],
-    th: ['colspan', 'rowspan', 'headers', 'scope', 'abbr', 'align', 'valign'],
-    col: ['span'],
-    colgroup: ['span'],
-    table: ['border', 'cellspacing', 'cellpadding', 'summary'],
-    // Lists
-    ol: ['start', 'type', 'reversed'],
-    ul: ['type'],
-    li: ['value'],
-    // Forms
-    form: ['action', 'method', 'enctype', 'name', 'target', 'autocomplete', 'novalidate'],
-    input: ['type', 'name', 'value', 'placeholder', 'required', 'disabled', 'readonly', 'checked', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern', 'size', 'autocomplete', 'autofocus', 'multiple', 'accept', 'list', 'form'],
-    textarea: ['name', 'placeholder', 'required', 'disabled', 'readonly', 'rows', 'cols', 'maxlength', 'minlength', 'wrap', 'autocomplete', 'autofocus', 'form'],
-    select: ['name', 'required', 'disabled', 'multiple', 'size', 'autocomplete', 'autofocus', 'form'],
-    option: ['value', 'selected', 'disabled', 'label'],
-    optgroup: ['label', 'disabled'],
-    button: ['type', 'name', 'value', 'disabled', 'form'],
-    label: ['for', 'form'],
-    fieldset: ['name', 'disabled', 'form'],
-    legend: ['align'],
-    datalist: ['id'],
-    output: ['for', 'name', 'form'],
-    meter: ['value', 'min', 'max', 'low', 'high', 'optimum'],
-    progress: ['value', 'max'],
-    // Details/Dialog
-    details: ['open'],
-    dialog: ['open'],
-    menu: ['type'],
-    // Time
-    time: ['datetime'],
-    // Data
-    data: ['value'],
-    // Abbreviation
-    abbr: ['title'],
-    // Quote
-    q: ['cite'],
-    // Blockquote
-    blockquote: ['cite'],
-    // Canvas
-    canvas: ['width', 'height'],
-    // SVG attributes
-    svg: ['xmlns', 'viewBox', 'width', 'height', 'preserveAspectRatio', 'x', 'y'],
-    path: ['d', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'transform', 'opacity'],
-    circle: ['cx', 'cy', 'r', 'fill', 'stroke', 'stroke-width', 'transform', 'opacity'],
-    rect: ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke', 'stroke-width', 'transform', 'opacity'],
-    line: ['x1', 'y1', 'x2', 'y2', 'stroke', 'stroke-width', 'transform', 'opacity'],
-    ellipse: ['cx', 'cy', 'rx', 'ry', 'fill', 'stroke', 'stroke-width', 'transform', 'opacity'],
-    polygon: ['points', 'fill', 'stroke', 'stroke-width', 'transform', 'opacity'],
-    polyline: ['points', 'fill', 'stroke', 'stroke-width', 'transform', 'opacity'],
-    g: ['transform', 'fill', 'stroke', 'opacity'],
-    use: ['href', 'xlink:href', 'x', 'y', 'width', 'height', 'transform'],
-    symbol: ['viewBox', 'preserveAspectRatio'],
-    text: ['x', 'y', 'dx', 'dy', 'text-anchor', 'font-size', 'font-family', 'fill', 'transform'],
-    tspan: ['x', 'y', 'dx', 'dy', 'text-anchor', 'font-size', 'fill'],
-    image: ['href', 'xlink:href', 'x', 'y', 'width', 'height', 'preserveAspectRatio', 'transform'],
-    clipPath: ['id'],
-    linearGradient: ['id', 'x1', 'y1', 'x2', 'y2', 'gradientUnits'],
-    radialGradient: ['id', 'cx', 'cy', 'r', 'fx', 'fy', 'gradientUnits'],
-    stop: ['offset', 'stop-color', 'stop-opacity'],
-    filter: ['id', 'x', 'y', 'width', 'height'],
-    feGaussianBlur: ['in', 'stdDeviation', 'result'],
-    // Font (deprecated but supported)
-    font: ['color', 'size', 'face'],
-    // Code highlighting classes
-    code: [
-      ...(defaultSchema.attributes?.code || []),
-      ['className', 'hljs', 'language-js', 'language-css', 'language-html', 'language-ts', 'language-python', 'language-go', 'language-java', 'language-c', 'language-cpp', 'language-rust', 'language-json', 'language-yaml', 'language-md', 'language-bash', 'language-shell'],
-    ],
-    span: [
-      ...(defaultSchema.attributes?.span || []),
-      ['className', 'hljs-addition', 'hljs-attr', 'hljs-attribute', 'hljs-built_in', 'hljs-bullet', 'hljs-char', 'hljs-code', 'hljs-comment', 'hljs-deletion', 'hljs-doctag', 'hljs-emphasis', 'hljs-formula', 'hljs-keyword', 'hljs-link', 'hljs-literal', 'hljs-meta', 'hljs-name', 'hljs-number', 'hljs-operator', 'hljs-params', 'hljs-property', 'hljs-punctuation', 'hljs-quote', 'hljs-regexp', 'hljs-section', 'hljs-selector-attr', 'hljs-selector-class', 'hljs-selector-id', 'hljs-selector-pseudo', 'hljs-selector-tag', 'hljs-string', 'hljs-strong', 'hljs-subst', 'hljs-symbol', 'hljs-tag', 'hljs-template-tag', 'hljs-template-variable', 'hljs-title', 'hljs-type', 'hljs-variable'],
-    ],
-    pre: [
-      ...(defaultSchema.attributes?.pre || []),
-      ['className', 'hljs'],
-    ],
-  },
-  protocols: {
-    ...defaultSchema.protocols,
-    href: ['http', 'https', 'mailto', 'tel', 'ftp'],
-    src: ['http', 'https', 'data', 'blob'],
-    action: ['http', 'https'],
-    poster: ['http', 'https', 'data'],
-    cite: ['http', 'https'],
-    data: ['http', 'https', 'data'],
-  },
 }
 
 // Helper function to open external links
@@ -159,14 +20,38 @@ const openExternal = (url: string) => {
   }
 }
 
+// Decode HTML entities that may have been encoded by the backend
+// Only decode < > and quotes, but preserve & to avoid breaking code blocks
+function decodeHtmlEntities(text: string): string {
+  // Decode named entities
+  let result = text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+
+  // Decode numeric entities like &#34; &#60; etc.
+  result = result.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+
+  // Decode hex entities like &#x22; &#x3C; etc.
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+
+  return result
+}
+
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
+  // Decode HTML entities before rendering
+  const decodedContent = decodeHtmlEntities(content)
+
   return (
     <div className={cn('markdown-content', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
           rehypeRaw,
-          [rehypeSanitize, sanitizeSchema],
           rehypeHighlight,
         ]}
         components={{
@@ -479,7 +364,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           wbr: (props) => <wbr {...props} />,
         }}
       >
-        {content}
+        {decodedContent}
       </ReactMarkdown>
     </div>
   )

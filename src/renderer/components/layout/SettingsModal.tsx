@@ -169,47 +169,20 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       title={
         <span className="text-[var(--color-text-normal)] font-semibold">设置</span>
       }
+      style={{ borderRadius: '12px' }}
       styles={{
-        content: {
-          backgroundColor: 'var(--color-bg-secondary)',
-          borderRadius: '12px',
-          border: 'none',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-        },
-        header: {
-          backgroundColor: 'var(--color-bg-secondary)',
-          color: 'var(--color-text-normal)',
-          borderBottom: '1px solid var(--color-border)',
-          marginBottom: '0',
-          padding: '16px 24px',
-        },
         body: {
           backgroundColor: 'var(--color-bg-secondary)',
           padding: '16px 24px 24px',
         },
-        mask: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        },
       }}
-      classNames={{
-        content: 'settings-modal-content',
-      }}
+      className="settings-modal"
     >
       <Tabs
         defaultActiveKey="profile"
         items={items}
-        tabPlacement="left"
+        tabPosition="left"
         style={{ minHeight: 380 }}
-        styles={{
-          inkBar: {
-            backgroundColor: 'var(--color-primary)',
-            width: 3,
-          },
-          tab: {
-            color: 'var(--color-text-muted)',
-            padding: '8px 12px',
-          },
-        }}
       />
     </Modal>
   )

@@ -233,10 +233,7 @@ export const ScreenView: React.FC<ScreenViewProps> = ({
         }}
         footer={null}
         width={600}
-        styles={{
-          content: { borderRadius: '16px' },
-          header: { borderBottom: '1px solid #f0f0f0' },
-        }}
+        style={{ borderRadius: '16px' }}
       >
         <div className="space-y-4 py-4">
           {screens.map((screen) => (

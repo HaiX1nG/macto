@@ -1,5 +1,4 @@
-import React from 'react'
-import { ConfigProvider, theme } from 'antd'
+import { ConfigProvider } from 'antd'
 import '../styles/index.css'
 
 export default function SimpleTest() {

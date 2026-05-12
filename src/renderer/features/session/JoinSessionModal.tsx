@@ -65,9 +65,9 @@ export const JoinSessionModal = ({
         className: 'rounded-xl px-6',
       }}
       styles={{
-        content: { borderRadius: '16px' },
         body: { padding: '24px' },
       }}
+      style={{ borderRadius: '16px' }}
     >
       <Form
         form={form}

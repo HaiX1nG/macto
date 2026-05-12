@@ -1,5 +1,5 @@
 import { Card, Row, Col, Typography } from 'antd'
-import { DesktopOutlined, MobileOutlined, TabletOutlined, PieChartOutlined } from '@ant-design/icons'
+import { DesktopOutlined, MobileOutlined, TabletOutlined } from '@ant-design/icons'
 // // // import { cn } from '@renderer/utils/cn'
 
 const { Title, Paragraph } = Typography

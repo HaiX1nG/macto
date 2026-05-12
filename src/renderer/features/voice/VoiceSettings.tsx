@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAudio } from '@renderer/hooks/useAudio'
 import { Card, Button, Slider, Select, Switch, message } from 'antd'
-import { AudioOutlined, ReloadOutlined, MicOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { AudioOutlined, ReloadOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 
 export const VoiceSettings = () => {
@@ -52,7 +52,7 @@ export const VoiceSettings = () => {
           </div>
           <Button
             type={isCapturing ? 'default' : 'primary'}
-            icon={isCapturing ? <CheckCircleOutlined /> : <MicOutlined />}
+            icon={isCapturing ? <CheckCircleOutlined /> : <AudioOutlined />}
             onClick={isCapturing ? stopCapture : startCapture}
             className={cn(
               'rounded-xl px-6 font-semibold',

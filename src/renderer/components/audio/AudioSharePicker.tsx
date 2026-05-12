@@ -28,7 +28,7 @@ export function AudioSharePicker({ open, onSelect, onCancel }: AudioSharePickerP
 
       // Get desktop audio sources via IPC
       window.electronAPI.getAudioSources()
-        .then((audioSources) => {
+        .then((audioSources: AudioSource[]) => {
           setSources(audioSources || [])
           setLoading(false)
         })

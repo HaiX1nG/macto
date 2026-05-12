@@ -146,7 +146,6 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
               <SoundOutlined className="text-[var(--color-text-tertiary-light)] dark:text-[var(--color-text-tertiary-dark)]" />
               <Slider
                 value={currentVolume}
-                onChange={onVolumeChange}
                 min={0}
                 max={100}
                 className="flex-1 max-w-md"
@@ -238,7 +237,11 @@ const ParticipantCard = ({ participant, onMuteToggle, onVolumeChange }: Particip
             </div>
             <Slider
               value={participant.volume}
-              onChange={(value) => onVolumeChange?.(participant.id, value)}
+              onChange={(value) => {
+                if (typeof value === 'number') {
+                  onVolumeChange?.(participant.id, value)
+                }
+              }}
               min={0}
               max={100}
               className="w-full"

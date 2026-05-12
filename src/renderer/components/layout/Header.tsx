@@ -123,21 +123,23 @@ export function HeaderActions({ children, className }: HeaderActionsProps) {
 }
 
 export function HeaderThemeToggle() {
-  const { theme, toggleTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
+
+  const isLight = theme === 'sakura'
 
   return (
-    <Tooltip title={theme === 'light' ? '切换到暗黑模式' : '切换到明亮模式'}>
+    <Tooltip title={isLight ? '切换到暗黑模式' : '切换到明亮模式'}>
       <Button
         type="text"
-        icon={theme === 'light' ? <MoonOutlined /> : <SunOutlined />}
+        icon={isLight ? <MoonOutlined /> : <SunOutlined />}
         className={cn(
           'w-10 h-10 rounded-[var(--radius-lg)] transition-[var(--transition-all)]',
           'hover:scale-110 active:scale-95',
-          theme === 'light'
+          isLight
             ? 'text-[var(--color-text-secondary-light)] hover:bg-[var(--color-border-light)] dark:text-[var(--color-text-secondary-dark)] dark:hover:bg-[var(--color-bg-tertiary-dark)]'
             : 'text-[var(--color-text-secondary-dark)] hover:bg-[var(--color-bg-tertiary-dark)] dark:text-[var(--color-text-dark)] dark:hover:bg-[var(--color-border-dark)]'
         )}
-        onClick={toggleTheme}
+        onClick={() => setTheme(isLight ? 'tech' : 'sakura')}
       />
     </Tooltip>
   )

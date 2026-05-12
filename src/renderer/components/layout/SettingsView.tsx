@@ -137,10 +137,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             defaultActiveKey="appearance"
             tabPosition="left"
             className="settings-tabs h-full"
-            styles={{
-              inkBar: { backgroundColor: 'var(--color-primary)', width: 3 },
-              tabBar: { width: '100%' },
-            }}
           >
             <TabPane
               tab={
@@ -487,7 +483,6 @@ const SettingsToggle = ({ title, description, checked, onChange, large = false }
     <Switch
       checked={checked}
       onChange={onChange}
-      size={large ? 'large' : 'default'}
     />
   </div>
 )
