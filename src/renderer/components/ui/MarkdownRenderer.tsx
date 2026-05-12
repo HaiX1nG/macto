@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { cn } from '@renderer/utils/cn'
@@ -124,8 +123,8 @@ const sanitizeSchema = {
     // Font (deprecated but supported)
     font: ['color', 'size', 'face'],
   },
-  protocol: {
-    ...defaultSchema.protocol,
+  protocols: {
+    ...defaultSchema.protocols,
     href: ['http', 'https', 'mailto', 'tel', 'ftp'],
     src: ['http', 'https', 'data', 'blob'],
     action: ['http', 'https'],
@@ -153,7 +152,6 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
         rehypePlugins={[
           rehypeRaw,
           [rehypeSanitize, sanitizeSchema],
-          rehypeHighlight,
         ]}
         components={{
           // Handle links - open in external browser in Electron
