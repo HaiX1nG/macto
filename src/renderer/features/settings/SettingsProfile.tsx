@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Avatar, Button, Input, Upload, Modal, App } from 'antd'
 import { UserOutlined, CameraOutlined, MailOutlined, LockOutlined, LogoutOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { useAuthStore } from '@renderer/stores/authStore'
@@ -7,8 +7,13 @@ import { cn } from '@renderer/utils/cn'
 import type { UploadProps } from 'antd'
 
 export const SettingsProfile = () => {
-  const { currentUser, updateProfile, changePassword, logout, isLoading } = useAuthStore()
+  const { currentUser, updateProfile, changePassword, logout, isLoading, fetchUserInfo } = useAuthStore()
   const { message } = App.useApp()
+
+  // 组件加载时获取最新用户信息
+  useEffect(() => {
+    fetchUserInfo()
+  }, [fetchUserInfo])
 
   // Avatar state
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '')
@@ -157,14 +162,14 @@ export const SettingsProfile = () => {
   }
 
   return (
-    <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 scrollbar-thin">
-      {/* Avatar Section */}
-      <div className="flex flex-col items-center py-6 border-b border-[var(--color-border)]">
+    <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 scrollbar-thin px-2 sm:px-0">
+      {/* Avatar Section - Glassmorphism Card */}
+      <div className="flex flex-col items-center py-6 sm:py-8 border-b border-[var(--color-border)] backdrop-blur-sm bg-[var(--color-bg-secondary)]/50 rounded-xl sm:rounded-2xl mx-0 sm:mx-4">
         <div className="relative group">
           <Avatar
             size={80}
             src={currentUser?.avatarUrl || undefined}
-            className="bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white text-2xl font-bold shadow-lg"
+            className="bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white text-2xl font-bold shadow-lg ring-2 ring-white/10"
           >
             {currentUser?.username?.charAt(0)?.toUpperCase() || 'U'}
           </Avatar>
@@ -229,10 +234,10 @@ export const SettingsProfile = () => {
         </Button>
       )}
 
-      {/* User Info */}
-      <div className="space-y-2">
+      {/* User Info - Responsive Grid */}
+      <div className="space-y-2 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
         {/* Username */}
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-bg-tertiary)]">
+        <div className="flex items-center gap-3 p-3 sm:p-4 rounded-xl bg-[var(--color-bg-tertiary)] backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
           <UserOutlined className="text-[var(--color-text-muted)]" />
           <div className="flex-1 min-w-0">
             <p className="text-xs text-[var(--color-text-muted)]">用户名</p>
