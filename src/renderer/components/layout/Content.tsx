@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@renderer/utils/cn'
+import { HEADER_HEIGHT, BREAKPOINTS } from '@renderer/stores/layoutStore'
 
 interface ContentProps {
   children: ReactNode
@@ -32,11 +33,11 @@ export const Container = ({
   padding = 'md'
 }: ContainerProps) => {
   const maxWidths = {
-    sm: 'max-w-2xl',
-    md: 'max-w-4xl',
-    lg: 'max-w-7xl',
-    xl: 'max-w-[1400px]',
-    '2xl': 'max-w-[1600px]',
+    sm: `max-w-[${BREAKPOINTS.sm}px]`,
+    md: `max-w-[${BREAKPOINTS.md}px]`,
+    lg: `max-w-[${BREAKPOINTS.lg}px]`,
+    xl: `max-w-[${BREAKPOINTS.xl}px]`,
+    '2xl': `max-w-[${BREAKPOINTS['2xl']}px]`,
     full: 'max-w-full',
   }
 
@@ -49,7 +50,7 @@ export const Container = ({
 
   return (
     <div className={cn(
-      'mx-auto',
+      'mx-auto w-full',
       maxWidths[maxWidth],
       paddings[padding],
       className
@@ -76,18 +77,22 @@ export const ContentHeader = ({
 }: ContentHeaderProps) => {
   if (title || actions) {
     return (
-      <header className={cn(
-        'h-16 flex items-center justify-between px-6',
-        'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-        'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
-        'backdrop-blur-[var(--blur-md)]',
-        'sticky top-0 z-[var(--z-sticky)]',
-        'shadow-[var(--shadow-sm)]',
-        className
-      )}>
+      <header
+        className={cn(
+          'flex items-center justify-between px-4',
+          'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+          'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
+          'backdrop-blur-[var(--blur-md)]',
+          'sticky top-0 z-[var(--z-sticky)]',
+          'shadow-[var(--shadow-sm)]',
+          'flex-shrink-0',
+          className
+        )}
+        style={{ height: HEADER_HEIGHT }}
+      >
         <div>
           {title && (
-            <h2 className="text-lg font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
+            <h2 className="text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
               {title}
             </h2>
           )}
@@ -104,15 +109,19 @@ export const ContentHeader = ({
   }
 
   return (
-    <header className={cn(
-      'h-16 flex items-center justify-between px-6',
-      'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
-      'backdrop-blur-[var(--blur-md)]',
-      'sticky top-0 z-[var(--z-sticky)]',
-      'shadow-[var(--shadow-sm)]',
-      className
-    )}>
+    <header
+      className={cn(
+        'flex items-center justify-between px-4',
+        'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+        'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
+        'backdrop-blur-[var(--blur-md)]',
+        'sticky top-0 z-[var(--z-sticky)]',
+        'shadow-[var(--shadow-sm)]',
+        'flex-shrink-0',
+        className
+      )}
+      style={{ height: HEADER_HEIGHT }}
+    >
       {children}
     </header>
   )
@@ -120,7 +129,7 @@ export const ContentHeader = ({
 
 export const Title = ({ children, className }: { children: ReactNode; className?: string }) => (
   <h2 className={cn(
-    'text-lg font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
+    'text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
     className
   )}>
     {children}
@@ -145,15 +154,19 @@ export const ChannelHeader = ({
   children,
   className
 }: ChannelHeaderProps) => (
-  <div className={cn(
-    'h-16 flex items-center justify-between px-6',
-    'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-    'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
-    'backdrop-blur-[var(--blur-md)]',
-    'sticky top-0 z-[var(--z-sticky)]',
-    'shadow-[var(--shadow-sm)]',
-    className
-  )}>
+  <div
+    className={cn(
+      'flex items-center justify-between px-4',
+      'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+      'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
+      'backdrop-blur-[var(--blur-md)]',
+      'sticky top-0 z-[var(--z-sticky)]',
+      'shadow-[var(--shadow-sm)]',
+      'flex-shrink-0',
+      className
+    )}
+    style={{ height: HEADER_HEIGHT }}
+  >
     {children}
   </div>
 )
@@ -178,7 +191,7 @@ export const ChannelTitle = ({
         {icon}
       </div>
     )}
-    <h2 className="text-lg font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
+    <h2 className="text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
       {children}
     </h2>
   </div>
@@ -201,7 +214,7 @@ export const Section = ({
     {(title || description) && (
       <div className="mb-6">
         {title && (
-          <h3 className="text-xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
+          <h3 className="text-xl font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
             {title}
           </h3>
         )}
@@ -214,4 +227,18 @@ export const Section = ({
     )}
     {children}
   </section>
+)
+
+interface ScrollAreaProps {
+  children: ReactNode
+  className?: string
+}
+
+export const ScrollArea = ({ children, className }: ScrollAreaProps) => (
+  <div className={cn(
+    'flex-1 overflow-y-auto scrollbar-thin',
+    className
+  )}>
+    {children}
+  </div>
 )

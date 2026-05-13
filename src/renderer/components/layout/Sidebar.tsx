@@ -2,22 +2,30 @@ import { Menu, Badge, Avatar, Tooltip, Button } from 'antd'
 import { HomeOutlined, MoonOutlined, SunOutlined, TeamOutlined, AudioOutlined, VideoCameraOutlined, SettingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useTheme } from '@renderer/hooks/useTheme'
+import { useLayoutStore, SIDEBAR_WIDTHS } from '@renderer/stores/layoutStore'
 
 interface SidebarProps {
   children: React.ReactNode
   className?: string
+  collapsed?: boolean
+  variant?: 'primary' | 'secondary'
 }
 
-export function Sidebar({ children, className }: SidebarProps) {
+export function Sidebar({ children, className, collapsed = false, variant = 'primary' }: SidebarProps) {
+  const width = collapsed ? SIDEBAR_WIDTHS.channelCollapsed : SIDEBAR_WIDTHS.channel
+
   return (
-    <aside className={cn(
-      'flex-shrink-0 w-64',
-      'bg-white dark:bg-[var(--color-bg-dark)]',
-      'border-r border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'flex flex-col',
-      'shadow-[var(--shadow-sm)]',
-      className
-    )}>
+    <aside
+      className={cn(
+        'flex-shrink-0 h-full',
+        'flex flex-col',
+        'transition-all duration-200 ease-in-out',
+        variant === 'primary' && 'bg-white dark:bg-[var(--color-bg-dark)] border-r border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+        variant === 'secondary' && 'bg-[var(--color-bg-secondary)]',
+        className
+      )}
+      style={{ width }}
+    >
       {children}
     </aside>
   )
@@ -26,9 +34,10 @@ export function Sidebar({ children, className }: SidebarProps) {
 export function SidebarHeader({ children }: { children: React.ReactNode }) {
   return (
     <div className={cn(
-      'px-6 py-5 border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+      'px-4 py-4 border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
       'bg-gradient-to-r from-blue-50/50 to-purple-50/50',
-      'dark:from-blue-900/10 dark:to-purple-900/10'
+      'dark:from-blue-900/10 dark:to-purple-900/10',
+      'flex-shrink-0'
     )}>
       {children}
     </div>
@@ -132,7 +141,8 @@ export function SidebarFooter({ children }: { children: React.ReactNode }) {
   return (
     <div className={cn(
       'px-4 py-4 border-t border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'bg-[var(--color-bg-secondary-light)]/50 dark:bg-[var(--color-bg-dark)]/50'
+      'bg-[var(--color-bg-secondary-light)]/50 dark:bg-[var(--color-bg-dark)]/50',
+      'flex-shrink-0'
     )}>
       {children}
     </div>
@@ -210,8 +220,10 @@ export function MainSidebar({
   onTabChange,
   channels = [],
 }: MainSidebarProps) {
+  const { channelSidebarCollapsed } = useLayoutStore()
+
   return (
-    <Sidebar>
+    <Sidebar collapsed={channelSidebarCollapsed}>
       {/* Logo Header */}
       <SidebarHeader>
         <div className="flex items-center gap-3">
@@ -224,10 +236,12 @@ export function MainSidebar({
           )}>
             M
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">Macto</h1>
-            <p className="text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">语音 & 屏幕</p>
-          </div>
+          {!channelSidebarCollapsed && (
+            <div>
+              <h1 className="text-lg font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">Macto</h1>
+              <p className="text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">语音 & 屏幕</p>
+            </div>
+          )}
         </div>
       </SidebarHeader>
 
@@ -276,10 +290,12 @@ export function MainSidebar({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <UserAvatar name="用户" size="small" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-[var(--color-text-light)] dark:text-[var(--color-text-dark)] truncate">用户</div>
-              <div className="text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">在线</div>
-            </div>
+            {!channelSidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-[var(--color-text-light)] dark:text-[var(--color-text-dark)] truncate">用户</div>
+                <div className="text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">在线</div>
+              </div>
+            )}
           </div>
           <ThemeToggle />
         </div>

@@ -2,6 +2,7 @@ import { Button, Space, Avatar, Tooltip } from 'antd'
 import { MoonOutlined, SunOutlined, BellOutlined, SearchOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useTheme } from '@renderer/hooks/useTheme'
+import { HEADER_HEIGHT } from '@renderer/stores/layoutStore'
 
 interface HeaderProps {
   title: string
@@ -23,20 +24,24 @@ export function Header({
   className
 }: HeaderProps) {
   return (
-    <header className={cn(
-      'h-16 flex items-center justify-between px-6',
-      'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
-      'backdrop-blur-[var(--blur-xl)]',
-      'transition-[var(--transition-colors)] duration-300',
-      'sticky top-0 z-[var(--z-sticky)]',
-      'shadow-[var(--shadow-sm)]',
-      className
-    )}>
+    <header
+      className={cn(
+        'flex items-center justify-between px-4',
+        'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+        'bg-white/80 dark:bg-[var(--color-bg-dark)]/80',
+        'backdrop-blur-[var(--blur-xl)]',
+        'transition-[var(--transition-colors)] duration-300',
+        'sticky top-0 z-[var(--z-sticky)]',
+        'shadow-[var(--shadow-sm)]',
+        'flex-shrink-0',
+        className
+      )}
+      style={{ height: HEADER_HEIGHT }}
+    >
       {/* Left Section */}
       <div className="flex items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">{title}</h1>
+          <h1 className="text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">{title}</h1>
           {subtitle && (
             <p className="text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">{subtitle}</p>
           )}
@@ -51,7 +56,7 @@ export function Header({
               type="text"
               icon={<SearchOutlined />}
               className={cn(
-                'w-10 h-10 rounded-[var(--radius-lg)]',
+                'w-9 h-9 rounded-[var(--radius-lg)]',
                 'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
                 'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
                 'hover:text-[var(--color-text-light)] dark:hover:text-[var(--color-text-dark)]',
@@ -66,7 +71,7 @@ export function Header({
               type="text"
               icon={<BellOutlined />}
               className={cn(
-                'w-10 h-10 rounded-[var(--radius-lg)]',
+                'w-9 h-9 rounded-[var(--radius-lg)]',
                 'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
                 'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
                 'hover:text-[var(--color-text-light)] dark:hover:text-[var(--color-text-dark)]',
@@ -103,7 +108,7 @@ interface TitleProps {
 
 export function Title({ children, className }: TitleProps) {
   return (
-    <h2 className={cn('text-xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]', className)}>
+    <h2 className={cn('text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]', className)}>
       {children}
     </h2>
   )
@@ -133,7 +138,7 @@ export function HeaderThemeToggle() {
         type="text"
         icon={isLight ? <MoonOutlined /> : <SunOutlined />}
         className={cn(
-          'w-10 h-10 rounded-[var(--radius-lg)] transition-[var(--transition-all)]',
+          'w-9 h-9 rounded-[var(--radius-lg)] transition-[var(--transition-all)]',
           'hover:scale-110 active:scale-95',
           isLight
             ? 'text-[var(--color-text-secondary-light)] hover:bg-[var(--color-border-light)] dark:text-[var(--color-text-secondary-dark)] dark:hover:bg-[var(--color-bg-tertiary-dark)]'
@@ -173,13 +178,17 @@ export function PageHeader({
   }
 
   return (
-    <div className={cn(
-      'h-16 flex items-center justify-between px-6',
-      'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'bg-white dark:bg-[var(--color-bg-dark)]',
-      'sticky top-0 z-[var(--z-sticky)]',
-      className
-    )}>
+    <div
+      className={cn(
+        'flex items-center justify-between px-4',
+        'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+        'bg-white dark:bg-[var(--color-bg-dark)]',
+        'sticky top-0 z-[var(--z-sticky)]',
+        'flex-shrink-0',
+        className
+      )}
+      style={{ height: HEADER_HEIGHT }}
+    >
       <div className="flex items-center gap-4">
         {icon && (
           <div className={cn(
@@ -191,7 +200,7 @@ export function PageHeader({
         )}
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">{title}</h1>
+            <h1 className="text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">{title}</h1>
             {badge}
           </div>
           {description && (
