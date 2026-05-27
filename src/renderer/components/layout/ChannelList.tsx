@@ -39,32 +39,31 @@ export function ChannelList({ channels, activeChannelId, onChannelClick, onCreat
 
   return (
     <div className={cn(
-      'w-64 bg-white dark:bg-[var(--color-bg-dark)]',
-      'flex flex-col border-r border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'transition-colors duration-300'
+      'w-64 bg-[var(--color-bg-secondary)]',
+      'flex flex-col border-r border-[var(--color-border)]',
+      'transition-colors duration-150'
     )}>
       {/* Header */}
-      <div className="p-4 border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]">
+      <div className="p-4 border-b border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className={cn(
               'w-8 h-8 rounded-lg',
-              'bg-gradient-to-br from-[var(--color-primary)] to-purple-600',
+              'bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]',
               'flex items-center justify-center',
               'text-white font-bold text-sm',
-              'shadow-lg shadow-[var(--color-primary)]/30'
+              'shadow-md'
             )}>
               M
             </div>
-            <h1 className="text-lg font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">Macto</h1>
+            <h1 className="text-lg font-bold text-[var(--color-text-normal)]">Macto</h1>
           </div>
           <button
             onClick={onCreateChannel}
             className={cn(
               'p-2 rounded-xl',
-              'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)]',
-              'text-white transition-all duration-200',
-              'shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-[var(--color-primary)]/40',
+              'bg-[var(--color-primary)] hover:bg-[var(--color-secondary)] active:bg-[var(--color-accent)]',
+              'text-white transition-all duration-150',
               'hover:scale-105 active:scale-95'
             )}
           >
@@ -74,7 +73,7 @@ export function ChannelList({ channels, activeChannelId, onChannelClick, onCreat
 
         {/* Search */}
         <div className="relative">
-          <SearchOutlined className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary-light)] dark:text-[var(--color-text-tertiary-dark)] w-4 h-4" />
+          <SearchOutlined className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] w-4 h-4" />
           <input
             type="text"
             placeholder="搜索频道..."
@@ -82,14 +81,14 @@ export function ChannelList({ channels, activeChannelId, onChannelClick, onCreat
             onChange={(e) => setSearchTerm(e.target.value)}
             className={cn(
               'w-full pl-10 pr-4 py-2.5',
-              'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
+              'bg-[var(--color-bg-tertiary)]',
               'border border-transparent',
-              'focus:border-[var(--color-primary)] dark:focus:border-[var(--color-primary)]',
+              'focus:border-[var(--color-primary)]',
               'focus:ring-2 focus:ring-[var(--color-primary)]/20',
               'rounded-xl text-sm',
-              'text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
-              'placeholder:text-[var(--color-text-tertiary-light)] dark:placeholder:text-[var(--color-text-tertiary-dark)]',
-              'transition-all duration-200',
+              'text-[var(--color-text-normal)]',
+              'placeholder:text-[var(--color-text-muted)]',
+              'transition-all duration-150',
               'focus:outline-none'
             )}
           />
@@ -112,7 +111,7 @@ export function ChannelList({ channels, activeChannelId, onChannelClick, onCreat
                 channel={channel}
                 isActive={activeChannelId === channel.id}
                 onClick={() => onChannelClick?.(channel)}
-                variant="blue"
+                variant="primary"
               />
             ))}
           </ChannelCategory>
@@ -132,7 +131,7 @@ export function ChannelList({ channels, activeChannelId, onChannelClick, onCreat
                 channel={channel}
                 isActive={activeChannelId === channel.id}
                 onClick={() => onChannelClick?.(channel)}
-                variant="purple"
+                variant="accent"
               />
             ))}
           </ChannelCategory>
@@ -152,7 +151,7 @@ export function ChannelList({ channels, activeChannelId, onChannelClick, onCreat
                 channel={channel}
                 isActive={activeChannelId === channel.id}
                 onClick={() => onChannelClick?.(channel)}
-                variant="green"
+                variant="success"
               />
             ))}
           </ChannelCategory>
@@ -160,13 +159,13 @@ export function ChannelList({ channels, activeChannelId, onChannelClick, onCreat
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]">
+      <div className="p-4 border-t border-[var(--color-border)]">
         <button className={cn(
           'w-full flex items-center gap-3 px-4 py-3 rounded-xl',
-          'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
-          'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
-          'hover:text-[var(--color-text-light)] dark:hover:text-[var(--color-text-dark)]',
-          'transition-all duration-200'
+          'text-[var(--color-text-muted)]',
+          'hover:bg-[var(--color-bg-tertiary)]',
+          'hover:text-[var(--color-text-normal)]',
+          'transition-all duration-150'
         )}>
           <SettingOutlined className="text-lg" />
           <span className="font-medium">设置</span>
@@ -191,10 +190,10 @@ function ChannelCategory({ title, icon, expanded, onToggle, children }: ChannelC
         onClick={onToggle}
         className={cn(
           'w-full flex items-center justify-between px-3 py-2.5',
-          'text-xs font-semibold text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
+          'text-xs font-semibold text-[var(--color-text-muted)]',
           'uppercase tracking-wider',
-          'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
-          'rounded-xl transition-colors'
+          'hover:bg-[var(--color-bg-tertiary)]',
+          'rounded-xl transition-colors duration-150'
         )}
       >
         <span className="flex items-center gap-2">
@@ -203,7 +202,7 @@ function ChannelCategory({ title, icon, expanded, onToggle, children }: ChannelC
         </span>
         <svg
           className={cn(
-            'w-4 h-4 transition-transform duration-200',
+            'w-4 h-4 transition-transform duration-150',
             expanded && 'rotate-180'
           )}
           fill="none"
@@ -226,22 +225,22 @@ interface ChannelItemProps {
   channel: Channel
   isActive?: boolean
   onClick?: () => void
-  variant?: 'blue' | 'purple' | 'green'
+  variant?: 'primary' | 'accent' | 'success'
 }
 
-function ChannelItem({ channel, isActive, onClick, variant = 'blue' }: ChannelItemProps) {
+function ChannelItem({ channel, isActive, onClick, variant = 'primary' }: ChannelItemProps) {
   const variants = {
-    blue: {
-      active: 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30',
-      icon: 'text-[var(--color-primary)] dark:text-[var(--color-primary)]',
+    primary: {
+      active: 'bg-[var(--color-primary)]/15 text-[var(--color-primary)]',
+      icon: 'text-[var(--color-primary)]',
     },
-    purple: {
-      active: 'bg-purple-600 text-white shadow-lg shadow-purple-600/30',
-      icon: 'text-purple-500 dark:text-purple-400',
+    accent: {
+      active: 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]',
+      icon: 'text-[var(--color-accent)]',
     },
-    green: {
-      active: 'bg-[var(--color-success)] text-white shadow-lg shadow-[var(--color-success)]/30',
-      icon: 'text-[var(--color-success)] dark:text-[var(--color-success)]',
+    success: {
+      active: 'bg-[var(--color-online)]/15 text-[var(--color-online)]',
+      icon: 'text-[var(--color-online)]',
     },
   }
 
@@ -250,19 +249,19 @@ function ChannelItem({ channel, isActive, onClick, variant = 'blue' }: ChannelIt
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 px-3 py-3 rounded-xl',
-        'transition-all duration-200',
-        'hover:scale-[1.02] active:scale-[0.98]',
+        'transition-all duration-150',
+        'hover:scale-[1.01] active:scale-[0.99]',
         isActive
           ? variants[variant].active
           : cn(
-              'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
-              'text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]'
+              'hover:bg-[var(--color-bg-tertiary)]',
+              'text-[var(--color-text-normal)]'
             )
       )}
     >
       <span className={cn(
         'text-lg',
-        isActive ? 'text-white' : variants[variant].icon
+        isActive ? '' : variants[variant].icon
       )}>
         {channel.icon}
       </span>
@@ -272,7 +271,7 @@ function ChannelItem({ channel, isActive, onClick, variant = 'blue' }: ChannelIt
       {channel.unread && channel.unread > 0 && (
         <span className={cn(
           'min-w-[20px] h-5 px-1.5 rounded-full',
-          'bg-[var(--color-error)] text-white text-xs font-bold',
+          'bg-[var(--color-dnd)] text-white text-xs font-bold',
           'flex items-center justify-center'
         )}>
           {channel.unread}

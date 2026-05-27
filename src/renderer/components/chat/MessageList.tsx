@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { Avatar, Dropdown, Popover, App, Spin, Modal, Tooltip } from 'antd'
-import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined, LoadingOutlined, FileOutlined, ReloadOutlined, DownOutlined, CheckOutlined } from '@ant-design/icons'
+import { SmileOutlined, EditOutlined, DeleteOutlined, PushpinOutlined, MoreOutlined, CopyOutlined, ExportOutlined, LoadingOutlined, FileOutlined, ReloadOutlined, DownOutlined, CheckOutlined, CheckCircleFilled } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { EmptyMessages } from '@renderer/components/ui/EmptyState'
 import { MarkdownRenderer } from '@renderer/components/ui/MarkdownRenderer'
@@ -25,7 +25,8 @@ interface MessageListProps {
   onUnpin?: (messageId: string) => void
   pinnedMessages?: Message[]
   onRetry?: (retryId: string) => void
-  // Unread messages
+  editingMessageId?: number | null
+  deletingMessageId?: number | null
   unreadCount?: number
   firstUnreadMessageId?: number | null
   onScrollToBottom?: () => void
@@ -45,6 +46,8 @@ export function MessageList({
   onUnpin,
   pinnedMessages,
   onRetry,
+  editingMessageId,
+  deletingMessageId,
   unreadCount = 0,
   firstUnreadMessageId,
   onScrollToBottom,
@@ -108,7 +111,7 @@ export function MessageList({
 
   return (
     <div className="relative flex-1 flex flex-col min-h-0">
-      <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin">
+      <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar">
         {/* Pinned messages section */}
         {pinnedMessages && pinnedMessages.length > 0 && (
           <div className="mb-4 p-3 bg-[var(--color-primary)]/10 rounded-lg border border-[var(--color-primary)]/20">
@@ -171,6 +174,8 @@ export function MessageList({
                 onRetry={onRetry}
                 pinnedMessageIds={pinnedMessages?.map(m => m.id)}
                 isFirstUnread={firstUnreadMessageId === message.id}
+                isEditingMessage={editingMessageId === message.id}
+                isDeletingMessage={deletingMessageId === message.id}
               />
             ))}
           </div>
@@ -218,13 +223,23 @@ function isImageUrl(content: string): boolean {
   return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(content) || content.includes('/image/') || content.startsWith('data:image/')
 }
 
+// Pre-process message content to style mentions and links
+function processMessageContent(content: string): string {
+  // Style @mentions: @username -> styled span
+  const processed = content.replace(
+    /@(\S+)/g,
+    '<span class="mention-highlight">@$1</span>'
+  )
+  return processed
+}
+
 // Message content renderer
 function MessageContent({ content, attachments }: { content: string; attachments?: Attachment[] }) {
   // If has attachments, show them
   if (attachments && attachments.length > 0) {
     return (
       <div className="space-y-2">
-        {content && <MarkdownRenderer content={content} />}
+        {content && <MarkdownRenderer content={processMessageContent(content)} />}
         <div className="flex flex-wrap gap-2">
           {attachments.map((attachment, index) => (
             <AttachmentView key={attachment.id || index} attachment={attachment} />
@@ -252,8 +267,8 @@ function MessageContent({ content, attachments }: { content: string; attachments
     )
   }
 
-  // Render as Markdown
-  return <MarkdownRenderer content={content} />
+  // Render as Markdown with mention processing
+  return <MarkdownRenderer content={processMessageContent(content)} />
 }
 
 // Attachment view component
@@ -329,9 +344,11 @@ interface MessageItemProps {
   onRetry?: (retryId: string) => void
   pinnedMessageIds?: string[]
   isFirstUnread?: boolean
+  isEditingMessage?: boolean
+  isDeletingMessage?: boolean
 }
 
-function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, onRetry, pinnedMessageIds, isFirstUnread }: MessageItemProps) {
+function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, onRetry, pinnedMessageIds, isFirstUnread, isEditingMessage, isDeletingMessage }: MessageItemProps) {
   const { message: messageApi } = App.useApp()
   const { currentUser } = useAuthStore()
   const [showReactions, setShowReactions] = useState(false)
@@ -391,7 +408,6 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   const handleSaveEdit = () => {
     if (editContent.trim() && editContent !== message.content) {
       onEdit?.(String(message.id), editContent.trim())
-      messageApi.success('消息已更新')
     }
     setIsEditing(false)
   }
@@ -417,7 +433,6 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   const confirmDelete = () => {
     onDelete?.(String(message.id))
     setShowDeleteModal(false)
-    messageApi.success('消息已删除')
   }
 
   const handlePin = () => {
@@ -468,20 +483,21 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
         </div>
       )}
 
-      {/* WeChat style bubble message */}
-      <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
+      {/* Message bubble */}
+      <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']} styles={{ root: { zIndex: 1500 } }}>
         <div
           className={cn(
-            "group relative flex gap-2 py-1 px-4 transition-colors",
+            "group relative flex gap-2 py-1 px-4",
+            "transition-colors duration-150",
             isOwnMessage ? "justify-end" : "justify-start",
-            isSent && "animate-pulse-once"
+            isSent && "animate-fade-in-up"
           )}
         >
           {/* Avatar - left side for others, right side for own */}
           <Avatar
             size={36}
             className={cn(
-              "bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 cursor-pointer hover:opacity-80 self-start",
+              "bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)] flex-shrink-0 cursor-pointer hover:opacity-80 self-start",
               isOwnMessage ? "order-2" : "order-1"
             )}
           >
@@ -493,7 +509,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
             "flex flex-col max-w-[60%]",
             isOwnMessage ? "items-end order-1" : "items-start order-2"
           )}>
-            {/* Sender name and time */}
+            {/* Sender name, time, and send status */}
             {!isCompact && (
               <div className={cn(
                 "flex items-center gap-2 mb-1",
@@ -507,6 +523,9 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
                     {formatRelativeTime(timestamp)}
                   </span>
                 </Tooltip>
+                {isOwnMessage && isSent && (
+                  <CheckCircleFilled className="text-xs text-[var(--color-text-muted)]" />
+                )}
               </div>
             )}
 
@@ -524,14 +543,16 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
                 <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={handleSaveEdit}
-                    className="px-3 py-1 bg-[var(--color-primary)] text-white text-sm rounded hover:opacity-90 flex items-center gap-1"
+                    disabled={isEditingMessage}
+                    className="px-3 py-1 bg-[var(--color-primary)] text-white text-sm rounded hover:opacity-90 flex items-center gap-1 disabled:opacity-50"
                   >
-                    <CheckOutlined />
+                    {isEditingMessage ? <LoadingOutlined className="animate-spin" /> : <CheckOutlined />}
                     保存
                   </button>
                   <button
                     onClick={handleCancelEdit}
-                    className="px-3 py-1 bg-[var(--color-bg-tertiary)] text-[var(--color-text-normal)] text-sm rounded hover:bg-[var(--color-bg-darker)]"
+                    disabled={isEditingMessage}
+                    className="px-3 py-1 bg-[var(--color-bg-tertiary)] text-[var(--color-text-normal)] text-sm rounded hover:bg-[var(--color-bg-darker)] disabled:opacity-50"
                   >
                     取消
                   </button>
@@ -539,67 +560,55 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
               </div>
             ) : (
               <>
-                {/* Message bubble with WeChat style */}
-                <div className="relative">
-                  {/* Bubble tail/notch */}
-                  <div
-                    className={cn(
-                      "absolute top-2 w-3 h-3",
-                      isOwnMessage
-                        ? "right-[-8px] bg-[#95EC69]"
-                        : "left-[-8px] bg-[var(--color-bg-secondary)]",
-                    )}
-                    style={{
-                      clipPath: isOwnMessage
-                        ? "polygon(0 0, 100% 0, 0 100%)"
-                        : "polygon(100% 0, 100% 100%, 0 0)",
-                    }}
-                  />
-                  {/* Bubble content */}
-                  <div
-                    className={cn(
-                      "relative px-3 py-2 max-w-full",
-                      "break-words",
-                      isOwnMessage
-                        ? "bg-[#95EC69] text-black rounded-2xl"
-                        : "bg-[var(--color-bg-secondary)] text-[var(--color-text-normal)] rounded-2xl",
-                      isPinned && "ring-2 ring-[var(--color-primary)]"
-                    )}
-                  >
-                    <MessageContent content={message.content} />
+                {/* Message bubble */}
+                <div
+                  className={cn(
+                    "relative px-4 py-2 max-w-full",
+                    "break-words rounded-xl",
+                    isOwnMessage
+                      ? "bg-[var(--color-message-bubble-own)] text-[var(--color-message-bubble-own-text)]"
+                      : "bg-[var(--color-message-bubble-other)] text-[var(--color-message-bubble-other-text)]",
+                    isPinned && "ring-2 ring-[var(--color-primary)]"
+                  )}
+                >
+                  <MessageContent content={message.content} />
 
-                    {/* Send status indicators */}
-                    {isSending && (
-                      <div className="flex items-center gap-1 mt-1 text-xs opacity-70">
-                        <LoadingOutlined className="animate-spin" />
-                        <span>发送中...</span>
-                      </div>
-                    )}
-                    {isFailed && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-red-500">发送失败</span>
-                        <button
-                          onClick={handleRetry}
-                          className="text-xs underline flex items-center gap-1"
-                        >
-                          <ReloadOutlined />
-                          重试
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {/* Send status indicators */}
+                  {isSending && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-[var(--color-message-bubble-own-text)] opacity-70">
+                      <LoadingOutlined className="text-xs animate-spin" />
+                      <span>发送中...</span>
+                    </div>
+                  )}
+                  {isFailed && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-[var(--color-dnd)]">发送失败</span>
+                      <button
+                        onClick={handleRetry}
+                        className="text-xs text-[var(--color-dnd)] underline flex items-center gap-1"
+                      >
+                        <ReloadOutlined className="text-xs" />
+                        重试
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Time for compact messages */}
+                {/* Time and send status for compact messages */}
                 {isCompact && (
-                  <Tooltip title={formatFullDateTime(timestamp)}>
-                    <span className={cn(
-                      "text-[10px] text-[var(--color-text-muted)] mt-0.5",
-                      isOwnMessage ? "text-right" : "text-left"
-                    )}>
-                      {formatTime(timestamp)}
-                    </span>
-                  </Tooltip>
+                  <div className={cn(
+                    "flex items-center gap-1 mt-0.5",
+                    isOwnMessage ? "flex-row-reverse" : "flex-row"
+                  )}>
+                    <Tooltip title={formatFullDateTime(timestamp)}>
+                      <span className="text-xs text-[var(--color-text-muted)]">
+                        {formatTime(timestamp)}
+                      </span>
+                    </Tooltip>
+                    {isOwnMessage && isSent && (
+                      <CheckCircleFilled className="text-xs text-[var(--color-text-muted)]" />
+                    )}
+                  </div>
                 )}
               </>
             )}
@@ -623,7 +632,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
             <button onClick={handleCopy} className="w-6 h-6 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded-full hover:bg-[var(--color-bg-tertiary)]">
               <CopyOutlined className="text-sm" />
             </button>
-            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+            <Dropdown menu={{ items: menuItems }} trigger={['click']} styles={{ root: { zIndex: 1500 } }}>
               <button className="w-6 h-6 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] rounded-full hover:bg-[var(--color-bg-tertiary)]">
                 <MoreOutlined className="text-sm" />
               </button>
@@ -632,7 +641,6 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
         </div>
       </Dropdown>
 
-      {/* Delete Confirmation Modal */}
       <Modal
         open={showDeleteModal}
         title="删除消息"
@@ -640,7 +648,8 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
         onOk={confirmDelete}
         okText="删除"
         cancelText="取消"
-        okButtonProps={{ danger: true }}
+        okButtonProps={{ danger: true, loading: isDeletingMessage }}
+        zIndex={2000}
         styles={{ body: { backgroundColor: 'var(--color-bg-secondary)' } }}
       >
         <p className="py-4">确定要删除这条消息吗？此操作无法撤销。</p>

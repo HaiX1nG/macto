@@ -6,16 +6,13 @@ import type {
   MessageListRequest,
 } from '@shared/types/api'
 
-// Message send status
 export type MessageSendStatus = 'pending' | 'sending' | 'sent' | 'failed'
 
-// Extended message with send status for optimistic updates
 export interface MessageWithStatus extends MessageResponse {
   _status?: MessageSendStatus
-  _retryId?: string // For retry identification
+  _retryId?: string
 }
 
-// Typing user info
 export interface TypingUser {
   userId: number
   username: string
@@ -31,22 +28,24 @@ interface ChatState {
   currentRoomId: number | null
   replyingTo: MessageResponse | null
   editingMessage: MessageResponse | null
+  editingMessageId: number | null
+  deletingMessageId: number | null
+  originalContent: string | null
 
-  // Unread messages
   unreadCount: number
   firstUnreadMessageId: number | null
   isAtBottom: boolean
 
-  // Typing indicators
-  typingUsers: Map<number, TypingUser[]> // roomId -> typing users
+  typingUsers: Map<number, TypingUser[]>
   isTyping: boolean
 
-  // Actions
   fetchMessages: (roomId: number, params?: MessageListRequest) => Promise<void>
   sendMessage: (roomId: number, data: SendMessageRequest) => Promise<void>
   addMessage: (message: MessageResponse) => void
   updateMessage: (messageId: number, content: string) => void
+  editMessage: (roomId: number, messageId: number, content: string) => Promise<void>
   deleteMessage: (messageId: number) => void
+  deleteMessageAsync: (roomId: number, messageId: number) => Promise<void>
   pinMessage: (messageId: number) => void
   unpinMessage: (messageId: number) => void
   clearMessages: () => void
@@ -55,26 +54,22 @@ interface ChatState {
   setError: (error: string | null) => void
   clearError: () => void
 
-  // Unread actions
   setUnreadCount: (count: number) => void
   setFirstUnreadMessageId: (id: number | null) => void
   setIsAtBottom: (isAtBottom: boolean) => void
   incrementUnread: () => void
   clearUnread: () => void
 
-  // Typing actions
   setTyping: (isTyping: boolean) => void
   addTypingUser: (roomId: number, user: TypingUser) => void
   removeTypingUser: (roomId: number, userId: number) => void
   clearTypingUsers: (roomId: number) => void
 
-  // Retry failed message
   retryMessage: (retryId: string, roomId: number, data: SendMessageRequest) => Promise<void>
   removePendingMessage: (retryId: string) => void
 }
 
-// Generate unique retry ID
-const generateRetryId = () => `retry-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+const generateRetryId = () => `retry-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
@@ -85,6 +80,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentRoomId: null,
   replyingTo: null,
   editingMessage: null,
+  editingMessageId: null,
+  deletingMessageId: null,
+  originalContent: null,
   unreadCount: 0,
   firstUnreadMessageId: null,
   isAtBottom: true,
@@ -201,11 +199,68 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }))
   },
 
+  editMessage: async (roomId, messageId, content) => {
+    const state = get()
+    const originalMessage = state.messages.find(msg => msg.id === messageId)
+    const originalContent = originalMessage?.content ?? ''
+
+    set((state) => ({
+      messages: state.messages.map(msg =>
+        msg.id === messageId ? { ...msg, content } : msg
+      ),
+      editingMessageId: messageId,
+      originalContent,
+      editingMessage: null,
+    }))
+
+    try {
+      await chatService.updateMessage(roomId, messageId, content)
+      set({ editingMessageId: null, originalContent: null })
+    } catch (err: unknown) {
+      set((state) => ({
+        messages: state.messages.map(msg =>
+          msg.id === messageId ? { ...msg, content: state.originalContent ?? originalContent } : msg
+        ),
+        editingMessageId: null,
+        originalContent: null,
+        error: 'Failed to update message',
+      }))
+      const error = err instanceof Error ? err : new Error('Unknown error')
+      throw error
+    }
+  },
+
   deleteMessage: (messageId) => {
     set((state) => ({
       messages: state.messages.filter(msg => msg.id !== messageId),
       pinnedMessages: state.pinnedMessages.filter(msg => msg.id !== messageId),
     }))
+  },
+
+  deleteMessageAsync: async (roomId, messageId) => {
+    const state = get()
+    const deletedMessage = state.messages.find(msg => msg.id === messageId)
+    const deletedPinned = state.pinnedMessages.find(msg => msg.id === messageId)
+
+    set((state) => ({
+      messages: state.messages.filter(msg => msg.id !== messageId),
+      pinnedMessages: state.pinnedMessages.filter(msg => msg.id !== messageId),
+      deletingMessageId: messageId,
+    }))
+
+    try {
+      await chatService.deleteMessage(roomId, messageId)
+      set({ deletingMessageId: null })
+    } catch (err: unknown) {
+      set((state) => ({
+        messages: deletedMessage ? [...state.messages, deletedMessage].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) : state.messages,
+        pinnedMessages: deletedPinned ? [...state.pinnedMessages, deletedPinned] : state.pinnedMessages,
+        deletingMessageId: null,
+        error: 'Failed to delete message',
+      }))
+      const error = err instanceof Error ? err : new Error('Unknown error')
+      throw error
+    }
   },
 
   pinMessage: (messageId) => {

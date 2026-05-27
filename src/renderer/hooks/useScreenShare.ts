@@ -1,8 +1,8 @@
 import { useRef, useCallback, useEffect } from 'react'
 import { App } from 'antd'
 import { useAuthStore } from '../stores/authStore'
-import { useServerStore } from '../stores/serverStore'
-import { useWebRTCStore } from '../stores/webrtcStore'
+import { useRoomStore } from '../stores/serverStore'
+import { useMediaStore } from '../stores/mediaStore'
 import { screenShareService, voiceService } from '../services'
 import { WebRTCManager } from '../utils/webrtcManager'
 import type { WebRTCSignalRequest } from '@shared/types/api'
@@ -11,7 +11,7 @@ import WebSocketService from '../services/websocketService'
 export function useScreenShare() {
   const { message } = App.useApp()
   const { currentUser } = useAuthStore()
-  const { currentServerId } = useServerStore()
+  const { currentRoomId } = useRoomStore()
   const {
     localStream,
     isSharing,
@@ -21,7 +21,7 @@ export function useScreenShare() {
     addRemoteScreen,
     removeRemoteScreen,
     clearAll,
-  } = useWebRTCStore()
+  } = useMediaStore()
 
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
   const wsRef = useRef<WebSocketService | null>(null)
@@ -32,9 +32,8 @@ export function useScreenShare() {
 
     const manager = new WebRTCManager(
       currentUser.userId,
-      // onSignal - send signal through WebSocket
       async (signal: WebRTCSignalRequest) => {
-        if (!currentServerId) return
+        if (!currentRoomId) return
         try {
           wsRef.current?.send({
             type: 'webrtc_signal',
@@ -44,29 +43,26 @@ export function useScreenShare() {
           console.error('Failed to send WebRTC signal:', err)
         }
       },
-      // onRemoteStream - received remote screen stream
       (userId: number, username: string, stream: MediaStream) => {
         addRemoteScreen(userId, username, stream)
         message.info(`${username} 开始共享屏幕`)
       },
-      // onDisconnected - remote user stopped sharing
       (userId: number) => {
         removeRemoteScreen(userId)
       }
     )
 
     webrtcManagerRef.current = manager
-  }, [currentUser?.userId, currentServerId, addRemoteScreen, removeRemoteScreen, message])
+  }, [currentUser?.userId, currentRoomId, addRemoteScreen, removeRemoteScreen, message])
 
   // Setup WebSocket listeners for WebRTC signals
   useEffect(() => {
-    if (!currentServerId || !currentUser) return
+    if (!currentRoomId || !currentUser) return
 
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
-    // Connect to WebSocket for signaling
-    const wsUrl = `ws://localhost:8080/ws?token=${token}&room_id=${currentServerId}`
+    const wsUrl = `ws://localhost:8080/ws?token=${token}&room_id=${currentRoomId}`
     const ws = new WebSocketService({
       url: wsUrl,
       reconnect: true,
@@ -104,9 +100,8 @@ export function useScreenShare() {
       ws.disconnect()
       wsRef.current = null
     }
-  }, [currentServerId, currentUser, removeRemoteScreen, message])
+  }, [currentRoomId, currentUser, removeRemoteScreen, message])
 
-  // Initialize WebRTC manager
   useEffect(() => {
     initWebRTCManager()
     return () => {
@@ -117,18 +112,16 @@ export function useScreenShare() {
 
   // Start screen share
   const startScreenShare = useCallback(async (sourceId: string) => {
-    if (!currentServerId) return
+    if (!currentRoomId) return
 
     let stream: MediaStream | null = null
     try {
-      // First, join the voice room (required for screen share)
       try {
-        await voiceService.joinVoice(Number(currentServerId))
+        await voiceService.joinVoice(Number(currentRoomId))
       } catch {
-        // Continue even if voice join fails - user might already be in the room
+        // Ignore voice join error, continue with screen share
       }
 
-      // Get the screen stream with audio
       stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           mandatory: {
@@ -150,24 +143,20 @@ export function useScreenShare() {
       console.error('Video tracks:', stream.getVideoTracks())
       console.error('Audio tracks:', stream.getAudioTracks())
 
-      // Store local stream
       setLocalStream(stream)
       setIsSharing(true)
 
-      // Notify backend via WebSocket
       wsRef.current?.send({
         type: 'screen_share_start',
         userId: currentUser?.userId,
         username: currentUser?.username,
       })
 
-      // Also notify backend via HTTP API
-      await screenShareService.startScreenShare(Number(currentServerId))
+      await screenShareService.startScreenShare(Number(currentRoomId))
 
       message.success('屏幕共享已开始')
     } catch (err) {
       console.error('Screen share error:', err)
-      // Clean up stream if it was created
       if (stream) {
         stream.getTracks().forEach(track => track.stop())
       }
@@ -183,30 +172,25 @@ export function useScreenShare() {
       }
       message.error(errorMessage)
     }
-  }, [currentServerId, setLocalStream, setIsSharing, message, currentUser?.userId, currentUser?.username])
+  }, [currentRoomId, setLocalStream, setIsSharing, message, currentUser?.userId, currentUser?.username])
 
-  // Stop screen share
   const stopScreenShare = useCallback(async () => {
-    if (!currentServerId) return
+    if (!currentRoomId) return
 
     try {
-      // Stop local stream
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop())
         setLocalStream(null)
       }
 
-      // Close WebRTC connections
       webrtcManagerRef.current?.stopScreenShare()
 
-      // Notify backend via WebSocket
       wsRef.current?.send({
         type: 'screen_share_stop',
         userId: currentUser?.userId,
       })
 
-      // Also notify backend via HTTP API
-      await screenShareService.stopScreenShare(Number(currentServerId))
+      await screenShareService.stopScreenShare(Number(currentRoomId))
 
       setIsSharing(false)
       message.success('屏幕共享已停止')
@@ -214,7 +198,7 @@ export function useScreenShare() {
       console.error('Stop screen share error:', err)
       message.error('停止屏幕共享失败')
     }
-  }, [currentServerId, localStream, setLocalStream, setIsSharing, message, currentUser?.userId])
+  }, [currentRoomId, localStream, setLocalStream, setIsSharing, message, currentUser?.userId])
 
   // Cleanup on unmount
   useEffect(() => {

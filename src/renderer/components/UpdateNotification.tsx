@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DownloadOutlined, ReloadOutlined, CloseOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { Button } from './ui/Button'
+import { notificationVariants } from '@renderer/utils/animations'
 
 interface UpdateInfo {
   version: string
@@ -117,122 +118,123 @@ export function UpdateNotification({ className = '' }: UpdateNotificationProps) 
     return `${formatBytes(bytesPerSecond)}/s`
   }
 
-  // Don't render if idle, checking, or dismissed
-  if (updateState === 'idle' || updateState === 'checking' || isDismissed) {
-    return null
-  }
+  const isVisible = updateState !== 'idle' && updateState !== 'checking' && !isDismissed
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className={`fixed top-4 right-4 z-50 max-w-sm ${className}`}
-      >
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-blue-50 dark:bg-blue-900/30 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <CheckCircleOutlined className="text-blue-500" />
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Update Available
-              </span>
+      {isVisible && (
+        <motion.div
+          key="update-notification"
+          variants={notificationVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className={`fixed top-4 right-4 z-50 max-w-sm ${className}`}
+        >
+          <div className="bg-[var(--color-bg-secondary)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-primary)]/10 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2">
+                <CheckCircleOutlined className="text-[var(--color-online)]" />
+                <span className="text-sm font-medium text-[var(--color-text-normal)]">
+                  Update Available
+                </span>
+              </div>
+              <button
+                onClick={handleDismiss}
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] transition-colors"
+              >
+                <CloseOutlined className="text-sm" />
+              </button>
             </div>
-            <button
-              onClick={handleDismiss}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <CloseOutlined className="text-sm" />
-            </button>
-          </div>
 
-          {/* Content */}
-          <div className="px-4 py-3">
-            {updateState === 'available' && updateInfo && (
-              <>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Version <span className="font-medium text-gray-900 dark:text-gray-100">{updateInfo.version}</span> is now available.
-                </p>
-                {updateInfo.releaseNotes && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
-                    {updateInfo.releaseNotes}
+            {/* Content */}
+            <div className="px-4 py-3">
+              {updateState === 'available' && updateInfo && (
+                <>
+                  <p className="text-sm text-[var(--color-text-muted)] mb-3">
+                    Version <span className="font-medium text-[var(--color-text-normal)]">{updateInfo.version}</span> is now available.
                   </p>
-                )}
-                <div className="flex gap-2">
+                  {updateInfo.releaseNotes && (
+                    <p className="text-xs text-[var(--color-text-muted)] mb-3 line-clamp-2">
+                      {updateInfo.releaseNotes}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleDownload}
+                      className="flex items-center gap-1"
+                    >
+                      <DownloadOutlined className="text-sm" />
+                      Download
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleDismiss}
+                    >
+                      Later
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {updateState === 'downloading' && downloadProgress && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--color-text-muted)]">Downloading...</span>
+                    <span className="text-[var(--color-text-normal)] font-medium">
+                      {downloadProgress.percent.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-[var(--color-bg-tertiary)] rounded-full h-2">
+                    <div
+                      className="bg-[var(--color-primary)] h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${downloadProgress.percent}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+                    <span>{formatBytes(downloadProgress.transferred)} / {formatBytes(downloadProgress.total)}</span>
+                    <span>{formatSpeed(downloadProgress.bytesPerSecond)}</span>
+                  </div>
+                </div>
+              )}
+
+              {updateState === 'downloaded' && updateInfo && (
+                <>
+                  <p className="text-sm text-[var(--color-text-muted)] mb-3">
+                    Version <span className="font-medium text-[var(--color-text-normal)]">{updateInfo.version}</span> is ready to install.
+                  </p>
                   <Button
-                    size="small"
-                    onClick={handleDownload}
+                    size="sm"
+                    onClick={handleInstall}
                     className="flex items-center gap-1"
                   >
-                    <DownloadOutlined className="text-sm" />
-                    Download
+                    <ReloadOutlined className="text-sm" />
+                    Restart & Install
                   </Button>
+                </>
+              )}
+
+              {updateState === 'error' && errorMessage && (
+                <>
+                  <p className="text-sm text-[var(--color-dnd)] mb-3">
+                    Update failed: {errorMessage}
+                  </p>
                   <Button
-                    size="small"
+                    size="sm"
                     variant="ghost"
                     onClick={handleDismiss}
                   >
-                    Later
+                    Dismiss
                   </Button>
-                </div>
-              </>
-            )}
-
-            {updateState === 'downloading' && downloadProgress && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Downloading...</span>
-                  <span className="text-gray-900 dark:text-gray-100 font-medium">
-                    {downloadProgress.percent.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${downloadProgress.percent}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span>{formatBytes(downloadProgress.transferred)} / {formatBytes(downloadProgress.total)}</span>
-                  <span>{formatSpeed(downloadProgress.bytesPerSecond)}</span>
-                </div>
-              </div>
-            )}
-
-            {updateState === 'downloaded' && updateInfo && (
-              <>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Version <span className="font-medium text-gray-900 dark:text-gray-100">{updateInfo.version}</span> is ready to install.
-                </p>
-                <Button
-                  size="small"
-                  onClick={handleInstall}
-                  className="flex items-center gap-1"
-                >
-                  <ReloadOutlined className="text-sm" />
-                  Restart & Install
-                </Button>
-              </>
-            )}
-
-            {updateState === 'error' && errorMessage && (
-              <>
-                <p className="text-sm text-red-600 dark:text-red-400 mb-3">
-                  Update failed: {errorMessage}
-                </p>
-                <Button
-                  size="small"
-                  variant="ghost"
-                  onClick={handleDismiss}
-                >
-                  Dismiss
-                </Button>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   )
 }

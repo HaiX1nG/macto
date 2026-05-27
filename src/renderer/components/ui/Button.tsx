@@ -3,125 +3,96 @@ import { Button as AntdButton } from 'antd'
 import { cn } from '@renderer/utils/cn'
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'success' | 'warning' | 'outline'
+type ButtonSize = 'sm' | 'md' | 'lg'
 
 interface ButtonProps extends Omit<AntdButtonProps, 'className' | 'variant' | 'size'> {
   variant?: ButtonVariant
-  size?: 'small' | 'middle' | 'large'
+  /** @deprecated Use 'sm' | 'md' | 'lg' instead. 'small' maps to 'sm', 'middle' maps to 'md', 'large' maps to 'lg' */
+  size?: ButtonSize | 'small' | 'middle' | 'large'
   fullWidth?: boolean
   loading?: boolean
   className?: string
 }
 
+const normalizeSize = (size: ButtonSize | 'small' | 'middle' | 'large'): ButtonSize => {
+  const sizeMap: Record<string, ButtonSize> = {
+    'small': 'sm',
+    'middle': 'md',
+    'large': 'lg',
+  }
+  return sizeMap[size] ?? size as ButtonSize
+}
+
 export const Button = ({
   variant = 'primary',
-  size = 'middle',
+  size = 'md',
   fullWidth = false,
   className,
   ...props
 }: ButtonProps) => {
-  const variants = {
+  const normalizedSize = normalizeSize(size)
+
+  const variants: Record<ButtonVariant, string> = {
     primary: cn(
-      /* Base styles */
-      'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)]',
-      'text-white font-semibold',
-      /* Shadow */
-      'shadow-[var(--shadow-glow-primary)] hover:shadow-[var(--shadow-glow-primary-hover)]',
-      /* Focus ring */
-      'focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:ring-offset-2',
-      /* Dark mode */
-      'dark:bg-[var(--color-primary)] dark:hover:bg-[var(--color-primary-hover)] dark:active:bg-[var(--color-primary-active)]',
-      'dark:shadow-[var(--shadow-glow-primary)] dark:hover:shadow-[var(--shadow-glow-primary-hover)]'
+      'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 active:bg-[var(--color-primary)]/70',
+      'text-[var(--color-bg-base)] font-semibold',
+      'shadow-sm hover:shadow-md',
+      'focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:ring-offset-2 focus:ring-offset-[var(--color-bg-base)]'
     ),
     secondary: cn(
-      /* Base styles */
-      'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
-      'hover:bg-[var(--color-border-light)] dark:hover:bg-[var(--color-border-dark)]',
-      'active:bg-[var(--color-border-secondary-light)] dark:active:bg-[var(--color-border-secondary-dark)]',
-      'text-[var(--color-text-light)] dark:text-[var(--color-text-dark)] font-semibold',
-      /* Border */
-      'border border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      /* Shadow */
-      'shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]',
-      /* Focus ring */
-      'focus:ring-2 focus:ring-gray-500/30 focus:ring-offset-2'
+      'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-darker)] active:bg-[var(--color-bg-darkest)]',
+      'text-[var(--color-text-normal)] font-semibold',
+      'border border-[var(--color-border)]',
+      'shadow-sm hover:shadow-md',
+      'focus:ring-2 focus:ring-[var(--color-border)] focus:ring-offset-2'
     ),
     danger: cn(
-      /* Base styles */
-      'bg-[var(--color-error)] hover:bg-[var(--color-error-hover)] active:bg-[var(--color-error-active)]',
-      'text-white font-semibold',
-      /* Shadow */
-      'shadow-[var(--shadow-glow-error)] hover:shadow-lg hover:shadow-red-500/40',
-      /* Focus ring */
-      'focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2',
-      /* Dark mode */
-      'dark:bg-[var(--color-error)] dark:hover:bg-[var(--color-error-hover)] dark:active:bg-[var(--color-error-active)]'
+      'bg-[var(--color-dnd)] hover:bg-[var(--color-dnd)]/80 active:bg-[var(--color-dnd)]/70',
+      'text-[var(--color-bg-base)] font-semibold',
+      'shadow-sm hover:shadow-md',
+      'focus:ring-2 focus:ring-[var(--color-dnd)]/30 focus:ring-offset-2'
     ),
     success: cn(
-      /* Base styles */
-      'bg-[var(--color-success)] hover:bg-[var(--color-success-hover)] active:bg-[var(--color-success-active)]',
-      'text-white font-semibold',
-      /* Shadow */
-      'shadow-[var(--shadow-glow-success)] hover:shadow-lg hover:shadow-green-500/40',
-      /* Focus ring */
-      'focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2',
-      /* Dark mode */
-      'dark:bg-[var(--color-success)] dark:hover:bg-[var(--color-success-hover)] dark:active:bg-[var(--color-success-active)]'
+      'bg-[var(--color-online)] hover:bg-[var(--color-online)]/80 active:bg-[var(--color-online)]/70',
+      'text-[var(--color-bg-base)] font-semibold',
+      'shadow-sm hover:shadow-md',
+      'focus:ring-2 focus:ring-[var(--color-online)]/30 focus:ring-offset-2'
     ),
     warning: cn(
-      /* Base styles */
-      'bg-[var(--color-warning)] hover:bg-[var(--color-warning-hover)] active:bg-[var(--color-warning-active)]',
-      'text-white font-semibold',
-      /* Shadow */
-      'shadow-lg shadow-amber-500/25 hover:shadow-lg hover:shadow-amber-500/40',
-      /* Focus ring */
-      'focus:ring-2 focus:ring-amber-500/50 focus:ring-offset-2',
-      /* Dark mode */
-      'dark:bg-[var(--color-warning)] dark:hover:bg-[var(--color-warning-hover)] dark:active:bg-[var(--color-warning-active)]'
+      'bg-[var(--color-idle)] hover:bg-[var(--color-idle)]/80 active:bg-[var(--color-idle)]/70',
+      'text-[var(--color-bg-base)] font-semibold',
+      'shadow-sm hover:shadow-md',
+      'focus:ring-2 focus:ring-[var(--color-idle)]/30 focus:ring-offset-2'
     ),
     ghost: cn(
-      /* Base styles */
-      'bg-transparent hover:bg-[var(--color-bg-tertiary-light)] active:bg-[var(--color-border-light)]',
-      'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] font-semibold',
-      /* Dark mode */
-      'dark:hover:bg-[var(--color-bg-tertiary-dark)] dark:active:bg-[var(--color-border-dark)]',
-      /* Focus ring */
-      'focus:ring-2 focus:ring-gray-500/30'
+      'bg-transparent hover:bg-[var(--color-bg-tertiary)] active:bg-[var(--color-bg-darker)]',
+      'text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] font-semibold',
+      'focus:ring-2 focus:ring-[var(--color-border)]'
     ),
     outline: cn(
-      /* Base styles */
-      'bg-transparent hover:bg-[var(--color-primary-light)] active:bg-blue-100',
-      'text-[var(--color-primary)] dark:text-[var(--color-primary)] font-semibold',
-      /* Border */
+      'bg-transparent hover:bg-[var(--color-primary)]/10 active:bg-[var(--color-primary)]/20',
+      'text-[var(--color-primary)] font-semibold',
       'border-2 border-[var(--color-primary)]',
-      /* Dark mode */
-      'dark:hover:bg-[var(--color-primary-light)] dark:active:bg-blue-900/30',
-      /* Focus ring */
       'focus:ring-2 focus:ring-[var(--color-primary)]/30'
     ),
   }
 
-  const sizes = {
-    small: 'px-3 py-1.5 text-xs rounded-[var(--radius-md)]',
-    middle: 'px-5 py-2.5 text-sm rounded-[var(--radius-lg)]',
-    large: 'px-8 py-3.5 text-base rounded-[var(--radius-xl)]',
+  const sizes: Record<ButtonSize, string> = {
+    sm: 'px-3 py-1.5 text-xs rounded-lg',
+    md: 'px-5 py-2.5 text-sm rounded-xl',
+    lg: 'px-8 py-3.5 text-base rounded-2xl',
   }
 
   return (
     <AntdButton
-      size={size}
       className={cn(
-        /* Base styles */
-        'font-medium transition-[var(--transition-all)] ease-out',
+        'font-medium transition-colors duration-150 ease-out transition-transform',
         'focus:outline-none disabled:opacity-50 disabled:pointer-events-none',
-        'active:scale-[0.98] hover:scale-[1.02]',
+        'active:scale-95 hover:scale-[1.01] hover:duration-150',
         'inline-flex items-center justify-center gap-2',
-        /* Variant styles */
         variants[variant],
-        /* Size styles */
-        sizes[size],
-        /* Full width */
+        sizes[normalizedSize],
         fullWidth && 'w-full',
-        /* Custom class */
         className
       )}
       {...props}

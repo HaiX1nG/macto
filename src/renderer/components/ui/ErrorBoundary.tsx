@@ -5,7 +5,7 @@
  */
 
 import { Component, type ReactNode, type ErrorInfo } from 'react'
-import { Button } from 'antd'
+import { Button } from '@renderer/components/ui/Button'
 import { ReloadOutlined, BugOutlined, HomeOutlined } from '@ant-design/icons'
 
 interface ErrorBoundaryProps {
@@ -105,24 +105,26 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {/* Actions */}
             <div className="flex items-center justify-center gap-3">
               <Button
+                variant="secondary"
+                size="sm"
                 icon={<ReloadOutlined />}
                 onClick={this.handleRetry}
-                className="rounded-lg"
               >
                 重试
               </Button>
               <Button
-                type="primary"
+                variant="primary"
+                size="sm"
                 icon={<ReloadOutlined />}
                 onClick={this.handleReload}
-                className="rounded-lg"
               >
                 刷新页面
               </Button>
               <Button
+                variant="secondary"
+                size="sm"
                 icon={<HomeOutlined />}
                 onClick={this.handleGoHome}
-                className="rounded-lg"
               >
                 返回首页
               </Button>
@@ -159,10 +161,10 @@ export function NetworkErrorFallback({
       </p>
       {onRetry && (
         <Button
-          type="primary"
+          variant="primary"
+          size="sm"
           icon={<ReloadOutlined />}
           onClick={onRetry}
-          className="rounded-lg"
         >
           重试
         </Button>
@@ -200,10 +202,10 @@ export function ErrorFallback({
       </p>
       {onRetry && (
         <Button
-          type="primary"
+          variant="primary"
+          size="sm"
           icon={<ReloadOutlined />}
           onClick={onRetry}
-          className="rounded-lg"
         >
           重试
         </Button>

@@ -6,68 +6,70 @@
 
 import React from 'react'
 import { Button, Typography, Slider } from 'antd'
-import { AudioOutlined, AudioMutedOutlined, SoundOutlined, SettingOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { AudioOutlined, AudioMutedOutlined, SoundOutlined, SettingOutlined, VideoCameraOutlined, UserAddOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
+import { EmptyState } from '@renderer/components/ui/EmptyState'
+import { Skeleton, SkeletonAvatar } from '@renderer/components/ui/Skeleton'
+import { getAvatarGradient, getAvatarInitial } from '@renderer/utils/avatar'
+import { statusColorMap, getStatusLabel } from '@renderer/utils/status'
+import { PlaylistPanel } from '@renderer/components/playlist/PlaylistPanel'
+import type { VoiceParticipant } from '@shared/types/participant'
 
 const { Text } = Typography
 
-interface Participant {
-  id: string
-  name: string
-  status: 'online' | 'away' | 'busy'
-  isMuted?: boolean
-  volume?: number
-}
-
 interface VoiceViewProps {
-  participants: Participant[]
+  participants: VoiceParticipant[]
+  roomId?: number
   onMuteToggle?: (participantId: string) => void
   onVolumeChange?: (participantId: string, volume: number) => void
   onDeviceSettings?: () => void
   currentVolume?: number
+  loading?: boolean
 }
 
 export const VoiceView: React.FC<VoiceViewProps> = ({
   participants = [],
+  roomId,
   onMuteToggle,
   onVolumeChange,
   onDeviceSettings,
   currentVolume = 70,
+  loading = false,
 }) => {
   return (
-    <div className="flex h-screen bg-[var(--color-bg-secondary-light)] dark:bg-[var(--color-bg-dark)] transition-colors duration-300">
+    <div className="flex h-screen bg-[var(--color-bg-secondary)] animate-fade-in will-change-[opacity]">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className={cn(
-          'h-16 bg-white dark:bg-[var(--color-bg-dark)]',
-          'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+          'h-[var(--header-height)] bg-[var(--color-bg-base)]',
+          'border-b border-[var(--color-border)]',
           'flex items-center justify-between px-6',
           'sticky top-0 z-10',
-          'transition-colors duration-300'
+          'transition-colors duration-200'
         )}>
           <div className="flex items-center gap-4">
             <div className={cn(
               'w-10 h-10 rounded-xl',
-              'bg-[var(--color-primary-light)] dark:bg-[var(--color-primary-light)]/10',
+              'bg-[var(--color-primary)]/10',
               'flex items-center justify-center',
-              'text-[var(--color-primary)] dark:text-[var(--color-primary)]'
+              'text-[var(--color-primary)]'
             )}>
               <AudioOutlined className="text-xl" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">语音频道</h1>
-              <Text type="secondary" className="text-xs">实时语音交流</Text>
+              <h1 className="text-xl font-bold text-[var(--color-text-normal)]">语音频道</h1>
+              <Text className="text-xs text-[var(--color-text-muted)]">实时语音交流</Text>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-full',
-              'bg-[var(--color-success-light)] dark:bg-[var(--color-success-light)]/10',
-              'text-[var(--color-success)] dark:text-[var(--color-success)]',
+              'bg-[var(--color-online)]/10',
+              'text-[var(--color-online)]',
               'text-sm font-medium'
             )}>
-              <span className="w-2 h-2 bg-[var(--color-success)] rounded-full animate-pulse" />
+              <span className="w-2 h-2 bg-[var(--color-online)] rounded-full animate-pulse" />
               {participants.length} 人在线
             </div>
             <Button
@@ -76,9 +78,9 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
               onClick={onDeviceSettings}
               className={cn(
                 'w-10 h-10 rounded-xl',
-                'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
-                'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
-                'hover:text-[var(--color-primary)] dark:hover:text-[var(--color-primary)]'
+                'text-[var(--color-text-muted)]',
+                'hover:bg-[var(--color-bg-tertiary)]',
+                'hover:text-[var(--color-primary)]'
               )}
             />
           </div>
@@ -86,29 +88,34 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
 
         {/* Participants Grid */}
         <div className="flex-1 p-6 overflow-y-auto pb-32">
-          {participants.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className={cn(
-                'w-24 h-24 rounded-3xl',
-                'bg-gradient-to-br from-[var(--color-primary)] to-purple-600',
-                'flex items-center justify-center mb-6',
-                'shadow-2xl shadow-[var(--color-primary)]/30'
-              )}>
-                <AudioOutlined className="text-5xl text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)] mb-3">
-                暂无参与者
-              </h3>
-              <p className="text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] mb-8 max-w-md">
-                邀请朋友加入语音频道，开始实时交流
-              </p>
-              <Button
-                type="primary"
-                size="large"
-                className="px-10 rounded-xl font-semibold"
-              >
-                邀请朋友
-              </Button>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-2xl p-6 bg-[var(--color-bg-base)] border border-[var(--color-border)]">
+                  <div className="flex flex-col items-center gap-4">
+                    <SkeletonAvatar size={96} />
+                    <Skeleton variant="rounded" width="75%" height={18} />
+                    <Skeleton variant="text" width="50%" height={14} />
+                    <div className="w-full mt-2">
+                      <Skeleton variant="rounded" width="100%" height={40} className="rounded-xl" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : participants.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <EmptyState
+                iconType="audio"
+                title="暂无参与者"
+                description="邀请朋友加入语音频道，开始实时交流"
+                action={{
+                  label: '邀请朋友',
+                  onClick: () => {},
+                  icon: <UserAddOutlined />,
+                  variant: 'primary',
+                }}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -127,12 +134,12 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
         {/* Bottom Control Bar */}
         <div className={cn(
           'fixed bottom-0 left-0 right-0',
-          'bg-white/95 dark:bg-[var(--color-bg-dark)]/95',
-          'backdrop-blur-lg',
-          'border-t border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+          'bg-[var(--color-bg-base)]/95',
+          'backdrop-blur-xl',
+          'border-t border-[var(--color-border)]',
           'p-5 z-50',
-          'shadow-2xl shadow-black/10 dark:shadow-black/50',
-          'transition-colors duration-300'
+          'shadow-2xl shadow-black/10',
+          'transition-colors duration-200'
         )}>
           <div className="max-w-4xl mx-auto">
             {/* Control Buttons */}
@@ -143,55 +150,53 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
             </div>
             {/* Volume Slider */}
             <div className="flex items-center justify-center gap-4">
-              <SoundOutlined className="text-[var(--color-text-tertiary-light)] dark:text-[var(--color-text-tertiary-dark)]" />
+              <SoundOutlined className="text-[var(--color-text-muted)]" />
               <Slider
                 value={currentVolume}
                 min={0}
                 max={100}
                 className="flex-1 max-w-md"
               />
-              <span className="text-sm font-medium text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] w-12 text-right">
+              <span className="text-sm font-medium text-[var(--color-text-muted)] w-12 text-right">
                 {currentVolume}%
               </span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Playlist Sidebar */}
+      {roomId && (
+        <div className={cn(
+          'w-80 border-l border-[var(--color-border)]',
+          'bg-[var(--color-bg-secondary)]',
+          'hidden lg:block',
+          'overflow-y-auto'
+        )}>
+          <div className="p-4">
+            <PlaylistPanel roomId={roomId} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 interface ParticipantCardProps {
-  participant: Participant
+  participant: VoiceParticipant
   onMuteToggle?: (id: string) => void
   onVolumeChange?: (id: string, volume: number) => void
 }
 
 const ParticipantCard = ({ participant, onMuteToggle, onVolumeChange }: ParticipantCardProps) => {
-  const statusColors = {
-    online: 'bg-green-500 shadow-green-500/30',
-    away: 'bg-yellow-500 shadow-yellow-500/30',
-    busy: 'bg-red-500 shadow-red-500/30',
-  }
-
-  const getAvatarGradient = (name: string) => {
-    const gradients = [
-      'bg-gradient-to-br from-blue-500 to-purple-600',
-      'bg-gradient-to-br from-green-500 to-teal-600',
-      'bg-gradient-to-br from-orange-500 to-red-600',
-      'bg-gradient-to-br from-pink-500 to-rose-600',
-      'bg-gradient-to-br from-cyan-500 to-blue-600',
-    ]
-    return gradients[name.charCodeAt(0) % gradients.length]
-  }
 
   return (
     <div className={cn(
-      'bg-white dark:bg-[var(--color-bg-tertiary-dark)] rounded-2xl p-6',
-      'border border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'hover:border-[var(--color-primary)] dark:hover:border-[var(--color-primary)]',
+      'bg-[var(--color-bg-base)] rounded-2xl p-6',
+      'border border-[var(--color-border)]',
+      'hover:border-[var(--color-primary)]',
       'hover:shadow-xl hover:-translate-y-1',
-      'transition-all duration-300 group'
+      'transition-[transform,box-shadow,border-color] duration-200 group'
     )}>
       <div className="flex flex-col items-center gap-5">
         {/* Avatar */}
@@ -199,30 +204,35 @@ const ParticipantCard = ({ participant, onMuteToggle, onVolumeChange }: Particip
           <div className={cn(
             'w-24 h-24 rounded-full flex items-center justify-center',
             'text-3xl font-bold text-white shadow-lg',
-            getAvatarGradient(participant.name),
-            statusColors[participant.status]
+            getAvatarGradient(participant.name, 'extended')
           )}>
-            {participant.name.charAt(0).toUpperCase()}
+            {getAvatarInitial(participant.name)}
           </div>
           {participant.isMuted && (
             <div className={cn(
               'absolute -top-2 -right-2 w-8 h-8 rounded-full',
-              'bg-red-500 flex items-center justify-center',
-              'text-white border-4 border-white dark:border-[#1a1a25]',
+              'bg-[var(--color-dnd)] flex items-center justify-center',
+              'text-white border-4 border-[var(--color-bg-base)]',
               'shadow-lg'
             )}>
               <AudioMutedOutlined className="text-sm" />
             </div>
           )}
+          {/* Status Indicator */}
+          <div className={cn(
+            'absolute bottom-1 right-1 w-5 h-5 rounded-full',
+            'border-3 border-[var(--color-bg-base)]',
+            statusColorMap[participant.status]
+          )} />
         </div>
 
         {/* Name */}
         <div className="text-center w-full">
-          <h3 className="text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
+          <h3 className="text-lg font-semibold text-[var(--color-text-normal)]">
             {participant.name}
           </h3>
-          <p className="text-sm text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] mt-1">
-            {participant.isMuted ? '已静音' : '说话中'}
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">
+            {participant.status !== 'online' ? getStatusLabel(participant.status) : participant.isMuted ? '已静音' : '说话中'}
           </p>
         </div>
 
@@ -230,8 +240,8 @@ const ParticipantCard = ({ participant, onMuteToggle, onVolumeChange }: Particip
         {participant.volume !== undefined && (
           <div className="w-full px-2">
             <div className="flex items-center justify-between mb-2">
-              <Text className="text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">音量</Text>
-              <Text className="text-xs font-medium text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
+              <Text className="text-xs text-[var(--color-text-muted)]">音量</Text>
+              <Text className="text-xs font-medium text-[var(--color-text-normal)]">
                 {participant.volume}%
               </Text>
             </div>
@@ -257,18 +267,18 @@ const ParticipantCard = ({ participant, onMuteToggle, onVolumeChange }: Particip
               'flex-1 px-4 py-3 rounded-xl text-sm font-semibold',
               'transition-all duration-200 shadow-lg',
               participant.isMuted
-                ? 'bg-[var(--color-success)] hover:bg-[var(--color-success-hover)] text-white shadow-[var(--color-success)]/30'
-                : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-[var(--color-primary)]/30'
+                ? 'bg-[var(--color-online)] hover:opacity-90 text-white shadow-[var(--color-online)]/30'
+                : 'bg-[var(--color-primary)] hover:opacity-90 text-white shadow-[var(--color-primary)]/30'
             )}
           >
             {participant.isMuted ? '取消静音' : '静音'}
           </button>
           <button className={cn(
             'flex-1 px-4 py-3 rounded-xl text-sm font-semibold',
-            'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
-            'hover:bg-[var(--color-border-light)] dark:hover:bg-[var(--color-border-dark)]',
-            'text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
-            'transition-all duration-200'
+            'bg-[var(--color-bg-tertiary)]',
+            'hover:bg-[var(--color-border)]',
+            'text-[var(--color-text-normal)]',
+            'transition-[background-color,transform] duration-150'
           )}>
             拉黑
           </button>
@@ -295,9 +305,9 @@ const ControlButton = ({ icon, label, active = false }: ControlButtonProps) => (
           'shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-[var(--color-primary)]/40'
         )
       : cn(
-          'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
-          'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
-          'hover:bg-[var(--color-border-light)] dark:hover:bg-[var(--color-border-dark)]'
+          'bg-[var(--color-bg-tertiary)]',
+          'text-[var(--color-text-muted)]',
+          'hover:bg-[var(--color-border)]'
         )
   )}>
     <div className={cn(

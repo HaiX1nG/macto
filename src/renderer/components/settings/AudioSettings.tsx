@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Modal, Slider, Select, Spin } from 'antd'
+import { Slider, Select, Spin } from 'antd'
 import { AudioOutlined, SoundOutlined } from '@ant-design/icons'
+import { Modal } from '@renderer/components/ui/Modal'
+import { cn } from '@renderer/utils/cn'
 
 interface AudioDevice {
   deviceId: string
@@ -78,16 +80,36 @@ export function AudioSettings({ open, onClose }: AudioSettingsProps) {
 
   return (
     <Modal
-      open={open}
+      isOpen={open}
+      onClose={onClose}
       title="音频设置"
-      onCancel={onClose}
-      onOk={handleSave}
-      okText="保存"
-      cancelText="取消"
-      width={500}
-      styles={{
-        body: { backgroundColor: 'var(--color-bg-secondary)' }
-      }}
+      size="md"
+      footer={
+        <>
+          <button
+            onClick={onClose}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-medium',
+              'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-darker)]',
+              'text-[var(--color-text-normal)]',
+              'transition-colors duration-150 ease-out'
+            )}
+          >
+            取消
+          </button>
+          <button
+            onClick={handleSave}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-medium',
+              'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80',
+              'text-[var(--color-bg-base)]',
+              'transition-colors duration-150 ease-out'
+            )}
+          >
+            保存
+          </button>
+        </>
+      }
     >
       {loading ? (
         <div className="flex items-center justify-center py-12">

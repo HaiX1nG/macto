@@ -16,7 +16,7 @@ const openExternal = (url: string) => {
     const electronAPI = (window as unknown as { electronAPI?: { openExternal: (url: string) => void } }).electronAPI
     electronAPI?.openExternal?.(url)
   } else {
-    window.open(url, '_blank', 'noopener,noreferrer')
+    ;(window as unknown as { open: (url: string, target: string, features: string) => void }).open(url, '_blank', 'noopener,noreferrer')
   }
 }
 
@@ -54,7 +54,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           rehypeRaw,
           rehypeHighlight,
         ]}
-        components={{
+                components={{
           // Handle links - open in external browser in Electron
           a: ({ href, children, ...props }) => {
             const handleClick = (e: React.MouseEvent) => {
@@ -277,16 +277,24 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           // Strikethrough (GFM)
           del: ({ children, ...props }) => <del className="line-through opacity-70" {...props}>{children}</del>,
           // Strike (deprecated) - use span with styling
-          strike: ({ children, ...props }) => <span className="line-through opacity-70" {...props}>{children}</span>,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          strike: ({ children, ...props }: any) => (
+            <span className="line-through opacity-70" {...props}>
+              {children}
+            </span>
+          ),
           s: ({ children, ...props }) => <s className="line-through opacity-70" {...props}>{children}</s>,
           // Insert
           ins: ({ children, ...props }) => <ins className="underline decoration-green-500" {...props}>{children}</ins>,
           // Teletype (deprecated) - use span with font-mono
-          tt: ({ children, ...props }) => <span className="font-mono" {...props}>{children}</span>,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tt: ({ children, ...props }: any) => <span className="font-mono" {...props}>{children}</span>,
           // Font (deprecated) - pass through
-          font: ({ children, ...props }) => <span {...props}>{children}</span>,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          font: ({ children, ...props }: any) => <span {...props}>{children}</span>,
           // Center (deprecated)
-          center: ({ children, ...props }) => <div className="text-center" {...props}>{children}</div>,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          center: ({ children, ...props }: any) => <div className="text-center" {...props}>{children}</div>,
           // Task list items (GFM)
           input: (props) => {
             const inputProps = props as { type?: string; checked?: boolean }
@@ -362,7 +370,9 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           br: (props) => <br {...props} />,
           // Word break opportunity
           wbr: (props) => <wbr {...props} />,
-        }}
+        // Type assertion needed: react-markdown's Components type doesn't include deprecated HTML elements
+        // like 'strike', 'tt', 'font', 'center' which we handle for legacy content support
+        } as React.ComponentPropsWithoutRef<typeof ReactMarkdown>['components']}
       >
         {decodedContent}
       </ReactMarkdown>

@@ -13,10 +13,11 @@ export const BREAKPOINTS = {
 
 // Sidebar widths
 export const SIDEBAR_WIDTHS = {
-  server: 72,      // Server icon bar
-  channel: 240,    // Channel list (expanded)
+  server: 72,           // Server icon bar (collapsed)
+  serverExpanded: 200,  // Server sidebar (expanded)
+  channel: 240,         // Channel list (expanded)
   channelCollapsed: 60, // Channel list (collapsed)
-  member: 240,     // Member list
+  member: 240,          // Member list
 } as const
 
 // Header height
@@ -24,18 +25,26 @@ export const HEADER_HEIGHT = 48
 
 interface LayoutState {
   // Sidebar states
+  serverSidebarExpanded: boolean
   channelSidebarCollapsed: boolean
   memberListVisible: boolean
+
+  // Mobile sidebar state
+  mobileChannelSidebarOpen: boolean
 
   // Responsive breakpoint
   currentBreakpoint: Breakpoint
 
   // Actions
+  toggleServerSidebar: () => void
+  setServerSidebarExpanded: (expanded: boolean) => void
   toggleChannelSidebar: () => void
   setChannelSidebarCollapsed: (collapsed: boolean) => void
   toggleMemberList: () => void
   setMemberListVisible: (visible: boolean) => void
   updateBreakpoint: (width: number) => void
+  toggleMobileChannelSidebar: () => void
+  closeMobileChannelSidebar: () => void
 
   // Computed helpers
   isSmallScreen: () => boolean
@@ -44,9 +53,19 @@ interface LayoutState {
 }
 
 export const useLayoutStore = create<LayoutState>((set, get) => ({
+  serverSidebarExpanded: false,
   channelSidebarCollapsed: false,
   memberListVisible: true,
+  mobileChannelSidebarOpen: false,
   currentBreakpoint: 'lg',
+
+  toggleServerSidebar: () => set((state) => ({
+    serverSidebarExpanded: !state.serverSidebarExpanded
+  })),
+
+  setServerSidebarExpanded: (expanded) => set({
+    serverSidebarExpanded: expanded
+  }),
 
   toggleChannelSidebar: () => set((state) => ({
     channelSidebarCollapsed: !state.channelSidebarCollapsed
@@ -64,6 +83,12 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
     memberListVisible: visible
   }),
 
+  toggleMobileChannelSidebar: () => set((state) => ({
+    mobileChannelSidebarOpen: !state.mobileChannelSidebarOpen
+  })),
+
+  closeMobileChannelSidebar: () => set({ mobileChannelSidebarOpen: false }),
+
   updateBreakpoint: (width) => {
     let breakpoint: Breakpoint
     if (width >= BREAKPOINTS['2xl']) breakpoint = '2xl'
@@ -78,11 +103,21 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
     const newMemberListVisible = width >= BREAKPOINTS.lg
     const newChannelSidebarCollapsed = width < BREAKPOINTS.md
 
-    set({
-      currentBreakpoint: breakpoint,
-      memberListVisible: currentState.memberListVisible && newMemberListVisible,
-      channelSidebarCollapsed: newChannelSidebarCollapsed,
-    })
+    // If switching to non-mobile breakpoint, close mobile sidebar
+    if (breakpoint !== 'sm') {
+      set({
+        currentBreakpoint: breakpoint,
+        memberListVisible: currentState.memberListVisible && newMemberListVisible,
+        channelSidebarCollapsed: newChannelSidebarCollapsed,
+        mobileChannelSidebarOpen: false,
+      })
+    } else {
+      set({
+        currentBreakpoint: breakpoint,
+        memberListVisible: currentState.memberListVisible && newMemberListVisible,
+        channelSidebarCollapsed: newChannelSidebarCollapsed,
+      })
+    }
   },
 
   isSmallScreen: () => get().currentBreakpoint === 'sm',

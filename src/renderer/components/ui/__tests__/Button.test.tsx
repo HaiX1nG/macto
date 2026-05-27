@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Button } from '../Button'
 
@@ -22,13 +22,15 @@ describe('Button', () => {
     it('should render with default variant', () => {
       renderButton()
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-blue-600')
+      // Component uses CSS variables for colors
+      expect(button).toHaveClass('bg-[var(--color-primary)]')
     })
 
     it('should render with default size', () => {
       renderButton()
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('font-medium')
+      // Component uses font-semibold for default styling
+      expect(button).toHaveClass('font-semibold')
     })
   })
 
@@ -36,25 +38,30 @@ describe('Button', () => {
     it('should render primary variant', () => {
       renderButton({ variant: 'primary' })
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-blue-600', 'text-white')
+      // Component uses CSS variables for colors
+      expect(button).toHaveClass('bg-[var(--color-primary)]')
+      expect(button).toHaveClass('text-[var(--color-bg-base)]')
     })
 
     it('should render secondary variant', () => {
       renderButton({ variant: 'secondary' })
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-gray-200')
+      // Component uses CSS variables for colors
+      expect(button).toHaveClass('bg-[var(--color-bg-tertiary)]')
     })
 
     it('should render danger variant', () => {
       renderButton({ variant: 'danger' })
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-red-600')
+      // Component uses CSS variables for colors
+      expect(button).toHaveClass('bg-[var(--color-dnd)]')
     })
 
     it('should render success variant', () => {
       renderButton({ variant: 'success' })
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-green-600')
+      // Component uses CSS variables for colors
+      expect(button).toHaveClass('bg-[var(--color-online)]')
     })
 
     it('should render ghost variant', () => {
@@ -95,7 +102,8 @@ describe('Button', () => {
   describe('disabled state', () => {
     it('should apply disabled styles', () => {
       renderButton({ disabled: true })
-      const button = screen.getByRole('button', { disabled: true })
+      const button = screen.getByRole('button')
+      expect(button).toBeDisabled()
       expect(button).toHaveClass('disabled:opacity-50', 'disabled:pointer-events-none')
     })
 
@@ -103,7 +111,8 @@ describe('Button', () => {
       const handleClick = vi.fn()
       renderButton({ disabled: true, onClick: handleClick })
 
-      const button = screen.getByRole('button', { disabled: true })
+      const button = screen.getByRole('button')
+      expect(button).toBeDisabled()
       fireEvent.click(button)
 
       expect(handleClick).not.toHaveBeenCalled()
@@ -143,7 +152,8 @@ describe('Button', () => {
       renderButton({ className: 'custom-class' })
       const button = screen.getByRole('button')
       expect(button).toHaveClass('custom-class')
-      expect(button).toHaveClass('font-medium')
+      // Component uses font-semibold for base styling
+      expect(button).toHaveClass('font-semibold')
     })
   })
 

@@ -10,11 +10,11 @@ export const VoiceControlPanel = ({ children, className }: VoiceControlPanelProp
   return (
     <div className={cn(
       'fixed bottom-0 left-0 right-0',
-      'bg-white/95 dark:bg-[#0a0a0f]/95',
+      'bg-[var(--color-bg-base)]/95',
       'backdrop-blur-xl',
-      'border-t border-gray-200 dark:border-gray-800',
+      'border-t border-[var(--color-border)]',
       'p-5 z-50',
-      'shadow-2xl shadow-black/10 dark:shadow-black/50',
+      'shadow-2xl shadow-[var(--color-bg-darkest)]/30',
       className
     )}>
       {children}
@@ -56,27 +56,27 @@ export const VoiceControlButton = ({
   const variants = {
     default: active
       ? cn(
-          'bg-blue-600 hover:bg-blue-700 active:bg-blue-800',
+          'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 active:bg-[var(--color-primary)]/80',
           'text-white',
-          'shadow-lg shadow-blue-600/30 hover:shadow-blue-600/40'
+          'shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-[var(--color-primary)]/40'
         )
       : cn(
-          'bg-gray-100 dark:bg-[#1a1a25]',
-          'text-gray-600 dark:text-gray-400',
-          'hover:bg-gray-200 dark:hover:bg-[#2a2a35]',
-          'hover:text-gray-900 dark:hover:text-white'
+          'bg-[var(--color-bg-tertiary)]',
+          'text-[var(--color-text-muted)]',
+          'hover:bg-[var(--color-bg-darker)]',
+          'hover:text-[var(--color-text-normal)]'
         ),
     danger: active
       ? cn(
-          'bg-red-600 hover:bg-red-700 active:bg-red-800',
+          'bg-[var(--color-dnd)] hover:bg-[var(--color-dnd)]/90 active:bg-[var(--color-dnd)]/80',
           'text-white',
-          'shadow-lg shadow-red-600/30 hover:shadow-red-600/40'
+          'shadow-lg shadow-[var(--color-dnd)]/30 hover:shadow-[var(--color-dnd)]/40'
         )
       : cn(
-          'bg-gray-100 dark:bg-[#1a1a25]',
-          'text-gray-600 dark:text-gray-400',
-          'hover:bg-red-50 dark:hover:bg-red-900/20',
-          'hover:text-red-600 dark:hover:text-red-400'
+          'bg-[var(--color-bg-tertiary)]',
+          'text-[var(--color-text-muted)]',
+          'hover:bg-[var(--color-dnd)]/20',
+          'hover:text-[var(--color-dnd)]'
         ),
   }
 
@@ -87,7 +87,7 @@ export const VoiceControlButton = ({
       className={cn(
         'rounded-2xl flex flex-col items-center justify-center gap-1',
         'transition-all duration-200 ease-out',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500/30',
+        'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         'active:scale-95 hover:scale-105',
         'group',
@@ -132,8 +132,8 @@ export const VolumeControl = ({
     <div className="flex items-center gap-4 w-full max-w-md">
       {icon && (
         <div className={cn(
-          'text-gray-400 dark:text-gray-500',
-          muted && 'text-red-400'
+          'text-[var(--color-text-muted)]',
+          muted && 'text-[var(--color-dnd)]'
         )}>
           {icon}
         </div>
@@ -148,26 +148,26 @@ export const VolumeControl = ({
           disabled={muted}
           className={cn(
             'w-full h-2 rounded-full appearance-none cursor-pointer',
-            'bg-gray-200 dark:bg-gray-700',
+            'bg-[var(--color-bg-tertiary)]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'accent-blue-600 dark:accent-blue-500'
+            'accent-[var(--color-primary)]'
           )}
           style={{
-            backgroundImage: `linear-gradient(to right, #1890ff 0%, #1890ff ${value}%, #e5e7eb ${value}%, #e5e7eb 100%)`,
+            backgroundImage: `linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) ${value}%, var(--color-bg-tertiary) ${value}%, var(--color-bg-tertiary) 100%)`,
           }}
         />
       </div>
       {showValue && (
         <span className={cn(
           'text-sm font-medium w-12 text-right',
-          'text-gray-600 dark:text-gray-400',
-          muted && 'text-red-400'
+          'text-[var(--color-text-muted)]',
+          muted && 'text-[var(--color-dnd)]'
         )}>
           {value}%
         </span>
       )}
       {label && (
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        <span className="text-xs text-[var(--color-text-muted)]">
           {label}
         </span>
       )}
@@ -198,13 +198,13 @@ export const VolumeMeter = ({
             'w-1 rounded-full transition-all duration-75',
             i < activeBars
               ? muted
-                ? 'bg-red-500'
+                ? 'bg-[var(--color-dnd)]'
                 : i < bars * 0.7
-                  ? 'bg-green-500'
+                  ? 'bg-[var(--color-online)]'
                   : i < bars * 0.9
-                    ? 'bg-amber-500'
-                    : 'bg-red-500'
-              : 'bg-gray-300 dark:bg-gray-600'
+                    ? 'bg-[var(--color-idle)]'
+                    : 'bg-[var(--color-dnd)]'
+              : 'bg-[var(--color-bg-tertiary)]'
           )}
           style={{
             height: `${((i + 1) / bars) * 100}%`,

@@ -6,12 +6,14 @@
 
 import { ConfigProvider, App as AntdApp } from 'antd'
 import { theme } from 'antd'
+import { useEffect } from 'react'
 import { useThemeStore } from './stores/themeStore'
 import { useAuthStore } from './stores/authStore'
 import { MainLayout } from './components/layout/MainLayout'
 import { LoginPage } from './components/auth/LoginPage'
 import { UpdateNotification } from './components/UpdateNotification'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { WebSocketIndicator } from './components/ui/WebSocketIndicator'
 import { useUserStatusPolling } from './hooks/useUserStatusPolling'
 import './styles/index.css'
 
@@ -23,8 +25,24 @@ const themeColors: Record<string, { primary: string; bg: string; text: string }>
 }
 
 function AppContent() {
-  const { theme: appTheme } = useThemeStore()
+  const { theme: appTheme, initTheme } = useThemeStore()
   const { isAuthenticated } = useAuthStore()
+
+  // Initialize theme on app start
+  useEffect(() => {
+    initTheme()
+  }, [initTheme])
+
+  // Apply theme to document
+  useEffect(() => {
+    const isDark = appTheme === 'ancient' || appTheme === 'tech'
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    document.documentElement.setAttribute('data-theme', appTheme)
+  }, [appTheme])
 
   // Poll user status for sync with backend
   useUserStatusPolling()
@@ -34,6 +52,20 @@ function AppContent() {
 
   return (
     <ConfigProvider
+      getPopupContainer={(node) => {
+        if (node) {
+          // Find the closest modal container or return parent
+          const findModalContainer = (el: HTMLElement): HTMLElement | null => {
+            if (el.classList.contains('macto-modal-container')) return el
+            if (el.parentElement) return findModalContainer(el.parentElement)
+            return null
+          }
+          const modalContainer = findModalContainer(node)
+          if (modalContainer) return modalContainer
+          return node.parentNode as HTMLElement
+        }
+        return document.body
+      }}
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
@@ -61,6 +93,7 @@ function AppContent() {
       <AntdApp>
         {isAuthenticated ? <MainLayout /> : <LoginPage />}
         <UpdateNotification />
+        <WebSocketIndicator />
       </AntdApp>
     </ConfigProvider>
   )

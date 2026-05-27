@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useAudioStore } from '../audioStore'
+import { useAudioStore } from '../voiceStore'
 
 // Mock navigator.mediaDevices
 const mockAudioTrack = {
@@ -9,24 +9,42 @@ const mockAudioTrack = {
   enabled: true,
   muted: false,
   onended: null,
+  onmute: null,
+  onunmute: null,
+  readyState: 'live' as MediaStreamTrackState,
+  contentHint: '',
   stop: vi.fn(),
   toggle: vi.fn(),
-}
+  clone: vi.fn(),
+  getCapabilities: vi.fn(),
+  getConstraints: vi.fn(),
+  getSettings: vi.fn(),
+  applyConstraints: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+} as unknown as MediaStreamTrack
 
-const mockStream = {
+const mockStream: MediaStream = {
+  id: 'mock-stream-id',
+  active: true,
+  onaddtrack: null,
+  onremovetrack: null,
   getAudioTracks: () => [mockAudioTrack],
   getVideoTracks: () => [],
   getTracks: () => [mockAudioTrack],
   addTrack: vi.fn(),
   removeTrack: vi.fn(),
-}
+  clone: vi.fn(),
+  getTrackById: vi.fn(),
+} as unknown as MediaStream
 
 const mockMediaDevices = {
   getUserMedia: vi.fn().mockResolvedValue(mockStream),
   getDisplayMedia: vi.fn(),
   enumerateDevices: vi.fn().mockResolvedValue([
-    { kind: 'audioinput', deviceId: 'input-1', label: 'Microphone' },
-    { kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers' },
+    { kind: 'audioinput', deviceId: 'input-1', label: 'Microphone', groupId: 'group-1', toJSON: () => ({ kind: 'audioinput', deviceId: 'input-1', label: 'Microphone', groupId: 'group-1' }) } as MediaDeviceInfo,
+    { kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers', groupId: 'group-1', toJSON: () => ({ kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers', groupId: 'group-1' }) } as MediaDeviceInfo,
   ]),
 }
 
@@ -41,8 +59,8 @@ describe('useAudioStore', () => {
     // Re-establish default mocks after clearAllMocks
     mockMediaDevices.getUserMedia = vi.fn().mockResolvedValue(mockStream)
     mockMediaDevices.enumerateDevices = vi.fn().mockResolvedValue([
-      { kind: 'audioinput', deviceId: 'input-1', label: 'Microphone' },
-      { kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers' },
+      { kind: 'audioinput', deviceId: 'input-1', label: 'Microphone', groupId: 'group-1', toJSON: () => ({ kind: 'audioinput', deviceId: 'input-1', label: 'Microphone', groupId: 'group-1' }) } as MediaDeviceInfo,
+      { kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers', groupId: 'group-1', toJSON: () => ({ kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers', groupId: 'group-1' }) } as MediaDeviceInfo,
     ])
     mockAudioTrack.stop = vi.fn()
   })
@@ -58,6 +76,12 @@ describe('useAudioStore', () => {
       expect(state.outputDeviceId).toBe('')
       expect(state.devices).toEqual([])
       expect(state.stream).toBeNull()
+      // Voice room state
+      expect(state.currentRoomId).toBeNull()
+      expect(state.participants).toEqual([])
+      expect(state.isInVoice).toBe(false)
+      expect(state.isLoading).toBe(false)
+      expect(state.error).toBeNull()
     })
   })
 
@@ -169,9 +193,9 @@ describe('useAudioStore', () => {
   describe('setDevices action', () => {
     it('should set devices array', () => {
       const { setDevices } = useAudioStore.getState()
-      const testDevices = [
-        { kind: 'audioinput', deviceId: '1', label: 'Device 1' },
-        { kind: 'audioinput', deviceId: '2', label: 'Device 2' },
+      const testDevices: MediaDeviceInfo[] = [
+        { kind: 'audioinput', deviceId: '1', label: 'Device 1', groupId: 'group-1', toJSON: () => ({}) } as MediaDeviceInfo,
+        { kind: 'audioinput', deviceId: '2', label: 'Device 2', groupId: 'group-2', toJSON: () => ({}) } as MediaDeviceInfo,
       ]
 
       setDevices(testDevices)

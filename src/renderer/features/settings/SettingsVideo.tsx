@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Select, Switch, Button, Slider, App } from 'antd'
-import { VideoCameraOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons'
+import { VideoCameraOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 
 interface VideoSettings {
@@ -20,7 +20,7 @@ const qualityOptions = [
 ]
 
 export const SettingsVideo = () => {
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
 
   const [settings, setSettings] = useState<VideoSettings>({
     cameraDeviceId: '',
@@ -34,6 +34,7 @@ export const SettingsVideo = () => {
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([])
   const [testStream, setTestStream] = useState<MediaStream | null>(null)
   const [isPreviewing, setIsPreviewing] = useState(false)
+  const [isLoadingHardwareAccel, setIsLoadingHardwareAccel] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // Load camera devices
@@ -65,6 +66,18 @@ export const SettingsVideo = () => {
         console.error('Failed to load video settings:', e)
       }
     }
+    // Load hardware acceleration state from main process
+    const loadHardwareAcceleration = async () => {
+      try {
+        if (window.electronAPI?.getHardwareAcceleration) {
+          const result = await window.electronAPI.getHardwareAcceleration()
+          setSettings(prev => ({ ...prev, hardwareAcceleration: result.enabled }))
+        }
+      } catch (e) {
+        console.error('Failed to load hardware acceleration state:', e)
+      }
+    }
+    loadHardwareAcceleration()
   }, [loadDevices])
 
   // Update setting and save to localStorage
@@ -73,6 +86,47 @@ export const SettingsVideo = () => {
     setSettings(newSettings)
     localStorage.setItem('video-settings', JSON.stringify(newSettings))
   }
+
+  // Handle hardware acceleration change with restart prompt
+  const handleHardwareAccelerationChange = useCallback(async (checked: boolean) => {
+    if (!window.electronAPI?.setHardwareAcceleration) {
+      message.warning('硬件加速设置不可用')
+      return
+    }
+
+    setIsLoadingHardwareAccel(true)
+    try {
+      const result = await window.electronAPI.setHardwareAcceleration(checked)
+
+      if (result.success && result.requiresRestart) {
+        // Update local state
+        const newSettings = { ...settings, hardwareAcceleration: checked }
+        setSettings(newSettings)
+        localStorage.setItem('video-settings', JSON.stringify(newSettings))
+
+        // Show restart prompt
+        modal.confirm({
+          title: '需要重启应用',
+          icon: <ExclamationCircleOutlined />,
+          content: '硬件加速设置已更改，需要重启应用才能生效。是否立即重启？',
+          okText: '立即重启',
+          cancelText: '稍后重启',
+          onOk: async () => {
+            if (window.electronAPI?.relaunchApp) {
+              await window.electronAPI.relaunchApp()
+            }
+          },
+        })
+      } else if (!result.success) {
+        message.error('保存硬件加速设置失败')
+      }
+    } catch (e) {
+      console.error('Failed to set hardware acceleration:', e)
+      message.error('设置硬件加速失败')
+    } finally {
+      setIsLoadingHardwareAccel(false)
+    }
+  }, [message, modal, settings])
 
   // Get quality constraints
   const getQualityConstraints = useCallback((): MediaTrackConstraints => {
@@ -282,11 +336,12 @@ export const SettingsVideo = () => {
       <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-bg-tertiary)]">
         <div>
           <span className="font-medium text-[var(--color-text-normal)]">硬件加速</span>
-          <p className="text-xs text-[var(--color-text-muted)]">使用 GPU 加速视频处理</p>
+          <p className="text-xs text-[var(--color-text-muted)]">使用 GPU 加速视频处理（更改后需重启）</p>
         </div>
         <Switch
           checked={settings.hardwareAcceleration}
-          onChange={(checked) => updateSetting('hardwareAcceleration', checked)}
+          onChange={handleHardwareAccelerationChange}
+          loading={isLoadingHardwareAccel}
         />
       </div>
 

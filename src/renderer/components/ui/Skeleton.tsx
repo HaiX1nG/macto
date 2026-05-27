@@ -39,15 +39,17 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        'bg-[var(--color-bg-tertiary)]',
         variants[variant],
         animations[animation],
-        animation === 'shimmer' && 'bg-gradient-to-r from-[var(--color-bg-tertiary)] via-[var(--color-bg-darker)] to-[var(--color-bg-tertiary)] bg-[length:200%_100%]',
+        animation === 'shimmer'
+          ? 'bg-gradient-to-r from-[var(--color-bg-tertiary)] via-[var(--color-bg-darker)] to-[var(--color-bg-tertiary)] bg-[length:200%_100%]'
+          : 'bg-[var(--color-bg-tertiary)]',
         className
       )}
       style={{
         width: width,
         height: height,
+        willChange: animation === 'shimmer' ? 'background-position' : undefined,
         ...style,
       }}
     />

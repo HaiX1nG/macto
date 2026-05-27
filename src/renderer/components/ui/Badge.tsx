@@ -1,68 +1,100 @@
 import { Tag } from 'antd'
 import { cn } from '@renderer/utils/cn'
 
+type BadgeVariant = 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info' | 'accent' | 'purple' | 'cyan' | 'pink'
+type BadgeSize = 'sm' | 'md' | 'lg'
+
 interface BadgeProps {
   children: React.ReactNode
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info' | 'purple' | 'cyan' | 'pink'
-  size?: 'small' | 'default' | 'large'
+  variant?: BadgeVariant
+  /** @deprecated Use 'sm' | 'md' | 'lg' instead */
+  size?: BadgeSize | 'small' | 'default' | 'large'
   dot?: boolean
   removable?: boolean
   onRemove?: () => void
   className?: string
 }
 
+const normalizeSize = (size: BadgeSize | 'small' | 'default' | 'large'): BadgeSize => {
+  const sizeMap: Record<string, BadgeSize> = {
+    'small': 'sm',
+    'default': 'md',
+    'large': 'lg',
+  }
+  return sizeMap[size] ?? size as BadgeSize
+}
+
 export const Badge = ({
   children,
   variant = 'default',
-  size = 'default',
+  size = 'md',
   dot = false,
   removable = false,
   onRemove,
   className
 }: BadgeProps) => {
-  const variants = {
+  const normalizedSize = normalizeSize(size)
+
+  const variants: Record<BadgeVariant, string> = {
     default: cn(
-      'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-      'border border-gray-200 dark:border-gray-700'
+      'bg-[var(--color-bg-tertiary)] text-[var(--color-text-normal)]',
+      'border border-[var(--color-border)]'
     ),
     primary: cn(
-      'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      'border border-blue-200 dark:border-blue-800'
+      'bg-[var(--color-primary)]/20 text-[var(--color-primary)]',
+      'border border-[var(--color-primary)]/30'
     ),
     success: cn(
-      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      'border border-green-200 dark:border-green-800'
+      'bg-[var(--color-online)]/20 text-[var(--color-online)]',
+      'border border-[var(--color-online)]/30'
     ),
     warning: cn(
-      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-      'border border-amber-200 dark:border-amber-800'
+      'bg-[var(--color-idle)]/20 text-[var(--color-idle)]',
+      'border border-[var(--color-idle)]/30'
     ),
     error: cn(
-      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-      'border border-red-200 dark:border-red-800'
+      'bg-[var(--color-dnd)]/20 text-[var(--color-dnd)]',
+      'border border-[var(--color-dnd)]/30'
     ),
     info: cn(
-      'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
-      'border border-cyan-200 dark:border-cyan-800'
+      'bg-[var(--color-secondary)]/20 text-[var(--color-secondary)]',
+      'border border-[var(--color-secondary)]/30'
+    ),
+    accent: cn(
+      'bg-[var(--color-accent)]/20 text-[var(--color-accent)]',
+      'border border-[var(--color-accent)]/30'
     ),
     purple: cn(
-      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-      'border border-purple-200 dark:border-purple-800'
+      'bg-[var(--color-accent)]/20 text-[var(--color-accent)]',
+      'border border-[var(--color-accent)]/30'
     ),
     cyan: cn(
-      'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
-      'border border-cyan-200 dark:border-cyan-800'
+      'bg-[var(--color-secondary)]/20 text-[var(--color-secondary)]',
+      'border border-[var(--color-secondary)]/30'
     ),
     pink: cn(
-      'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
-      'border border-pink-200 dark:border-pink-800'
+      'bg-[var(--color-dnd)]/20 text-[var(--color-dnd)]',
+      'border border-[var(--color-dnd)]/30'
     ),
   }
 
-  const sizes = {
-    small: 'text-[10px] px-2 py-0.5',
-    default: 'text-xs px-2.5 py-1',
-    large: 'text-sm px-3 py-1.5',
+  const sizes: Record<BadgeSize, string> = {
+    sm: 'text-[10px] px-2 py-0.5',
+    md: 'text-xs px-2.5 py-1',
+    lg: 'text-sm px-3 py-1.5',
+  }
+
+  const dotColors: Record<BadgeVariant, string> = {
+    default: 'bg-[var(--color-text-muted)]',
+    primary: 'bg-[var(--color-primary)]',
+    success: 'bg-[var(--color-online)]',
+    warning: 'bg-[var(--color-idle)]',
+    error: 'bg-[var(--color-dnd)]',
+    info: 'bg-[var(--color-secondary)]',
+    accent: 'bg-[var(--color-accent)]',
+    purple: 'bg-[var(--color-accent)]',
+    cyan: 'bg-[var(--color-secondary)]',
+    pink: 'bg-[var(--color-dnd)]',
   }
 
   return (
@@ -70,9 +102,9 @@ export const Badge = ({
       className={cn(
         'rounded-full font-medium border',
         'inline-flex items-center gap-1.5',
-        'transition-all duration-200',
+        'transition-colors duration-150 ease-out',
         variants[variant],
-        sizes[size],
+        sizes[normalizedSize],
         className
       )}
       closable={removable}
@@ -81,15 +113,7 @@ export const Badge = ({
       {dot && (
         <span className={cn(
           'w-1.5 h-1.5 rounded-full',
-          variant === 'success' && 'bg-green-500',
-          variant === 'warning' && 'bg-amber-500',
-          variant === 'error' && 'bg-red-500',
-          variant === 'primary' && 'bg-blue-500',
-          variant === 'default' && 'bg-gray-500',
-          variant === 'info' && 'bg-cyan-500',
-          variant === 'purple' && 'bg-purple-500',
-          variant === 'cyan' && 'bg-cyan-500',
-          variant === 'pink' && 'bg-pink-500',
+          dotColors[variant]
         )} />
       )}
       {children}
@@ -97,40 +121,30 @@ export const Badge = ({
   )
 }
 
+type StatusType = 'online' | 'away' | 'busy' | 'offline'
+type StatusBadgeSize = 'sm' | 'md' | 'lg'
+
 interface StatusBadgeProps {
-  status: 'online' | 'away' | 'busy' | 'offline'
+  status: StatusType
   showLabel?: boolean
-  size?: 'small' | 'default' | 'large'
+  /** @deprecated Use 'sm' | 'md' | 'lg' instead */
+  size?: StatusBadgeSize | 'small' | 'default' | 'large'
   className?: string
 }
 
 export const StatusBadge = ({
   status,
   showLabel = true,
-  size = 'default',
+  size = 'md',
   className
 }: StatusBadgeProps) => {
-  const statusConfig = {
-    online: {
-      label: '在线',
-      variant: 'success' as const,
-      dotClass: 'bg-green-500 shadow-green-500/50',
-    },
-    away: {
-      label: '离开',
-      variant: 'warning' as const,
-      dotClass: 'bg-amber-500 shadow-amber-500/50',
-    },
-    busy: {
-      label: '忙碌',
-      variant: 'error' as const,
-      dotClass: 'bg-red-500 shadow-red-500/50',
-    },
-    offline: {
-      label: '离线',
-      variant: 'default' as const,
-      dotClass: 'bg-gray-400',
-    },
+  const normalizedSize = normalizeSize(size)
+
+  const statusConfig: Record<StatusType, { label: string; variant: BadgeVariant }> = {
+    online: { label: '在线', variant: 'success' },
+    away: { label: '离开', variant: 'warning' },
+    busy: { label: '忙碌', variant: 'error' },
+    offline: { label: '离线', variant: 'default' },
   }
 
   const config = statusConfig[status]
@@ -138,7 +152,7 @@ export const StatusBadge = ({
   return (
     <Badge
       variant={config.variant}
-      size={size}
+      size={normalizedSize}
       dot
       className={className}
     >
@@ -147,37 +161,49 @@ export const StatusBadge = ({
   )
 }
 
+type CountBadgeSize = 'sm' | 'md'
+
 interface CountBadgeProps {
   count: number
   max?: number
   showZero?: boolean
-  size?: 'small' | 'default'
+  /** @deprecated Use 'sm' | 'md' instead */
+  size?: CountBadgeSize | 'small' | 'default'
   className?: string
+}
+
+const normalizeCountSize = (size: CountBadgeSize | 'small' | 'default'): CountBadgeSize => {
+  const sizeMap: Record<string, CountBadgeSize> = {
+    'small': 'sm',
+    'default': 'md',
+  }
+  return sizeMap[size] ?? size as CountBadgeSize
 }
 
 export const CountBadge = ({
   count,
   max = 99,
   showZero = false,
-  size = 'default',
+  size = 'md',
   className
 }: CountBadgeProps) => {
   if (count === 0 && !showZero) return null
 
+  const normalizedSize = normalizeCountSize(size)
   const displayCount = count > max ? `${max}+` : count
 
-  const sizes = {
-    small: 'min-w-[18px] h-[18px] text-[10px] px-1.5',
-    default: 'min-w-[22px] h-[22px] text-xs px-2',
+  const sizes: Record<CountBadgeSize, string> = {
+    sm: 'min-w-[18px] h-[18px] text-[10px] px-1.5',
+    md: 'min-w-[22px] h-[22px] text-xs px-2',
   }
 
   return (
     <span
       className={cn(
         'inline-flex items-center justify-center',
-        'bg-red-500 text-white font-bold',
+        'bg-[var(--color-dnd)] text-[var(--color-bg-base)] font-bold',
         'rounded-full',
-        sizes[size],
+        sizes[normalizedSize],
         className
       )}
     >

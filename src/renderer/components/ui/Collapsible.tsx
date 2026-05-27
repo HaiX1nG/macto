@@ -75,7 +75,7 @@ export function CollapsibleSidebar({
   return (
     <div
       className={cn(
-        'relative flex flex-col h-full transition-all duration-300 ease-out',
+        'relative flex flex-col h-full transition-[width] duration-300 ease-out',
         className
       )}
       style={{ width }}
@@ -83,7 +83,7 @@ export function CollapsibleSidebar({
       {/* Content */}
       <div
         className={cn(
-          'flex-1 overflow-hidden transition-opacity duration-200',
+          'flex-1 overflow-hidden transition-opacity duration-200 ease-out',
           collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
         )}
       >
@@ -104,7 +104,7 @@ export function CollapsibleSidebar({
               'bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)]',
               'border border-[var(--color-border)]',
               'text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]',
-              'transition-colors duration-200',
+              'transition-colors duration-150 ease-out',
               side === 'left' ? (
                 togglePosition === 'outside'
                   ? 'right-[-24px] rounded-r-lg'
@@ -119,15 +119,15 @@ export function CollapsibleSidebar({
           >
             {side === 'left' ? (
               collapsed ? (
-                <RightOutlined className="text-xs group-hover:text-sm transition-all" />
+                <RightOutlined className="text-xs group-hover:text-sm transition-transform duration-150 ease-out" />
               ) : (
-                <LeftOutlined className="text-xs group-hover:text-sm transition-all" />
+                <LeftOutlined className="text-xs group-hover:text-sm transition-transform duration-150 ease-out" />
               )
             ) : (
               collapsed ? (
-                <LeftOutlined className="text-xs group-hover:text-sm transition-all" />
+                <LeftOutlined className="text-xs group-hover:text-sm transition-transform duration-150 ease-out" />
               ) : (
-                <RightOutlined className="text-xs group-hover:text-sm transition-all" />
+                <RightOutlined className="text-xs group-hover:text-sm transition-transform duration-150 ease-out" />
               )
             )}
           </button>
@@ -171,13 +171,13 @@ export function CollapsiblePanel({
           'w-full flex items-center gap-2 px-3 py-1.5',
           'text-xs font-semibold uppercase tracking-wide',
           'text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]',
-          'transition-colors duration-200',
+          'transition-colors duration-150 ease-out',
           headerClassName
         )}
       >
         <LeftOutlined
           className={cn(
-            'text-[10px] transition-transform duration-200',
+            'text-[10px] transition-transform duration-300 ease-out',
             !expanded && '-rotate-90'
           )}
         />
@@ -186,11 +186,13 @@ export function CollapsiblePanel({
 
       <div
         className={cn(
-          'overflow-hidden transition-all duration-200',
-          expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+          'grid transition-[grid-template-rows] duration-300 ease-out',
+          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
         )}
       >
-        {children}
+        <div className="overflow-hidden">
+          {children}
+        </div>
       </div>
     </div>
   )

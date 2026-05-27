@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@renderer/utils/cn'
-import { HEADER_HEIGHT, BREAKPOINTS } from '@renderer/stores/layoutStore'
+import { BREAKPOINTS } from '@renderer/stores/layoutStore'
 
 interface ContentProps {
   children: ReactNode
@@ -88,7 +88,7 @@ export const ContentHeader = ({
           'flex-shrink-0',
           className
         )}
-        style={{ height: HEADER_HEIGHT }}
+        style={{ height: 'var(--header-height)' }}
       >
         <div>
           {title && (
@@ -120,7 +120,7 @@ export const ContentHeader = ({
         'flex-shrink-0',
         className
       )}
-      style={{ height: HEADER_HEIGHT }}
+      style={{ height: 'var(--header-height)' }}
     >
       {children}
     </header>
@@ -165,7 +165,7 @@ export const ChannelHeader = ({
       'flex-shrink-0',
       className
     )}
-    style={{ height: HEADER_HEIGHT }}
+    style={{ height: 'var(--header-height)' }}
   >
     {children}
   </div>

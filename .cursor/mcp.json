@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "agent-collab": {
+      "command": "agent-collab-mcp",
+      "env": {
+        "AGENT_ROLE": "cursor",
+        "AGENT_ENGINE_MODE": "both"
+      }
+    }
+  }
+}

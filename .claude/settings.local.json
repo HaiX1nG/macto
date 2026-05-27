@@ -4,7 +4,32 @@
       "Bash(rm -rf /Users/megumikato/ReactProject/macto/*)",
       "Bash(npm create *)",
       "Bash(pkill -f Electron)",
-      "Bash(rm -rf /Users/megumikato/ReactProject/macto/dist/*)"
+      "Bash(rm -rf /Users/megumikato/ReactProject/macto/dist/*)",
+      "Bash(rm -rf .claude/collab/)",
+      "Bash(rm -rf .claude/agents/)",
+      "Bash(rm -rf .claude/hooks/)",
+      "Bash(rm -rf scripts/logs/)",
+      "Bash(rm -f scripts/dashboard.sh)",
+      "Bash(rm -rf ~/.claude/hub/)",
+      "Bash(rm -rf ~/.claude/mcp/)",
+      "Bash(rm -rf ~/.claude/hooks/)",
+      "Bash(rm -f ~/.claude/collaboration-instructions.md)",
+      "Bash(rm -f ~/.claude/s001-client.js)",
+      "Bash(tmux kill-session *)",
+      "Bash(rm -rf ~/.claude/teams/macto-dev ~/.claude/tasks/macto-dev)",
+      "Bash(rm -rf ~/.claude/tasks/*)",
+      "Bash(rm -rf ~/.claude/teams/*)"
     ]
+  },
+  "mcpServers": {
+    "agent-room": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "agent-room",
+        "--service-url",
+        "ws://localhost:9000"
+      ]
+    }
   }
 }

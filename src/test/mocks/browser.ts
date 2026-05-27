@@ -1,3 +1,5 @@
+import { vi } from 'vitest'
+
 // Mock localStorage for testing
 class LocalStorageMock {
   private store: Record<string, string> = {}
@@ -39,7 +41,7 @@ if (!global.crypto) {
   global.crypto = {} as Crypto
 }
 if (!global.crypto.randomUUID) {
-  (global.crypto as Crypto).randomUUID = () => 'mock-uuid-' + Math.random().toString(36).substr(2, 9)
+  (global.crypto as Crypto).randomUUID = () => '00000000-0000-4000-8000-000000000000'
 }
 
 // Mock window.matchMedia

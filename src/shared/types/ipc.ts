@@ -95,6 +95,10 @@ export interface IPCPayloads {
   'system:notification-set-enabled': { enabled: boolean }
   'system:notification-get-enabled': null
   'system:tray-click': null
+
+  'hardware-acceleration:get': null
+  'hardware-acceleration:set': { enabled: boolean }
+  'app:relaunch': null
 }
 
 export interface IPCResponders {
@@ -118,4 +122,8 @@ export interface IPCResponders {
   'system:notification-set-enabled': { success: boolean }
   'system:notification-get-enabled': { enabled: boolean }
   'system:tray-click': null
+
+  'hardware-acceleration:get': { enabled: boolean }
+  'hardware-acceleration:set': { success: boolean; requiresRestart: boolean }
+  'app:relaunch': { success: boolean }
 }

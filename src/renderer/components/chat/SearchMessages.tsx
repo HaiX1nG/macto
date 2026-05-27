@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { Modal, Input, List, Avatar, Empty, Spin, Tag } from 'antd'
-import { SearchOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { Input, List, Avatar, Empty, Spin, Select, Switch, Tooltip } from 'antd'
+import { SearchOutlined, ClockCircleOutlined, MessageOutlined } from '@ant-design/icons'
+import { Modal } from '@renderer/components/ui/Modal'
 import { chatService } from '@renderer/services/chatService'
-import { useServerStore } from '@renderer/stores/serverStore'
+import { useRoomStore } from '@renderer/stores/roomStore'
 import type { MessageResponse } from '@shared/types/api'
 
 interface SearchMessagesProps {
@@ -17,14 +18,22 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
   const [results, setResults] = useState<MessageResponse[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const { servers, currentServerId } = useServerStore()
+  const [selectedRoomId, setSelectedRoomId] = useState<number | undefined>(undefined)
+  const [searchAllRooms, setSearchAllRooms] = useState(false)
 
+  const { rooms, currentRoomId } = useRoomStore()
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const currentServer = servers.find(s => s.id === currentServerId)
-  const currentRoomId = currentServer?.channels.find(c => c.type !== 'voice')?.id
+  const roomOptions = useMemo(() => {
+    return rooms.map(room => ({
+      label: room.roomName,
+      value: room.id,
+    }))
+  }, [rooms])
 
-  const performSearch = useCallback(async (searchQuery: string, pageNum: number) => {
+  const effectiveRoomId = searchAllRooms ? undefined : (selectedRoomId ?? (currentRoomId ? Number(currentRoomId) : undefined))
+
+  const performSearch = useCallback(async (searchQuery: string, pageNum: number, roomId?: number) => {
     if (!searchQuery.trim()) {
       setResults([])
       setTotal(0)
@@ -35,33 +44,35 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
     try {
       const response = await chatService.searchMessages({
         query: searchQuery,
-        roomId: currentRoomId ? Number(currentRoomId) : undefined,
+        roomId: roomId,
         page: pageNum,
         pageSize: 20,
       })
-      setResults(response.messages)
+      if (pageNum === 1) {
+        setResults(response.messages)
+      } else {
+        setResults(prev => [...prev, ...response.messages])
+      }
       setTotal(response.total)
     } catch (err) {
       console.error('Search failed:', err)
     } finally {
       setLoading(false)
     }
-  }, [currentRoomId])
+  }, [])
 
-  // Handle query change with debounce
   const handleQueryChange = (value: string) => {
     setQuery(value)
+    setPage(1)
+    setResults([])
 
-    // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
 
-    // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
       if (value.trim()) {
-        setPage(1)
-        performSearch(value, 1)
+        performSearch(value, 1, effectiveRoomId)
       } else {
         setResults([])
         setTotal(0)
@@ -69,23 +80,48 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
     }, 300)
   }
 
-  // Reset when modal closes
+  const handleRoomChange = (roomId: number | undefined) => {
+    setSelectedRoomId(roomId)
+    setPage(1)
+    setResults([])
+    if (query.trim()) {
+      performSearch(query, 1, searchAllRooms ? undefined : roomId)
+    }
+  }
+
+  const handleSearchAllChange = (checked: boolean) => {
+    setSearchAllRooms(checked)
+    setPage(1)
+    setResults([])
+    if (query.trim()) {
+      performSearch(query, 1, checked ? undefined : effectiveRoomId)
+    }
+  }
+
   useEffect(() => {
     if (!open) {
       setQuery('')
       setResults([])
       setTotal(0)
       setPage(1)
+      setSelectedRoomId(undefined)
+      setSearchAllRooms(false)
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current)
       }
     }
   }, [open])
 
+  useEffect(() => {
+    if (open && currentRoomId && !selectedRoomId) {
+      setSelectedRoomId(Number(currentRoomId))
+    }
+  }, [open, currentRoomId, selectedRoomId])
+
   const handleLoadMore = () => {
     const nextPage = page + 1
     setPage(nextPage)
-    performSearch(query, nextPage)
+    performSearch(query, nextPage, effectiveRoomId)
   }
 
   const handleMessageClick = (message: MessageResponse) => {
@@ -93,7 +129,6 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
     onClose()
   }
 
-  // Highlight search term in content
   const highlightContent = (content: string, searchTerm: string) => {
     if (!searchTerm.trim()) return content
 
@@ -102,7 +137,7 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
 
     return parts.map((part, index) =>
       regex.test(part) ? (
-        <mark key={index} className="bg-yellow-300 text-inherit rounded px-0.5">
+        <mark key={index} className="bg-yellow-300 dark:bg-yellow-600 text-inherit rounded px-0.5">
           {part}
         </mark>
       ) : (
@@ -111,51 +146,69 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
     )
   }
 
+  const getRoomName = (roomId: number) => {
+    const room = rooms.find(r => r.id === roomId)
+    return room?.roomName || `房间 ${roomId}`
+  }
+
   return (
     <Modal
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      title={null}
-      width={600}
-      centered
-      className="search-messages-modal"
-      styles={{
-        body: { padding: 0 },
-      }}
+      isOpen={open}
+      onClose={onClose}
+      title="搜索消息"
+      size="lg"
+      showCloseButton={false}
     >
-      <div className="p-4">
-        {/* Search Input */}
+      <div className="space-y-4">
         <Input
           prefix={<SearchOutlined className="text-[var(--color-text-muted)]" />}
-          placeholder="搜索消息..."
+          placeholder="输入关键词搜索消息..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           size="large"
           allowClear
           autoFocus
-          className="mb-4"
         />
 
-        {/* Room filter indicator */}
-        {currentRoomId && (
-          <div className="mb-3 flex items-center gap-2">
-            <Tag color="blue">当前频道</Tag>
-            <span className="text-sm text-[var(--color-text-muted)]">
-              {currentServer?.channels.find(c => c.id === currentRoomId)?.name || '未知频道'}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[var(--color-text-muted)]">搜索范围:</span>
+            <Switch
+              checked={searchAllRooms}
+              onChange={handleSearchAllChange}
+              size="small"
+            />
+            <span className="text-sm text-[var(--color-text-normal)]">
+              {searchAllRooms ? '所有房间' : '当前房间'}
             </span>
           </div>
-        )}
 
-        {/* Results */}
+          {!searchAllRooms && (
+            <Select
+              value={selectedRoomId}
+              onChange={handleRoomChange}
+              options={roomOptions}
+              placeholder="选择房间"
+              className="min-w-[150px]"
+              size="small"
+              allowClear
+            />
+          )}
+        </div>
+
         {loading && results.length === 0 ? (
           <div className="flex justify-center py-8">
             <Spin />
           </div>
         ) : results.length > 0 ? (
           <>
-            <div className="mb-2 text-sm text-[var(--color-text-muted)]">
+            <div className="text-sm text-[var(--color-text-muted)]">
               找到 {total} 条结果
+              {effectiveRoomId && (
+                <span className="ml-2">
+                  (在「{getRoomName(effectiveRoomId)}」中)
+                </span>
+              )}
             </div>
             <List
               dataSource={results}
@@ -166,7 +219,7 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
                     <button
                       onClick={handleLoadMore}
                       disabled={loading}
-                      className="text-[var(--color-primary)] hover:underline disabled:opacity-50"
+                      className="text-[var(--color-primary)] hover:underline disabled:opacity-50 transition-colors"
                     >
                       {loading ? '加载中...' : '加载更多'}
                     </button>
@@ -175,20 +228,20 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
               }
               renderItem={(message) => (
                 <List.Item
-                  className="hover:bg-[var(--color-bg-secondary)] rounded-lg px-3 cursor-pointer transition-colors"
+                  className="hover:bg-[var(--color-bg-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] rounded-lg px-3 cursor-pointer transition-colors border-b border-[var(--color-border)] last:border-b-0"
                   onClick={() => handleMessageClick(message)}
                 >
                   <List.Item.Meta
                     avatar={
                       <Avatar
                         size={36}
-                        className="bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
+                        className="bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)] flex items-center justify-center text-white font-medium"
                       >
-                        {message.senderName.charAt(0)}
+                        {message.senderName.charAt(0).toUpperCase()}
                       </Avatar>
                     }
                     title={
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-[var(--color-text-normal)]">
                           {message.senderName}
                         </span>
@@ -201,10 +254,18 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
                             minute: '2-digit',
                           })}
                         </span>
+                        {!effectiveRoomId && (
+                          <Tooltip title={getRoomName(message.roomId)}>
+                            <span className="text-xs text-[var(--color-primary)] flex items-center gap-1 cursor-pointer">
+                              <MessageOutlined />
+                              {getRoomName(message.roomId)}
+                            </span>
+                          </Tooltip>
+                        )}
                       </div>
                     }
                     description={
-                      <div className="text-[var(--color-text-muted)] line-clamp-2">
+                      <div className="text-[var(--color-text-muted)] line-clamp-2 text-sm">
                         {highlightContent(message.content, query)}
                       </div>
                     }

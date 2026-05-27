@@ -43,12 +43,12 @@ export function ChannelControlPanel() {
   return (
     <div className={cn(
       'fixed bottom-0 left-0 right-0',
-      'bg-white/95 dark:bg-[var(--color-bg-dark)]/95',
+      'bg-[var(--color-bg-base)]/95',
       'backdrop-blur-xl',
-      'border-t border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+      'border-t border-[var(--color-border)]',
       'p-5 z-50',
-      'shadow-2xl shadow-black/10 dark:shadow-black/50',
-      'transition-colors duration-300'
+      'shadow-2xl shadow-black/10',
+      'transition-colors duration-200'
     )}>
       <div className="max-w-4xl mx-auto">
         {/* Control Buttons */}
@@ -64,9 +64,9 @@ export function ChannelControlPanel() {
         {/* Volume Slider */}
         <div className="flex items-center justify-center gap-4 px-4">
           {isDeafened ? (
-            <AudioMutedOutlined className="text-[var(--color-text-tertiary-light)] dark:text-[var(--color-text-tertiary-dark)]" />
+            <AudioMutedOutlined className="text-[var(--color-text-muted)]" />
           ) : (
-            <SoundOutlined className="text-[var(--color-text-tertiary-light)] dark:text-[var(--color-text-tertiary-dark)]" />
+            <SoundOutlined className="text-[var(--color-text-muted)]" />
           )}
           <div className="flex-1 max-w-md">
             <input
@@ -78,19 +78,19 @@ export function ChannelControlPanel() {
               disabled={isDeafened}
               className={cn(
                 'w-full h-2 rounded-full appearance-none cursor-pointer',
-                'bg-[var(--color-border-light)] dark:bg-[var(--color-border-dark)]',
+                'bg-[var(--color-bg-tertiary)]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
-                'accent-[var(--color-primary)] dark:accent-[var(--color-primary)]'
+                'accent-[var(--color-primary)]'
               )}
               style={{
-                backgroundImage: `linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) ${volume}%, var(--color-border-light) ${volume}%, var(--color-border-light) 100%)`,
+                backgroundImage: `linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) ${volume}%, var(--color-bg-tertiary) ${volume}%, var(--color-bg-tertiary) 100%)`,
               }}
             />
           </div>
           <span className={cn(
             'text-sm font-medium w-12 text-right',
-            'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
-            isDeafened && 'text-[var(--color-error)]'
+            'text-[var(--color-text-muted)]',
+            isDeafened && 'text-[var(--color-dnd)]'
           )}>
             {volume}%
           </span>
@@ -110,7 +110,7 @@ function ControlButton({ control }: ControlButtonProps) {
       onClick={control.onToggle}
       className={cn(
         'flex flex-col items-center gap-2 px-6 py-4 rounded-2xl',
-        'transition-all duration-200 group',
+        'transition-[transform,box-shadow] duration-150 group',
         'hover:scale-105 active:scale-95',
         control.active
           ? cn(
@@ -118,9 +118,9 @@ function ControlButton({ control }: ControlButtonProps) {
               'shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-[var(--color-primary)]/40'
             )
           : cn(
-              'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
-              'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
-              'hover:bg-[var(--color-border-light)] dark:hover:bg-[var(--color-border-dark)]'
+              'bg-[var(--color-bg-tertiary)]',
+              'text-[var(--color-text-muted)]',
+              'hover:bg-[var(--color-border)]'
             )
       )}
     >

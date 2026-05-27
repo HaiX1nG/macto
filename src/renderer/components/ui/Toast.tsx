@@ -5,6 +5,7 @@
  */
 
 import { App, Button } from 'antd'
+import type { MessageType } from 'antd/es/message/interface'
 import type { Key } from 'react'
 import {
   CheckCircleOutlined,
@@ -127,7 +128,7 @@ export function useToast() {
 
 // Network status toast - shows offline/online status
 export function useNetworkToast() {
-  const toastRef = useRef<Key | null>(null)
+  const toastRef = useRef<MessageType | null>(null)
   const { message } = App.useApp()
 
   useEffect(() => {
@@ -141,7 +142,7 @@ export function useNetworkToast() {
 
     const handleOnline = () => {
       if (toastRef.current) {
-        message.destroy(toastRef.current)
+        message.destroy(toastRef.current as unknown as Key)
       }
       message.success({
         content: '网络已恢复连接',

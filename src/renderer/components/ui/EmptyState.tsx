@@ -64,22 +64,22 @@ export function EmptyState({
     sm: {
       container: 'py-8 px-4',
       iconWrapper: 'w-12 h-12 mb-3',
-      icon: 'text-xl',
-      title: 'text-base',
+      icon: 'text-2xl',
+      title: 'text-base font-semibold',
       description: 'text-xs',
     },
     md: {
       container: 'py-12 px-6',
       iconWrapper: 'w-16 h-16 mb-4',
-      icon: 'text-2xl',
-      title: 'text-lg',
+      icon: 'text-4xl',
+      title: 'text-lg font-semibold',
       description: 'text-sm',
     },
     lg: {
       container: 'py-16 px-8',
-      iconWrapper: 'w-20 h-20 mb-5',
-      icon: 'text-3xl',
-      title: 'text-xl',
+      iconWrapper: 'w-16 h-16 mb-5',
+      icon: 'text-4xl',
+      title: 'text-xl font-semibold',
       description: 'text-base',
     },
   }
@@ -89,20 +89,20 @@ export function EmptyState({
   return (
     <div className={cn('flex flex-col items-center text-center', sizeClasses.container, 'animate-fade-in', className)}>
       {/* Icon */}
-      <div className={cn('rounded-full bg-[var(--color-bg-darker)] flex items-center justify-center', sizeClasses.iconWrapper)}>
+      <div className={cn('rounded-2xl bg-[var(--color-bg-darker)] flex items-center justify-center', sizeClasses.iconWrapper)}>
         <span className={cn('text-[var(--color-text-muted)]', sizeClasses.icon)}>
           {icon || iconMap[iconType]}
         </span>
       </div>
 
       {/* Title */}
-      <h3 className={cn('font-semibold text-[var(--color-text-normal)] mb-2', sizeClasses.title)}>
+      <h3 className={cn('text-[var(--color-text-normal)] mb-2', sizeClasses.title)}>
         {title}
       </h3>
 
       {/* Description */}
       {description && (
-        <p className={cn('text-[var(--color-text-muted)] max-w-sm mb-4', sizeClasses.description)}>
+        <p className={cn('text-[var(--color-text-muted)] max-w-sm mb-6 leading-relaxed', sizeClasses.description)}>
           {description}
         </p>
       )}
@@ -113,7 +113,10 @@ export function EmptyState({
           type={action.variant === 'primary' ? 'primary' : 'default'}
           icon={action.icon}
           onClick={action.onClick}
-          className={cn('rounded-lg', action.variant === 'ghost' && 'border-none bg-transparent')}
+          className={cn(
+            'rounded-xl font-semibold',
+            action.variant === 'ghost' && 'border-none bg-transparent'
+          )}
         >
           {action.label}
         </Button>

@@ -386,6 +386,7 @@ export const SettingsProfile = () => {
             确认修改
           </Button>,
         ]}
+        zIndex={2000}
         styles={{
           body: { backgroundColor: 'var(--color-bg-secondary)' },
         }}
@@ -431,6 +432,7 @@ export const SettingsProfile = () => {
             确认删除
           </Button>,
         ]}
+        zIndex={2000}
         styles={{
           body: { backgroundColor: 'var(--color-bg-secondary)' },
         }}

@@ -1,8 +1,8 @@
 import { Button, Space, Avatar, Tooltip } from 'antd'
-import { MoonOutlined, SunOutlined, BellOutlined, SearchOutlined } from '@ant-design/icons'
+import { MoonOutlined, SunOutlined, BellOutlined, SearchOutlined, MenuOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useTheme } from '@renderer/hooks/useTheme'
-import { HEADER_HEIGHT } from '@renderer/stores/layoutStore'
+import { useLayoutStore } from '@renderer/stores/layoutStore'
 
 interface HeaderProps {
   title: string
@@ -23,6 +23,8 @@ export function Header({
   showUser = false,
   className
 }: HeaderProps) {
+  const { currentBreakpoint, toggleMobileChannelSidebar } = useLayoutStore()
+
   return (
     <header
       className={cn(
@@ -36,10 +38,24 @@ export function Header({
         'flex-shrink-0',
         className
       )}
-      style={{ height: HEADER_HEIGHT }}
+      style={{ height: 'var(--header-height)' }}
     >
       {/* Left Section */}
       <div className="flex items-center gap-4">
+        {/* Mobile Menu Button */}
+        {currentBreakpoint === 'sm' && (
+          <Button
+            type="text"
+            icon={<MenuOutlined />}
+            onClick={toggleMobileChannelSidebar}
+            className={cn(
+              'w-[44px] h-[44px] flex items-center justify-center',
+              'text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]',
+              'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
+              'transition-colors'
+            )}
+          />
+        )}
         <div>
           <h1 className="text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">{title}</h1>
           {subtitle && (
@@ -187,7 +203,7 @@ export function PageHeader({
         'flex-shrink-0',
         className
       )}
-      style={{ height: HEADER_HEIGHT }}
+      style={{ height: 'var(--header-height)' }}
     >
       <div className="flex items-center gap-4">
         {icon && (

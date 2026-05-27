@@ -1,3 +1,5 @@
+import { vi } from 'vitest'
+
 // Mock navigator.mediaDevices for audio and screen sharing tests
 export const mockMediaDevices = {
   getUserMedia: vi.fn(),

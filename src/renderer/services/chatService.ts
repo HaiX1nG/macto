@@ -30,6 +30,14 @@ export const chatService = {
     return apiClient.post<MessageResponse>(`/rooms/${roomId}/messages`, data)
   },
 
+  async updateMessage(roomId: number, messageId: number, content: string): Promise<MessageResponse> {
+    return apiClient.put<MessageResponse>(`/rooms/${roomId}/messages/${messageId}`, { content })
+  },
+
+  async deleteMessage(roomId: number, messageId: number): Promise<void> {
+    return apiClient.delete<void>(`/rooms/${roomId}/messages/${messageId}`)
+  },
+
   async searchMessages(params: SearchMessagesRequest): Promise<SearchMessagesResponse> {
     try {
       const result = await apiClient.get<SearchMessagesResponse>('/messages/search', params as unknown as Record<string, unknown>)

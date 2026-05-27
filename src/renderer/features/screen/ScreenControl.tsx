@@ -5,7 +5,7 @@ import { DesktopOutlined, LockOutlined, ReloadOutlined, StopOutlined, EyeOutline
 import { cn } from '@renderer/utils/cn'
 
 export const ScreenControl = () => {
-  const { isShared, controlEnabled, startSharing, stopSharing, enableControl, disableControl, screenStream } = useScreen()
+  const { isSharing, controlEnabled, startSharing, stopSharing, enableControl, disableControl, localStream } = useScreen()
   const { message: messageApi } = App.useApp()
   const [sessionId, setSessionId] = useState('')
   const [error, setError] = useState('')
@@ -13,10 +13,10 @@ export const ScreenControl = () => {
 
   // Update video preview when stream changes
   useEffect(() => {
-    if (videoRef.current && screenStream) {
-      videoRef.current.srcObject = screenStream
+    if (videoRef.current && localStream) {
+      videoRef.current.srcObject = localStream
     }
-  }, [screenStream])
+  }, [localStream])
 
   const handleStartSharing = async () => {
     if (!sessionId.trim()) {
@@ -57,20 +57,20 @@ export const ScreenControl = () => {
             <div className="flex items-center gap-4">
               <div className={cn(
                 'w-4 h-4 rounded-full',
-                isShared ? 'bg-green-500 animate-pulse shadow-lg shadow-green-500/50' : 'bg-gray-500'
+                isSharing ? 'bg-green-500 animate-pulse shadow-lg shadow-green-500/50' : 'bg-gray-500'
               )} />
               <div>
                 <span className="font-semibold text-gray-900 dark:text-white">
-                  {isShared ? '屏幕分享已激活' : '屏幕分享未激活'}
+                  {isSharing ? '屏幕分享已激活' : '屏幕分享未激活'}
                 </span>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {isShared ? '正在共享您的屏幕' : '开始共享您的屏幕'}
+                  {isSharing ? '正在共享您的屏幕' : '开始共享您的屏幕'}
                 </p>
               </div>
             </div>
           </div>
 
-          {!isShared ? (
+          {!isSharing ? (
             <div className="space-y-4">
               <div>
                 <Input
@@ -116,7 +116,7 @@ export const ScreenControl = () => {
       </Card>
 
       {/* Screen Preview */}
-      {isShared && screenStream && (
+      {isSharing && localStream && (
         <Card
           className={cn(
             'rounded-2xl border-l-4 border-l-blue-500',
@@ -154,7 +154,7 @@ export const ScreenControl = () => {
       )}
 
       {/* Screen Controls */}
-      {isShared && (
+      {isSharing && (
         <Card
           className={cn(
             'rounded-2xl border-l-4 border-l-purple-500',

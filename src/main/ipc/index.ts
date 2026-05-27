@@ -1,13 +1,18 @@
-import { ipcMain, desktopCapturer, Notification, type BrowserWindow } from 'electron'
+import { ipcMain, desktopCapturer, Notification, app, type BrowserWindow } from 'electron'
 import fs from 'node:fs'
 import type { IPCPayloads } from '@shared/types/ipc'
 import { notificationManager } from '../notifications'
+
+// Hardware acceleration settings file path
+let hardwareAccelerationSettingsPath: string | null = null
 
 export class IPCManager {
   private readonly window: BrowserWindow
 
   constructor(window: BrowserWindow) {
     this.window = window
+    // Initialize hardware acceleration settings path
+    hardwareAccelerationSettingsPath = `${app.getPath('userData')}/hardware-acceleration.json`
     this.setupListeners()
   }
 
@@ -22,6 +27,8 @@ export class IPCManager {
     this.setupAudioHandlers()
     // System IPC handlers
     this.setupSystemHandlers()
+    // Hardware acceleration handlers
+    this.setupHardwareAccelerationHandlers()
   }
 
   private setupSessionHandlers() {
@@ -196,6 +203,53 @@ export class IPCManager {
         return { enabled: true }
       } catch {
         return { enabled: true }
+      }
+    })
+  }
+
+  private setupHardwareAccelerationHandlers() {
+    // Get hardware acceleration state
+    ipcMain.handle('hardware-acceleration:get', async () => {
+      if (!hardwareAccelerationSettingsPath) {
+        return { enabled: app.commandLine.hasSwitch('disable-gpu') === false }
+      }
+      try {
+        if (fs.existsSync(hardwareAccelerationSettingsPath)) {
+          const settings = JSON.parse(fs.readFileSync(hardwareAccelerationSettingsPath, 'utf-8'))
+          return { enabled: settings.enabled ?? true }
+        }
+        // Default to true if no settings file exists
+        return { enabled: true }
+      } catch {
+        return { enabled: true }
+      }
+    })
+
+    // Set hardware acceleration state
+    ipcMain.handle('hardware-acceleration:set', async (_event, payload: IPCPayloads['hardware-acceleration:set']) => {
+      if (!hardwareAccelerationSettingsPath) {
+        return { success: false, requiresRestart: true }
+      }
+      try {
+        const settings = { enabled: payload.enabled }
+        fs.writeFileSync(hardwareAccelerationSettingsPath, JSON.stringify(settings))
+        // Hardware acceleration change requires app restart to take effect
+        return { success: true, requiresRestart: true }
+      } catch (err) {
+        console.error('Failed to save hardware acceleration settings:', err)
+        return { success: false, requiresRestart: true }
+      }
+    })
+
+    // Relaunch the app
+    ipcMain.handle('app:relaunch', async () => {
+      try {
+        app.relaunch()
+        app.quit()
+        return { success: true }
+      } catch (err) {
+        console.error('Failed to relaunch app:', err)
+        return { success: false }
       }
     })
   }

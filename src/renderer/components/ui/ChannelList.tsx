@@ -27,26 +27,26 @@ export const ChannelList = ({
 }: ChannelListProps) => {
   return (
     <div className={cn(
-      'w-64 bg-white dark:bg-[#0a0a0f]',
-      'flex flex-col border-r border-gray-200 dark:border-gray-800',
+      'w-64 bg-[var(--color-bg-base)]',
+      'flex flex-col border-r border-[var(--color-border)]',
       className
     )}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="p-4 border-b border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className={cn(
               'w-10 h-10 rounded-xl',
-              'bg-gradient-to-br from-blue-500 to-purple-600',
+              'bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]',
               'flex items-center justify-center',
               'text-white font-bold text-lg',
-              'shadow-lg shadow-blue-500/30'
+              'shadow-lg shadow-[var(--color-primary)]/30'
             )}>
               M
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">Macto</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">语音 & 屏幕</p>
+              <h1 className="text-lg font-bold text-[var(--color-text-normal)]">Macto</h1>
+              <p className="text-xs text-[var(--color-text-muted)]">语音 & 屏幕</p>
             </div>
           </div>
           {onCreateChannel && (
@@ -54,10 +54,10 @@ export const ChannelList = ({
               onClick={onCreateChannel}
               className={cn(
                 'w-9 h-9 rounded-xl',
-                'bg-blue-600 hover:bg-blue-700 active:bg-blue-800',
+                'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:opacity-80',
                 'text-white',
                 'transition-all duration-200',
-                'shadow-lg shadow-blue-600/30 hover:shadow-blue-600/40',
+                'shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-[var(--color-primary)]/40',
                 'hover:scale-105 active:scale-95'
               )}
             >
@@ -70,7 +70,7 @@ export const ChannelList = ({
 
         {/* Search */}
         <div className="relative">
-          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -78,13 +78,13 @@ export const ChannelList = ({
             placeholder="搜索频道..."
             className={cn(
               'w-full pl-10 pr-4 py-2.5',
-              'bg-gray-100 dark:bg-[#1a1a25]',
+              'bg-[var(--color-bg-tertiary)]',
               'border border-transparent',
-              'focus:border-blue-500 dark:focus:border-blue-500',
-              'focus:ring-2 focus:ring-blue-500/20',
+              'focus:border-[var(--color-primary)]',
+              'focus:ring-2 focus:ring-[var(--color-primary)]/20',
               'rounded-xl text-sm',
-              'text-gray-900 dark:text-white',
-              'placeholder-gray-400 dark:placeholder-gray-500',
+              'text-[var(--color-text-normal)]',
+              'placeholder-[var(--color-text-muted)]',
               'transition-all duration-200',
               'focus:outline-none'
             )}
@@ -105,12 +105,12 @@ export const ChannelList = ({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+      <div className="p-4 border-t border-[var(--color-border)]">
         <button className={cn(
           'w-full flex items-center gap-3 px-4 py-3 rounded-xl',
-          'text-gray-600 dark:text-gray-400',
-          'hover:bg-gray-100 dark:hover:bg-[#1a1a25]',
-          'hover:text-gray-900 dark:hover:text-white',
+          'text-[var(--color-text-muted)]',
+          'hover:bg-[var(--color-bg-tertiary)]',
+          'hover:text-[var(--color-text-normal)]',
           'transition-all duration-200'
         )}>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,19 +133,19 @@ interface ChannelItemProps {
 const ChannelItem = ({ channel, isActive, onClick }: ChannelItemProps) => {
   const typeStyles = {
     voice: {
-      active: 'bg-blue-600 text-white shadow-lg shadow-blue-600/30',
-      inactive: 'text-blue-500 dark:text-blue-400',
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
+      active: 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/30',
+      inactive: 'text-[var(--color-primary)]',
+      bg: 'bg-[var(--color-primary)]/10',
     },
     video: {
-      active: 'bg-purple-600 text-white shadow-lg shadow-purple-600/30',
-      inactive: 'text-purple-500 dark:text-purple-400',
-      bg: 'bg-purple-100 dark:bg-purple-900/30',
+      active: 'bg-[var(--color-accent)] text-white shadow-lg shadow-[var(--color-accent)]/30',
+      inactive: 'text-[var(--color-accent)]',
+      bg: 'bg-[var(--color-accent)]/10',
     },
     meeting: {
-      active: 'bg-green-600 text-white shadow-lg shadow-green-600/30',
-      inactive: 'text-green-500 dark:text-green-400',
-      bg: 'bg-green-100 dark:bg-green-900/30',
+      active: 'bg-[var(--color-online)] text-white shadow-lg shadow-[var(--color-online)]/30',
+      inactive: 'text-[var(--color-online)]',
+      bg: 'bg-[var(--color-online)]/10',
     },
   }
 
@@ -161,8 +161,8 @@ const ChannelItem = ({ channel, isActive, onClick }: ChannelItemProps) => {
         isActive
           ? style.active
           : cn(
-              'hover:bg-gray-100 dark:hover:bg-[#1a1a25]',
-              'text-gray-700 dark:text-gray-300'
+              'hover:bg-[var(--color-bg-tertiary)]',
+              'text-[var(--color-text-muted)]'
             )
       )}
     >
@@ -181,7 +181,7 @@ const ChannelItem = ({ channel, isActive, onClick }: ChannelItemProps) => {
         {channel.name}
       </span>
       {channel.unread && channel.unread > 0 && (
-        <Badge variant="error" size="small">
+        <Badge variant="error" size="sm">
           {channel.unread}
         </Badge>
       )}
@@ -190,7 +190,7 @@ const ChannelItem = ({ channel, isActive, onClick }: ChannelItemProps) => {
           'text-xs px-2 py-0.5 rounded-full',
           isActive
             ? 'bg-white/20 text-white'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+            : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
         )}>
           {channel.participants}
         </span>

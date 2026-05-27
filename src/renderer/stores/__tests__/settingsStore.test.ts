@@ -3,8 +3,15 @@ import { useSettingsStore } from '@renderer/stores/settingsStore'
 
 describe('useSettingsStore', () => {
   beforeEach(() => {
-    // Reset store state
-    useSettingsStore.persist?.clearStorage?.()
+    // Reset store state to initial values
+    useSettingsStore.setState({
+      audioInputDeviceId: '',
+      audioOutputDeviceId: '',
+      defaultVolume: 100,
+      autoJoinLastSession: false,
+      showNotification: true,
+      theme: 'system',
+    })
   })
 
   describe('initial state', () => {

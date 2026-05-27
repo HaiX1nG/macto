@@ -64,6 +64,7 @@ export const CreateSessionModal = ({
       cancelButtonProps={{
         className: 'rounded-xl px-6',
       }}
+      zIndex={2000}
       styles={{
         body: { padding: '24px' },
       }}

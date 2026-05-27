@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Card, Avatar } from 'antd'
-import type { RemoteScreen } from '@renderer/stores/webrtcStore'
+import type { RemoteScreen } from '@renderer/stores/mediaStore'
 
 interface RemoteScreenViewProps {
   screen: RemoteScreen
@@ -35,7 +35,7 @@ export function RemoteScreenView({ screen }: RemoteScreenViewProps) {
       styles={{ body: { padding: '8px' } }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Avatar size={24} className="bg-gradient-to-br from-blue-500 to-purple-600">
+        <Avatar size={24} className="bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]">
           {screen.username.charAt(0).toUpperCase()}
         </Avatar>
         <span className="text-sm text-[var(--color-text-normal)]">{screen.username}</span>

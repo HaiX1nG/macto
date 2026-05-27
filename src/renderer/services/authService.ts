@@ -41,6 +41,10 @@ export const authService = {
     return apiClient.get<UserOnlineStatusResponse>(`/users/${userId}/online`)
   },
 
+  async getUserInfoById(userId: number): Promise<UserInfoResponse> {
+    return apiClient.get<UserInfoResponse>(`/users/${userId}/info`)
+  },
+
   async deleteAccount(): Promise<void> {
     return apiClient.delete('/user/account')
   },

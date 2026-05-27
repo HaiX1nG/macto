@@ -113,7 +113,7 @@ export function MentionAutocomplete({
             <Avatar
               size={24}
               src={user.avatar}
-              className="bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0"
+              className="bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)] flex-shrink-0"
             >
               {user.username.charAt(0).toUpperCase()}
             </Avatar>

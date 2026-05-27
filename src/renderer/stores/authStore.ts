@@ -1,12 +1,15 @@
 import { create } from 'zustand'
 import { authService } from '../services'
 import type { LoginResponse, UserInfoResponse, UpdateProfileRequest, ChangePasswordRequest, SetCustomStatusRequest } from '@shared/types/api'
+import type { User, UserStatus } from '@shared/types/kook'
 
 interface AuthState {
   currentUser: UserInfoResponse | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
+  status: UserStatus
+  cachedUsers: Map<string, User>
 
   // Actions
   login: (username: string, password: string) => Promise<void>
@@ -18,13 +21,19 @@ interface AuthState {
   setCustomStatus: (data: SetCustomStatusRequest) => Promise<void>
   setError: (error: string | null) => void
   clearError: () => void
+  setStatus: (status: UserStatus) => void
+  cacheUser: (user: User) => void
+  getCachedUser: (userId: string) => User | undefined
+  getUsersByIds: (userIds: string[]) => User[]
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   currentUser: null,
   isAuthenticated: authService.isAuthenticated(),
   isLoading: false,
   error: null,
+  status: 'online',
+  cachedUsers: new Map(),
 
   login: async (username, password) => {
     set({ isLoading: true, error: null })
@@ -42,6 +51,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
         isAuthenticated: true,
         isLoading: false,
+        status: 'online',
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
@@ -66,6 +76,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
         isAuthenticated: true,
         isLoading: false,
+        status: 'online',
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed'
@@ -76,7 +87,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     authService.logout()
-    set({ currentUser: null, isAuthenticated: false, error: null })
+    set({ currentUser: null, isAuthenticated: false, error: null, status: 'online' })
   },
 
   fetchUserInfo: async () => {
@@ -85,11 +96,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true })
     try {
       const userInfo = await authService.getUserInfo()
-      set({ currentUser: userInfo, isLoading: false, isAuthenticated: true })
+      const customStatus = userInfo.customStatus || ''
+      const newStatus: UserStatus = customStatus === '' ? 'online' :
+                                   customStatus === '空闲' ? 'idle' :
+                                   customStatus === '请勿打扰' ? 'dnd' : 'offline'
+      set({ currentUser: userInfo, isLoading: false, isAuthenticated: true, status: newStatus })
     } catch (_err) {
-      // Token is invalid, clear auth state
       authService.logout()
-      set({ currentUser: null, isLoading: false, isAuthenticated: false })
+      set({ currentUser: null, isLoading: false, isAuthenticated: false, status: 'online' })
     }
   },
 
@@ -97,7 +111,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null })
     try {
       await authService.updateProfile(data)
-      // Re-fetch user info to ensure data is synced
       const userInfo = await authService.getUserInfo()
       set({ currentUser: userInfo, isLoading: false })
     } catch (err) {
@@ -122,10 +135,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   setCustomStatus: async (data) => {
     try {
       await authService.setCustomStatus(data)
+      const customStatus = data.customStatus || ''
+      const newStatus: UserStatus = customStatus === '' ? 'online' :
+                                   customStatus === '空闲' ? 'idle' :
+                                   customStatus === '请勿打扰' ? 'dnd' : 'offline'
       set((state) => ({
         currentUser: state.currentUser
-          ? { ...state.currentUser, customStatus: data.customStatus || '' }
+          ? { ...state.currentUser, customStatus }
           : null,
+        status: newStatus,
       }))
     } catch (err) {
       console.error('Failed to set custom status:', err)
@@ -134,6 +152,28 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
+
+  setStatus: (status) => set((state) => ({
+    status,
+    currentUser: state.currentUser
+      ? { ...state.currentUser, customStatus: status === 'online' ? '' : status === 'idle' ? '空闲' : status === 'dnd' ? '请勿打扰' : '隐身' }
+      : null,
+  })),
+
+  cacheUser: (user) => set((state) => {
+    const newCachedUsers = new Map(state.cachedUsers)
+    newCachedUsers.set(user.id, user)
+    return { cachedUsers: newCachedUsers }
+  }),
+
+  getCachedUser: (userId) => {
+    return get().cachedUsers.get(userId)
+  },
+
+  getUsersByIds: (userIds) => {
+    const state = get()
+    return userIds.map(id => state.cachedUsers.get(id)).filter(Boolean) as User[]
+  },
 }))
 
 // Listen for logout events from apiClient

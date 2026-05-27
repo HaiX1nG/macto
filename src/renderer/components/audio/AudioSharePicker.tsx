@@ -56,6 +56,7 @@ export function AudioSharePicker({ open, onSelect, onCancel }: AudioSharePickerP
       cancelText="取消"
       okButtonProps={{ disabled: !selectedId }}
       width={500}
+      zIndex={2000}
       styles={{
         body: { backgroundColor: 'var(--color-bg-secondary)', maxHeight: '400px', overflowY: 'auto' }
       }}

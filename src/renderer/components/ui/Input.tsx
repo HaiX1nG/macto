@@ -3,19 +3,34 @@ import type { TextAreaProps as AntdTextAreaProps } from 'antd/es/input/TextArea'
 import { Input as AntdInput } from 'antd'
 import { cn } from '@renderer/utils/cn'
 
-type InputSize = 'small' | 'middle' | 'large'
+type InputSize = 'sm' | 'md' | 'lg'
 type InputVariant = 'default' | 'filled' | 'borderless'
 
-interface InputProps extends Omit<AntdInputProps, 'className' | 'size' | 'variant'> {
+interface InputBaseProps {
   label?: string
   error?: string
   hint?: string
+  fullWidth?: boolean
+  className?: string
+}
+
+interface InputProps extends Omit<AntdInputProps, 'className' | 'size' | 'variant'>, InputBaseProps {
   icon?: React.ReactNode
   suffix?: React.ReactNode
   size?: InputSize
   variant?: InputVariant
-  fullWidth?: boolean
-  className?: string
+  /** @deprecated Use 'sm' | 'md' | 'lg' instead */
+  sizeLegacy?: 'small' | 'middle' | 'large'
+}
+
+const normalizeSize = (size: InputSize | 'small' | 'middle' | 'large' | undefined): InputSize => {
+  if (!size) return 'md'
+  const sizeMap: Record<string, InputSize> = {
+    'small': 'sm',
+    'middle': 'md',
+    'large': 'lg',
+  }
+  return sizeMap[size] ?? size as InputSize
 }
 
 export const Input = ({
@@ -24,67 +39,69 @@ export const Input = ({
   hint,
   icon,
   suffix,
-  size = 'middle',
+  size = 'md',
   variant = 'default',
   fullWidth = true,
   className,
   ...props
 }: InputProps) => {
-  const variants = {
+  const normalizedSize = normalizeSize(size)
+
+  const variants: Record<InputVariant, string> = {
     default: cn(
-      'bg-white dark:bg-[var(--color-bg-tertiary-dark)]',
-      'border border-[var(--color-border-secondary-light)] dark:border-[var(--color-border-dark)]',
-      'focus:border-[var(--color-primary)] dark:focus:border-[var(--color-primary)]',
-      'focus:ring-2 focus:ring-[var(--color-primary)]/20 dark:focus:ring-[var(--color-primary)]/20'
+      'bg-[var(--color-bg-tertiary)]',
+      'border border-[var(--color-border)]',
+      'focus:border-[var(--color-primary)]',
+      'focus:ring-2 focus:ring-[var(--color-primary)]/20'
     ),
     filled: cn(
-      'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
+      'bg-[var(--color-bg-tertiary)]',
       'border border-transparent',
-      'focus:bg-white dark:focus:bg-[var(--color-bg-tertiary-dark)]',
-      'focus:border-[var(--color-primary)] dark:focus:border-[var(--color-primary)]',
-      'focus:ring-2 focus:ring-[var(--color-primary)]/20 dark:focus:ring-[var(--color-primary)]/20'
+      'focus:bg-[var(--color-bg-secondary)]',
+      'focus:border-[var(--color-primary)]',
+      'focus:ring-2 focus:ring-[var(--color-primary)]/20'
     ),
     borderless: cn(
       'bg-transparent',
-      'border-b-2 border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+      'border-b-2 border-[var(--color-border)]',
       'rounded-none',
-      'focus:border-[var(--color-primary)] dark:focus:border-[var(--color-primary)]',
-      'hover:border-[var(--color-border-secondary-light)] dark:hover:border-[var(--color-border-secondary-dark)]'
+      'focus:border-[var(--color-primary)]',
+      'hover:border-[var(--color-text-muted)]'
     ),
   }
 
-  const sizes = {
-    small: 'px-3 py-1.5 text-xs',
-    middle: 'px-4 py-2.5 text-sm',
-    large: 'px-5 py-3.5 text-base',
+  const sizes: Record<InputSize, string> = {
+    sm: 'px-3 py-1.5 text-xs',
+    md: 'px-4 py-2.5 text-sm',
+    lg: 'px-5 py-3.5 text-base',
   }
 
   return (
     <div className={cn('w-full', !fullWidth && 'w-auto')}>
       {label && (
-        <label className="block text-sm font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)] mb-2">
+        <label className="block text-sm font-semibold text-[var(--color-text-normal)] mb-2">
           {label}
         </label>
       )}
       <div className="relative">
         {icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary-light)] dark:text-[var(--color-text-tertiary-dark)] pointer-events-none">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none">
             {icon}
           </div>
         )}
         <AntdInput
           className={cn(
-            'rounded-[var(--radius-lg)] text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
-            'placeholder:text-[var(--color-text-tertiary-light)] dark:placeholder:text-[var(--color-text-tertiary-dark)]',
+            'rounded-xl text-[var(--color-text-normal)]',
+            'placeholder:text-[var(--color-text-muted)]',
             'disabled:cursor-not-allowed disabled:opacity-60',
-            'disabled:bg-[var(--color-bg-secondary-light)] dark:disabled:bg-[var(--color-bg-secondary-dark)]/50',
-            'transition-[var(--transition-colors)] ease-out',
-            'hover:border-[var(--color-border-secondary-light)] dark:hover:border-[var(--color-border-secondary-dark)]',
+            'disabled:bg-[var(--color-bg-tertiary)]/50',
+            'transition-colors duration-200 ease-out',
+            'hover:border-[var(--color-text-muted)]',
             variants[variant],
-            sizes[size],
+            sizes[normalizedSize],
             icon && 'pl-11',
             suffix && 'pr-11',
-            error && 'border-[var(--color-error)] dark:border-[var(--color-error)] focus:border-[var(--color-error)] focus:ring-[var(--color-error)]/20',
+            error && 'border-[var(--color-dnd)] focus:border-[var(--color-dnd)] focus:ring-[var(--color-dnd)]/20',
             className
           )}
           suffix={suffix}
@@ -92,7 +109,7 @@ export const Input = ({
         />
       </div>
       {error && (
-        <p className="mt-2 text-xs text-[var(--color-error)] dark:text-[var(--color-error)] font-medium flex items-center gap-1">
+        <p className="mt-2 text-xs text-[var(--color-dnd)] font-medium flex items-center gap-1">
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
@@ -100,7 +117,7 @@ export const Input = ({
         </p>
       )}
       {hint && !error && (
-        <p className="mt-2 text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">
+        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
           {hint}
         </p>
       )}
@@ -108,13 +125,7 @@ export const Input = ({
   )
 }
 
-interface TextAreaProps extends Omit<AntdTextAreaProps, 'className'> {
-  label?: string
-  error?: string
-  hint?: string
-  fullWidth?: boolean
-  className?: string
-}
+interface TextAreaProps extends Omit<AntdTextAreaProps, 'className'>, InputBaseProps {}
 
 export const TextArea = ({
   label,
@@ -129,35 +140,35 @@ export const TextArea = ({
   return (
     <div className={cn('w-full', !fullWidth && 'w-auto')}>
       {label && (
-        <label className="block text-sm font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)] mb-2">
+        <label className="block text-sm font-semibold text-[var(--color-text-normal)] mb-2">
           {label}
         </label>
       )}
       <AntdTextArea
         className={cn(
-          'rounded-[var(--radius-lg)] text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
-          'bg-white dark:bg-[var(--color-bg-tertiary-dark)]',
-          'border border-[var(--color-border-secondary-light)] dark:border-[var(--color-border-dark)]',
-          'placeholder:text-[var(--color-text-tertiary-light)] dark:placeholder:text-[var(--color-text-tertiary-dark)]',
-          'focus:border-[var(--color-primary)] dark:focus:border-[var(--color-primary)]',
-          'focus:ring-2 focus:ring-[var(--color-primary)]/20 dark:focus:ring-[var(--color-primary)]/20',
-          'hover:border-[var(--color-border-secondary-light)] dark:hover:border-[var(--color-border-secondary-dark)]',
+          'rounded-xl text-[var(--color-text-normal)]',
+          'bg-[var(--color-bg-tertiary)]',
+          'border border-[var(--color-border)]',
+          'placeholder:text-[var(--color-text-muted)]',
+          'focus:border-[var(--color-primary)]',
+          'focus:ring-2 focus:ring-[var(--color-primary)]/20',
+          'hover:border-[var(--color-text-muted)]',
           'disabled:cursor-not-allowed disabled:opacity-60',
-          'disabled:bg-[var(--color-bg-secondary-light)] dark:disabled:bg-[var(--color-bg-secondary-dark)]/50',
-          'transition-[var(--transition-colors)] ease-out',
+          'disabled:bg-[var(--color-bg-tertiary)]/50',
+          'transition-colors duration-200 ease-out',
           'px-4 py-3 text-sm',
-          error && 'border-[var(--color-error)] dark:border-[var(--color-error)] focus:border-[var(--color-error)] focus:ring-[var(--color-error)]/20',
+          error && 'border-[var(--color-dnd)] focus:border-[var(--color-dnd)] focus:ring-[var(--color-dnd)]/20',
           className
         )}
         {...props}
       />
       {error && (
-        <p className="mt-2 text-xs text-[var(--color-error)] dark:text-[var(--color-error)] font-medium">
+        <p className="mt-2 text-xs text-[var(--color-dnd)] font-medium">
           {error}
         </p>
       )}
       {hint && !error && (
-        <p className="mt-2 text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">
+        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
           {hint}
         </p>
       )}

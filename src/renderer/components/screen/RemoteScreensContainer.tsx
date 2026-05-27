@@ -1,8 +1,8 @@
-import { useWebRTCStore } from '@renderer/stores/webrtcStore'
+import { useMediaStore } from '@renderer/stores/mediaStore'
 import { RemoteScreenView } from './RemoteScreenView'
 
 export function RemoteScreensContainer() {
-  const remoteScreens = useWebRTCStore((state) => state.remoteScreens)
+  const remoteScreens = useMediaStore((state) => state.remoteScreens)
 
   if (remoteScreens.size === 0) return null
 

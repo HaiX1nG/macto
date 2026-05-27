@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import type { Locale } from './zh'
+import { zh } from './zh'
+import { en } from './en'
 
 // Available languages
 export const LOCALES = ['zh', 'en'] as const
@@ -38,7 +39,7 @@ const getTranslation = (locale: Locale, key: string): string => {
 
   for (const k of keys) {
     if (value && typeof value === 'object' && k in value) {
-      value = value[k]
+      value = (value as Record<string, unknown>)[k]
     } else {
       return key
     }

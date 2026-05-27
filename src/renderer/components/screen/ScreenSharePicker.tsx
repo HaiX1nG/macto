@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Modal, Spin } from 'antd'
+import { Spin } from 'antd'
 import { DesktopOutlined, AppstoreOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
+import { Modal } from '@renderer/components/ui/Modal'
 import type { ScreenSource } from '@shared/types/ipc'
 
 interface ScreenSharePickerProps {
@@ -52,17 +53,38 @@ export function ScreenSharePicker({ open, onSelect, onCancel }: ScreenSharePicke
 
   return (
     <Modal
-      open={open}
+      isOpen={open}
+      onClose={onCancel}
       title="选择要共享的屏幕"
-      onCancel={onCancel}
-      onOk={handleConfirm}
-      okText="开始共享"
-      cancelText="取消"
-      okButtonProps={{ disabled: !selectedId }}
-      width={700}
-      styles={{
-        body: { backgroundColor: 'var(--color-bg-secondary)', maxHeight: '400px', overflowY: 'auto' }
-      }}
+      size="xl"
+      footer={
+        <>
+          <button
+            onClick={onCancel}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-medium',
+              'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-darker)]',
+              'text-[var(--color-text-normal)]',
+              'transition-colors duration-150 ease-out'
+            )}
+          >
+            取消
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!selectedId}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-medium',
+              'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80',
+              'text-[var(--color-bg-base)]',
+              'transition-colors duration-150 ease-out',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+          >
+            开始共享
+          </button>
+        </>
+      }
     >
       {loading ? (
         <div className="flex items-center justify-center py-12">

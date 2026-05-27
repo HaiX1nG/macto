@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__agent-collab__*",
+      "Read(*)",
+      "Grep(*)",
+      "Write(*)",
+      "Edit(*)"
+    ]
+  },
+  "mcpServers": {
+    "agent-collab": {
+      "command": "agent-collab-mcp",
+      "env": {
+        "AGENT_ROLE": "claude-code",
+        "AGENT_ENGINE_MODE": "both"
+      }
+    }
+  }
+}

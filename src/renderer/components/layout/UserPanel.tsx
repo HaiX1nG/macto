@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { App } from 'antd'
 import { AudioOutlined, AudioMutedOutlined, SoundOutlined, DesktopOutlined, StopOutlined, CustomerServiceOutlined, SettingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
-import { useServerStore } from '@renderer/stores/serverStore'
+import { useRoomStore } from '@renderer/stores/serverStore'
 import { useScreenShare } from '@renderer/hooks/useScreenShare'
 import { useAudioShare } from '@renderer/hooks/useAudioShare'
 import { ScreenSharePicker } from '../screen/ScreenSharePicker'
@@ -10,9 +10,12 @@ import { ScreenSharePreview } from '../screen/ScreenSharePreview'
 import { AudioSharePicker } from '../audio/AudioSharePicker'
 import { AudioSettings } from '../settings/AudioSettings'
 
+const USER_PANEL_HEIGHT = 60
+const CONTROL_BUTTON_SIZE = 40
+
 export function UserPanel() {
   const { message: messageApi } = App.useApp()
-  const { currentServerId } = useServerStore()
+  const { currentRoomId } = useRoomStore()
   const { localStream, isSharing, startScreenShare, stopScreenShare } = useScreenShare()
   const { isAudioSharing, startAudioShare, stopAudioShare } = useAudioShare()
 
@@ -25,16 +28,14 @@ export function UserPanel() {
   const [showAudioSettings, setShowAudioSettings] = useState(false)
 
   const handleScreenShareClick = () => {
-    if (!currentServerId) {
+    if (!currentRoomId) {
       messageApi.warning('请先选择一个房间')
       return
     }
 
     if (isSharing) {
-      // Stop screen share
       handleStopScreenShare()
     } else {
-      // Show screen picker
       setShowScreenPicker(true)
     }
   }
@@ -53,7 +54,7 @@ export function UserPanel() {
   }
 
   const handleAudioShareClick = () => {
-    if (!currentServerId) {
+    if (!currentRoomId) {
       messageApi.warning('请先选择一个房间')
       return
     }
@@ -80,61 +81,53 @@ export function UserPanel() {
 
   return (
     <>
-      <div className="h-[52px] bg-[var(--color-bg-darker)] px-2 flex items-center justify-center gap-2 flex-shrink-0">
-        <button
+      <div
+        className="bg-gradient-to-b from-[var(--color-bg-secondary)] to-[var(--color-bg-darker)] px-3 flex items-center justify-center gap-2.5 flex-shrink-0 border-t border-[var(--color-border)] transition-colors duration-300 ease-out"
+        style={{ height: USER_PANEL_HEIGHT }}
+      >
+        <ControlButton
           onClick={handleScreenShareClick}
           disabled={screenShareLoading}
-          className={cn(
-            "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
-            isSharing ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]",
-            screenShareLoading && "opacity-50 cursor-not-allowed"
-          )}
+          isActive={isSharing}
+          activeColor="primary"
           title={isSharing ? '停止屏幕共享' : '开始屏幕共享'}
-        >
-          {isSharing ? <StopOutlined /> : <DesktopOutlined />}
-        </button>
-        <button
+          icon={isSharing ? <StopOutlined /> : <DesktopOutlined />}
+        />
+
+        <ControlButton
           onClick={handleAudioShareClick}
           disabled={audioShareLoading}
-          className={cn(
-            "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
-            isAudioSharing ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]",
-            audioShareLoading && "opacity-50 cursor-not-allowed"
-          )}
+          isActive={isAudioSharing}
+          activeColor="primary"
           title={isAudioSharing ? '停止音频分享' : '开始音频分享'}
-        >
-          {isAudioSharing ? <StopOutlined /> : <CustomerServiceOutlined />}
-        </button>
-        <button
+          icon={isAudioSharing ? <StopOutlined /> : <CustomerServiceOutlined />}
+        />
+
+        <div className="w-px h-6 bg-[var(--color-border)]" />
+
+        <ControlButton
           onClick={() => setIsMuted(!isMuted)}
-          className={cn(
-            "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
-            isMuted ? "text-[var(--color-dnd)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"
-          )}
+          isActive={isMuted}
+          activeColor="danger"
           title={isMuted ? '取消静音' : '静音'}
-        >
-          {isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
-        </button>
-        <button
+          icon={isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
+        />
+
+        <ControlButton
           onClick={() => setIsDeafened(!isDeafened)}
-          className={cn(
-            "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
-            isDeafened ? "text-[var(--color-dnd)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"
-          )}
+          isActive={isDeafened}
+          activeColor="danger"
           title={isDeafened ? '取消耳聋' : '耳聋'}
-        >
-          <SoundOutlined />
-        </button>
-        <button
+          icon={<SoundOutlined />}
+        />
+
+        <div className="w-px h-6 bg-[var(--color-border)]" />
+
+        <ControlButton
           onClick={() => setShowAudioSettings(true)}
-          className={cn(
-            "w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]",
-            "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]"
-          )}
           title="音频设置"
-        >
-          <SettingOutlined />
-        </button>
+          icon={<SettingOutlined />}
+        />
       </div>
 
       <ScreenSharePicker
@@ -159,5 +152,45 @@ export function UserPanel() {
         onClose={() => setShowAudioSettings(false)}
       />
     </>
+  )
+}
+
+interface ControlButtonProps {
+  onClick: () => void
+  disabled?: boolean
+  isActive?: boolean
+  activeColor?: 'primary' | 'danger'
+  title: string
+  icon: React.ReactNode
+}
+
+function ControlButton({ onClick, disabled, isActive, activeColor = 'primary', title, icon }: ControlButtonProps) {
+  const activeStyles = {
+    primary: 'bg-[var(--color-primary)]/15 text-[var(--color-primary)] shadow-sm shadow-[var(--color-primary)]/20',
+    danger: 'bg-[var(--color-dnd)]/15 text-[var(--color-dnd)] shadow-sm shadow-[var(--color-dnd)]/20',
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "relative rounded-xl flex items-center justify-center",
+        "transition-all duration-150 ease-out",
+        "hover:scale-105 active:scale-95",
+        "will-change-transform",
+        isActive
+          ? activeStyles[activeColor]
+          : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] hover:bg-[var(--color-bg-darker)]",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+      style={{ width: CONTROL_BUTTON_SIZE, height: CONTROL_BUTTON_SIZE }}
+      title={title}
+    >
+      <span className="text-lg">{icon}</span>
+      {isActive && (
+        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[var(--color-primary)] rounded-full animate-pulse" />
+      )}
+    </button>
   )
 }

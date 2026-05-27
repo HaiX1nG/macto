@@ -1,0 +1,1 @@
+- [serverStore refactoring](serverStore-refactoring.md) — serverStore merged into roomStore as compatibility shim

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Modal } from '../Modal'
 
@@ -137,7 +137,8 @@ describe('Modal', () => {
 
     it('should render content with correct padding', () => {
       renderModal()
-      const content = document.querySelector('.p-6')
+      // Component uses px-6 py-5 for content padding
+      const content = document.querySelector('.px-6.py-5')
       expect(content).toBeInTheDocument()
     })
   })
@@ -146,7 +147,8 @@ describe('Modal', () => {
     it('should render title in header', () => {
       renderModal()
       const title = screen.getByText('Test Modal')
-      expect(title).toHaveClass('text-lg', 'font-semibold')
+      // Component uses text-xl font-bold for title
+      expect(title).toHaveClass('text-xl', 'font-bold')
     })
 
     it('should render header with correct styles', () => {
@@ -182,7 +184,8 @@ describe('Modal', () => {
   describe('animation classes', () => {
     it('should render with animation classes', () => {
       renderModal()
-      const modal = document.querySelector('.animate-in')
+      // Component uses animate-fade-in and animate-scale-in for CSS animations
+      const modal = document.querySelector('.animate-fade-in, .animate-scale-in')
       expect(modal).toBeInTheDocument()
     })
   })

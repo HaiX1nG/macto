@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Select, Slider, Switch, Button, Progress, App } from 'antd'
 import { AudioOutlined, AudioMutedOutlined, SoundOutlined, ReloadOutlined } from '@ant-design/icons'
-import { useAudioStore } from '@renderer/stores/audioStore'
+import { useVoiceStore } from '@renderer/stores/voiceStore'
 
 export const SettingsAudio = () => {
   const { message } = App.useApp()
@@ -15,7 +15,7 @@ export const SettingsAudio = () => {
     setOutputDevice,
     setVolume,
     setMute,
-  } = useAudioStore()
+  } = useVoiceStore()
 
   const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([])
   const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([])

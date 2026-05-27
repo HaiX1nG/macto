@@ -19,7 +19,8 @@ export function Sidebar({ children, className, collapsed = false, variant = 'pri
       className={cn(
         'flex-shrink-0 h-full',
         'flex flex-col',
-        'transition-all duration-200 ease-in-out',
+        'transition-all duration-300 ease-out',
+        'will-change-[width]',
         variant === 'primary' && 'bg-white dark:bg-[var(--color-bg-dark)] border-r border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
         variant === 'secondary' && 'bg-[var(--color-bg-secondary)]',
         className
@@ -35,8 +36,7 @@ export function SidebarHeader({ children }: { children: React.ReactNode }) {
   return (
     <div className={cn(
       'px-4 py-4 border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'bg-gradient-to-r from-blue-50/50 to-purple-50/50',
-      'dark:from-blue-900/10 dark:to-purple-900/10',
+      'bg-gradient-to-r from-[var(--color-sidebar-header-gradient-start)] to-[var(--color-sidebar-header-gradient-end)]',
       'flex-shrink-0'
     )}>
       {children}
@@ -65,7 +65,8 @@ export function SidebarNavItem({ active, icon, badge, onClick, children }: Sideb
     <Menu.Item
       icon={icon}
       className={cn(
-        'text-sm font-medium rounded-[var(--radius-lg)] transition-[var(--transition-all)]',
+        'text-sm font-medium rounded-[var(--radius-lg)]',
+        'transition-all duration-200 ease-out',
         'hover:scale-[1.02] active:scale-[0.98]',
         active
           ? cn(
@@ -120,7 +121,8 @@ export function SidebarChannel({
     <Menu.Item
       icon={icon}
       className={cn(
-        'text-sm font-medium rounded-[var(--radius-lg)] transition-[var(--transition-all)]',
+        'text-sm font-medium rounded-[var(--radius-lg)]',
+        'transition-all duration-200 ease-out',
         'hover:scale-[1.01] active:scale-[0.99]',
         active
           ? cn(
@@ -160,7 +162,8 @@ export function ThemeToggle() {
         type="text"
         icon={isLight ? <MoonOutlined /> : <SunOutlined />}
         className={cn(
-          'w-10 h-10 rounded-[var(--radius-lg)] transition-[var(--transition-all)]',
+          'w-10 h-10 rounded-[var(--radius-lg)]',
+          'transition-all duration-150 ease-out',
           'hover:scale-110 active:scale-95',
           isLight
             ? 'text-[var(--color-text-secondary-light)] hover:bg-[var(--color-border-light)] dark:text-[var(--color-text-secondary-dark)] dark:hover:bg-[var(--color-bg-tertiary-dark)]'
@@ -174,12 +177,12 @@ export function ThemeToggle() {
 
 export function UserAvatar({ name, size = 'default' }: { name: string, size?: 'small' | 'default' | 'large' }) {
   const colors = [
-    'bg-gradient-to-br from-blue-500 to-purple-600',
-    'bg-gradient-to-br from-green-500 to-teal-600',
-    'bg-gradient-to-br from-orange-500 to-red-600',
-    'bg-gradient-to-br from-pink-500 to-rose-600',
-    'bg-gradient-to-br from-cyan-500 to-blue-600',
-    'bg-gradient-to-br from-amber-500 to-orange-600',
+    'bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]',
+    'bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]',
+    'bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]',
+    'bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]',
+    'bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]',
+    'bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]',
   ]
 
   const colorIndex = name.charCodeAt(0) % colors.length
@@ -229,10 +232,10 @@ export function MainSidebar({
         <div className="flex items-center gap-3">
           <div className={cn(
             'w-10 h-10 rounded-xl',
-            'bg-gradient-to-br from-blue-500 to-purple-600',
+            'bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)]',
             'flex items-center justify-center',
             'text-white font-bold text-lg',
-            'shadow-[var(--shadow-lg)] shadow-blue-500/30'
+            'shadow-[var(--shadow-lg)] shadow-[var(--color-primary)]/30'
           )}>
             M
           </div>

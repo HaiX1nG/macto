@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { UserOutlined, UserAddOutlined } from '@ant-design/icons'
+import { UserAddOutlined } from '@ant-design/icons'
 import { ChannelList } from './ChannelList'
 import { SubcategoryList } from './SubcategoryList'
 import { ChannelControlPanel } from './ChannelControlPanel'
 import { cn } from '@renderer/utils/cn'
+import { EmptyState } from '@renderer/components/ui/EmptyState'
+import { Skeleton, SkeletonAvatar } from '@renderer/components/ui/Skeleton'
+import { getAvatarGradient, getAvatarInitial, isValidAvatarUrl } from '@renderer/utils/avatar'
+import { statusColorMap, getStatusLabel } from '@renderer/utils/status'
+import type { ChannelParticipant } from '@shared/types/participant'
 
 interface Channel {
   id: string
@@ -18,16 +23,7 @@ interface Subcategory {
   name: string
   type: 'voice' | 'video'
   icon: React.ReactNode
-  participants: Participant[]
-}
-
-interface Participant {
-  id: string
-  name: string
-  avatar?: string
-  status: 'online' | 'away' | 'busy'
-  isMuted?: boolean
-  isDeafened?: boolean
+  participants: ChannelParticipant[]
 }
 
 interface ChannelViewProps {
@@ -40,6 +36,7 @@ interface ChannelViewProps {
   onCreateChannel?: () => void
   onCreateSubcategory?: () => void
   onLeaveChannel?: () => void
+  loading?: boolean
 }
 
 export function ChannelView({
@@ -51,6 +48,7 @@ export function ChannelView({
   onSubcategoryClick,
   onCreateChannel,
   onCreateSubcategory,
+  loading = false,
 }: ChannelViewProps) {
   const [searchTerm, _setSearchTerm] = useState('')
 
@@ -61,7 +59,7 @@ export function ChannelView({
   const activeSubcategory = subcategories.find(s => s.id === activeSubcategoryId)
 
   return (
-    <div className="flex h-screen bg-[var(--color-bg-secondary-light)] dark:bg-[var(--color-bg-dark)] transition-colors duration-300">
+    <div className="flex h-screen bg-[var(--color-bg-secondary)] animate-fade-in will-change-[opacity]">
       {/* Channel List */}
       <ChannelList
         channels={channels}
@@ -79,31 +77,31 @@ export function ChannelView({
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-[var(--color-bg-secondary-light)] dark:bg-[var(--color-bg-dark)] transition-colors duration-300">
+      <div className="flex-1 flex flex-col bg-[var(--color-bg-secondary)] transition-colors duration-200">
         {/* Header */}
         <div className={cn(
-          'h-16 bg-white dark:bg-[var(--color-bg-dark)]',
-          'border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+          'h-[var(--header-height)] bg-[var(--color-bg-base)]',
+          'border-b border-[var(--color-border)]',
           'flex items-center justify-between px-6',
           'sticky top-0 z-10',
-          'transition-colors duration-300'
+          'transition-colors duration-200'
         )}>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
+            <h1 className="text-xl font-bold text-[var(--color-text-normal)]">
               {channels.find(c => c.id === activeChannelId)?.name || '频道'}
             </h1>
             {activeSubcategoryId && (
               <span className={cn(
                 'px-4 py-1.5 rounded-full text-xs font-semibold',
-                'bg-[var(--color-primary-light)] dark:bg-[var(--color-primary-light)]/10',
-                'text-[var(--color-primary)] dark:text-[var(--color-primary)]'
+                'bg-[var(--color-primary)]/10',
+                'text-[var(--color-primary)]'
               )}>
                 {activeSubcategory?.name}
               </span>
             )}
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">
+            <div className="text-sm text-[var(--color-text-muted)]">
               {activeSubcategory?.participants.length || 0} 人在线
             </div>
           </div>
@@ -111,35 +109,34 @@ export function ChannelView({
 
         {/* Participants Grid */}
         <div className="flex-1 p-6 overflow-y-auto pb-32">
-          {filteredSubcategories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className={cn(
-                'w-20 h-20 rounded-2xl',
-                'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
-                'flex items-center justify-center mb-6'
-              )}>
-                <UserOutlined className="text-4xl text-[var(--color-text-tertiary-light)] dark:text-[var(--color-text-tertiary-dark)]" />
-              </div>
-              <h3 className="text-2xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)] mb-3">
-                暂无分区
-              </h3>
-              <p className="text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] mb-8 max-w-md">
-                点击左侧"创建"按钮创建新分区，或搜索其他分区
-              </p>
-              <button
-                onClick={onCreateSubcategory}
-                className={cn(
-                  'flex items-center gap-2 px-8 py-4 rounded-xl',
-                  'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)]',
-                  'text-white font-semibold',
-                  'transition-all duration-200',
-                  'shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-[var(--color-primary)]/40',
-                  'hover:scale-[1.02] active:scale-[0.98]'
-                )}
-              >
-                <UserAddOutlined />
-                创建分区
-              </button>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="rounded-2xl p-6 bg-[var(--color-bg-base)] border border-[var(--color-border)]">
+                  <div className="flex flex-col items-center gap-4">
+                    <SkeletonAvatar size={96} />
+                    <Skeleton variant="rounded" width="75%" height={18} />
+                    <Skeleton variant="text" width="50%" height={14} />
+                    <div className="w-full mt-2">
+                      <Skeleton variant="rounded" width="100%" height={40} className="rounded-xl" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredSubcategories.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <EmptyState
+                iconType="team"
+                title="暂无分区"
+                description={'点击左侧"创建"按钮创建新分区，或搜索其他分区'}
+                action={{
+                  label: '创建分区',
+                  onClick: onCreateSubcategory || (() => {}),
+                  icon: <UserAddOutlined />,
+                  variant: 'primary',
+                }}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -163,34 +160,17 @@ export function ChannelView({
 }
 
 interface ParticipantCardProps {
-  participant: Participant
+  participant: ChannelParticipant
 }
 
 function ParticipantCard({ participant }: ParticipantCardProps) {
-  const statusColors = {
-    online: 'bg-green-500 shadow-green-500/30',
-    away: 'bg-yellow-500 shadow-yellow-500/30',
-    busy: 'bg-red-500 shadow-red-500/30',
-  }
-
-  const getAvatarGradient = (name: string) => {
-    const gradients = [
-      'bg-gradient-to-br from-blue-500 to-purple-600',
-      'bg-gradient-to-br from-green-500 to-teal-600',
-      'bg-gradient-to-br from-orange-500 to-red-600',
-      'bg-gradient-to-br from-pink-500 to-rose-600',
-      'bg-gradient-to-br from-cyan-500 to-blue-600',
-    ]
-    return gradients[name.charCodeAt(0) % gradients.length]
-  }
-
   return (
     <div className={cn(
-      'bg-white dark:bg-[var(--color-bg-tertiary-dark)] rounded-2xl p-6',
-      'border border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'hover:border-[var(--color-primary)] dark:hover:border-[var(--color-primary)]',
+      'bg-[var(--color-bg-base)] rounded-2xl p-6',
+      'border border-[var(--color-border)]',
+      'hover:border-[var(--color-primary)]',
       'hover:shadow-xl hover:-translate-y-1',
-      'transition-all duration-300 group'
+      'transition-[transform,box-shadow,border-color] duration-200 group'
     )}>
       <div className="flex flex-col items-center gap-5">
         {/* Avatar */}
@@ -198,29 +178,28 @@ function ParticipantCard({ participant }: ParticipantCardProps) {
           <div className={cn(
             'w-24 h-24 rounded-full flex items-center justify-center',
             'text-3xl font-bold text-white shadow-lg',
-            getAvatarGradient(participant.name),
-            statusColors[participant.status]
+            getAvatarGradient(participant.name)
           )}>
-            {participant.avatar ? (
+            {isValidAvatarUrl(participant.avatar) ? (
               <img src={participant.avatar} alt={participant.name} className="w-full h-full rounded-full object-cover" />
             ) : (
-              participant.name.charAt(0).toUpperCase()
+              getAvatarInitial(participant.name)
             )}
           </div>
           {/* Status Indicator */}
           <div className={cn(
             'absolute bottom-1 right-1 w-5 h-5 rounded-full',
-            'border-3 border-white dark:border-[#1a1a25]',
-            statusColors[participant.status]
+            'border-3 border-[var(--color-bg-base)]',
+            statusColorMap[participant.status]
           )} />
         </div>
 
         {/* Name */}
         <div className="text-center w-full">
-          <h3 className="text-lg font-semibold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
+          <h3 className="text-lg font-semibold text-[var(--color-text-normal)]">
             {participant.name}
           </h3>
-          <p className="text-sm text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] mt-1">
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">
             {participant.isMuted ? '静音中' : participant.isDeafened ? '免提中' : '说话中'}
           </p>
         </div>
@@ -228,16 +207,15 @@ function ParticipantCard({ participant }: ParticipantCardProps) {
         {/* Status Badge */}
         <div className={cn(
           'flex items-center gap-3 px-4 py-2.5 rounded-xl w-full',
-          'bg-[var(--color-bg-secondary-light)] dark:bg-[var(--color-bg-secondary-dark)]'
+          'bg-[var(--color-bg-secondary)]'
         )}>
-          <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
             <span className={cn(
               'w-2.5 h-2.5 rounded-full',
-              statusColors[participant.status]
+              statusColorMap[participant.status]
             )} />
             <span>
-              {participant.status === 'online' ? '在线' :
-               participant.status === 'away' ? '离开' : '忙碌'}
+              {getStatusLabel(participant.status)}
             </span>
           </div>
         </div>
@@ -246,18 +224,18 @@ function ParticipantCard({ participant }: ParticipantCardProps) {
         <div className="flex gap-3 w-full">
           <button className={cn(
             'flex-1 px-4 py-3 rounded-xl text-sm font-semibold',
-            'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)]',
-            'text-white transition-all duration-200',
-            'shadow-lg shadow-[var(--color-primary)]/30 hover:shadow-[var(--color-primary)]/40'
+            'bg-[var(--color-primary)] hover:opacity-90',
+            'text-white transition-[opacity] duration-150',
+            'shadow-lg shadow-[var(--color-primary)]/30'
           )}>
             语音
           </button>
           <button className={cn(
             'flex-1 px-4 py-3 rounded-xl text-sm font-semibold',
-            'bg-[var(--color-bg-tertiary-light)] dark:bg-[var(--color-bg-tertiary-dark)]',
-            'hover:bg-[var(--color-border-light)] dark:hover:bg-[var(--color-border-dark)]',
-            'text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
-            'transition-all duration-200'
+            'bg-[var(--color-bg-tertiary)]',
+            'hover:bg-[var(--color-border)]',
+            'text-[var(--color-text-normal)]',
+            'transition-[background-color,color] duration-150'
           )}>
             视频通话
           </button>

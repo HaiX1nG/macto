@@ -78,6 +78,14 @@ export const roomService = {
       return []
     }
   },
+
+  async kickParticipant(roomId: number, userId: number): Promise<void> {
+    return apiClient.post<void>(`/rooms/${roomId}/kick/${userId}`)
+  },
+
+  async setParticipantRole(roomId: number, userId: number, role: number): Promise<void> {
+    return apiClient.put<void>(`/rooms/${roomId}/participants/${userId}/role`, { role })
+  },
 }
 
 export default roomService
