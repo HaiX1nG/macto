@@ -1,4 +1,8 @@
 /**
+ * @deprecated 此组件已在页面结构重塑（Phase 1A-1D）中弃用。
+ * 由 src/renderer/pages/VoicePage + NavigationShell 替代。
+ * 后续清理阶段将删除此文件，请勿在新代码中引用。
+ *
  * VoiceView Component
  *
  * The voice channel view for real-time voice communication.

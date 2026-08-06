@@ -20,3 +20,5 @@ export type {
 export type { Participant as UnifiedParticipant } from './participant'
 // Export UserStatus from participant.ts as ParticipantStatus to avoid conflict with kook.ts
 export type { UserStatus as ParticipantStatus } from './participant'
+
+export * from './view'

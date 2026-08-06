@@ -1,3 +1,8 @@
+/**
+ * @deprecated 此组件已在页面结构重塑（Phase 1A-1D）中弃用。
+ * 语音控制逻辑已移至 src/renderer/pages/VoicePage。
+ * 后续清理阶段将删除此文件，请勿在新代码中引用。
+ */
 import { useState } from 'react'
 import { cn } from '@renderer/utils/cn'
 import { AudioOutlined, VideoCameraOutlined, DesktopOutlined, SoundOutlined, AudioMutedOutlined } from '@ant-design/icons'

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { ViewId, ViewParams } from '@shared/types/view'
 
 // Layout breakpoints following Tailwind conventions
 export type Breakpoint = 'sm' | 'md' | 'lg' | 'xl' | '2xl'
@@ -35,6 +36,12 @@ interface LayoutState {
   // Responsive breakpoint
   currentBreakpoint: Breakpoint
 
+  // ── 活动视图状态 ──
+  /** 当前活动视图 ID */
+  activeViewId: ViewId
+  /** 当前活动视图参数 */
+  activeViewParams: ViewParams
+
   // Actions
   toggleServerSidebar: () => void
   setServerSidebarExpanded: (expanded: boolean) => void
@@ -46,11 +53,21 @@ interface LayoutState {
   toggleMobileChannelSidebar: () => void
   closeMobileChannelSidebar: () => void
 
+  // ── 视图导航 actions ──
+  /** 设置活动视图 */
+  setActiveView: (viewId: ViewId, params?: ViewParams) => void
+  /** 重置为默认视图（home） */
+  clearActiveView: () => void
+
   // Computed helpers
   isSmallScreen: () => boolean
   isMediumScreen: () => boolean
   isLargeScreen: () => boolean
 }
+
+// 默认视图
+const DEFAULT_VIEW: ViewId = 'home'
+const DEFAULT_PARAMS: ViewParams = {}
 
 export const useLayoutStore = create<LayoutState>((set, get) => ({
   serverSidebarExpanded: false,
@@ -58,6 +75,8 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
   memberListVisible: true,
   mobileChannelSidebarOpen: false,
   currentBreakpoint: 'lg',
+  activeViewId: DEFAULT_VIEW,
+  activeViewParams: DEFAULT_PARAMS,
 
   toggleServerSidebar: () => set((state) => ({
     serverSidebarExpanded: !state.serverSidebarExpanded
@@ -88,6 +107,12 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
   })),
 
   closeMobileChannelSidebar: () => set({ mobileChannelSidebarOpen: false }),
+
+  setActiveView: (viewId, params = DEFAULT_PARAMS) =>
+    set({ activeViewId: viewId, activeViewParams: params }),
+
+  clearActiveView: () =>
+    set({ activeViewId: DEFAULT_VIEW, activeViewParams: DEFAULT_PARAMS }),
 
   updateBreakpoint: (width) => {
     let breakpoint: Breakpoint

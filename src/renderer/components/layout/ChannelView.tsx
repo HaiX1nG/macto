@@ -1,3 +1,8 @@
+/**
+ * @deprecated 此组件已在页面结构重塑（Phase 1A-1D）中弃用。
+ * 由 src/renderer/pages/ChannelPage + NavigationShell 替代。
+ * 后续清理阶段将删除此文件，请勿在新代码中引用。
+ */
 import { useState } from 'react'
 import { UserAddOutlined } from '@ant-design/icons'
 import { ChannelList } from './ChannelList'

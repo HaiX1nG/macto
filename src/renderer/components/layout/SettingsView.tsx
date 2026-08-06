@@ -17,12 +17,12 @@ import {
   DesktopOutlined,
   MoonOutlined,
   SunOutlined,
-  SoundOutlined,
-  MonitorOutlined,
+  KeyOutlined,
 } from '@ant-design/icons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@renderer/utils/cn'
 import { useThemeStore, type AppTheme } from '@renderer/stores/themeStore'
+import { ShortcutsSettings } from '@renderer/components/settings/ShortcutsSettings'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -66,13 +66,8 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }
+    transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] }
   }
-}
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.3 } }
 }
 
 // Theme options with preview
@@ -133,6 +128,7 @@ const sections: SectionDef[] = [
   { key: 'audio', icon: <AudioOutlined />, title: '音频', label: '音频' },
   { key: 'video', icon: <VideoCameraOutlined />, title: '视频', label: '视频' },
   { key: 'notifications', icon: <BellOutlined />, title: '通知', label: '通知' },
+  { key: 'shortcuts', icon: <KeyOutlined />, title: '快捷键', label: '快捷键' },
   { key: 'about', icon: <InfoCircleOutlined />, title: '关于', label: '关于' },
 ]
 
@@ -160,7 +156,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [activeSection, setActiveSection] = useState('appearance')
 
   return (
-    <div className="flex h-screen bg-[var(--color-bg-secondary)] transition-colors duration-300">
+    <div className="flex h-full bg-[var(--color-bg-secondary)] transition-colors duration-300">
       {/* Sidebar */}
       <motion.div
         initial={{ x: -20, opacity: 0 }}
@@ -511,6 +507,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         onChange={() => {}}
                       />
                     </div>
+                  </SettingsSection>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Shortcuts Section */}
+            {activeSection === 'shortcuts' && (
+              <motion.div
+                key="shortcuts"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<KeyboardOutlined />}
+                    title="快捷键"
+                    description="自定义您的键盘快捷键设置"
+                  >
+                    <ShortcutsSettings open={true} />
                   </SettingsSection>
                 </motion.div>
               </motion.div>

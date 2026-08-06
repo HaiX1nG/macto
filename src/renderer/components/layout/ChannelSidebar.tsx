@@ -3,6 +3,7 @@ import { Dropdown } from 'antd'
 import { SettingOutlined, DownOutlined, NumberOutlined, AudioOutlined, UserOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useRoomStore } from '@renderer/stores/serverStore'
+import { useLayoutStore } from '@renderer/stores/layoutStore'
 import { UserPanel } from './UserPanel'
 import type { Channel } from '@shared/types/kook'
 
@@ -19,6 +20,7 @@ function getDefaultChannels(roomId: string): Channel[] {
 
 export function ChannelSidebar() {
   const { rooms, currentRoomId, currentChannelId, setCurrentChannel } = useRoomStore()
+  const { setActiveView } = useLayoutStore()
   const currentRoom = rooms.find(r => String(r.id) === currentRoomId)
   const [sidebarWidth, setSidebarWidth] = useState(CHANNEL_SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -89,7 +91,13 @@ export function ChannelSidebar() {
                 key={channel.id}
                 channel={channel}
                 isActive={currentChannelId === channel.id}
-                onClick={() => setCurrentChannel(channel.id)}
+                onClick={() => {
+                  setCurrentChannel(channel.id)
+                  setActiveView(
+                    channel.type === 'voice' ? 'voice' : 'channel',
+                    { channelId: channel.id },
+                  )
+                }}
               />
             ))}
           </div>

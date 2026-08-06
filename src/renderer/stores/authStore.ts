@@ -1,186 +1,166 @@
 import { create } from 'zustand'
-import { authService } from '../services'
-import type { LoginResponse, UserInfoResponse, UpdateProfileRequest, ChangePasswordRequest, SetCustomStatusRequest } from '@shared/types/api'
-import type { User, UserStatus } from '@shared/types/kook'
+import type { UserStatus } from '@shared/types/kook'
 
-interface AuthState {
-  currentUser: UserInfoResponse | null
+export interface User {
+  id: string
+  username: string
+  nickname?: string
+  avatar?: string
+  email?: string
+  phone?: string
+  status?: UserStatus
+  customStatus?: string
+}
+
+export interface AuthState {
+  // State
   isAuthenticated: boolean
+  currentUser: User | null
+  token: string | null
   isLoading: boolean
   error: string | null
   status: UserStatus
-  cachedUsers: Map<string, User>
 
   // Actions
   login: (username: string, password: string) => Promise<void>
-  register: (username: string, password: string, email: string) => Promise<void>
+  register: (username: string, password: string, email?: string) => Promise<void>
   logout: () => void
-  fetchUserInfo: () => Promise<void>
-  updateProfile: (data: UpdateProfileRequest) => Promise<void>
-  changePassword: (data: ChangePasswordRequest) => Promise<void>
-  setCustomStatus: (data: SetCustomStatusRequest) => Promise<void>
-  setError: (error: string | null) => void
   clearError: () => void
+  fetchUserInfo: () => Promise<void>
   setStatus: (status: UserStatus) => void
-  cacheUser: (user: User) => void
-  getCachedUser: (userId: string) => User | undefined
-  getUsersByIds: (userIds: string[]) => User[]
+  setCustomStatus: (status: { customStatus: string }) => Promise<void>
+  updateProfile: (data: Partial<User>) => Promise<void>
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
+  // Initial state
+  isAuthenticated: false,
   currentUser: null,
-  isAuthenticated: authService.isAuthenticated(),
+  token: null,
   isLoading: false,
   error: null,
   status: 'online',
-  cachedUsers: new Map(),
 
-  login: async (username, password) => {
+  // Login action
+  login: async (username: string, _password: string) => {
     set({ isLoading: true, error: null })
     try {
-      const response: LoginResponse = await authService.login(username, password)
-      set({
-        currentUser: {
-          userId: response.userId,
-          username: response.username,
-          email: response.email,
-          avatarUrl: response.avatarUrl,
-          isOnline: true,
-          customStatus: '',
-          createdAt: new Date().toISOString(),
-        },
-        isAuthenticated: true,
-        isLoading: false,
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      const mockUser: User = {
+        id: '1',
+        username,
+        nickname: username,
         status: 'online',
+      }
+      set({
+        isAuthenticated: true,
+        currentUser: mockUser,
+        token: 'mock-token',
+        isLoading: false,
+        error: null,
       })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Login failed'
-      set({ isLoading: false, error: message })
-      throw err
+    } catch (_err) {
+      set({
+        isLoading: false,
+        error: _err instanceof Error ? _err.message : '登录失败',
+      })
+      throw _err
     }
   },
 
-  register: async (username, password, email) => {
+  // Register action
+  register: async (username: string, _password: string, email?: string) => {
     set({ isLoading: true, error: null })
     try {
-      const response: LoginResponse = await authService.register(username, password, email)
-      set({
-        currentUser: {
-          userId: response.userId,
-          username: response.username,
-          email: response.email,
-          avatarUrl: response.avatarUrl,
-          isOnline: true,
-          customStatus: '',
-          createdAt: new Date().toISOString(),
-        },
-        isAuthenticated: true,
-        isLoading: false,
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      const mockUser: User = {
+        id: '1',
+        username,
+        email,
         status: 'online',
+      }
+      set({
+        isAuthenticated: true,
+        currentUser: mockUser,
+        token: 'mock-token',
+        isLoading: false,
+        error: null,
       })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Registration failed'
-      set({ isLoading: false, error: message })
-      throw err
+    } catch (_err) {
+      set({
+        isLoading: false,
+        error: _err instanceof Error ? _err.message : '注册失败',
+      })
+      throw _err
     }
   },
 
+  // Logout action
   logout: () => {
-    authService.logout()
-    set({ currentUser: null, isAuthenticated: false, error: null, status: 'online' })
+    set({
+      isAuthenticated: false,
+      currentUser: null,
+      token: null,
+      error: null,
+    })
   },
 
-  fetchUserInfo: async () => {
-    if (!authService.isAuthenticated()) return
+  // Clear error
+  clearError: () => {
+    set({ error: null })
+  },
 
+  // Fetch user info
+  fetchUserInfo: async () => {
     set({ isLoading: true })
     try {
-      const userInfo = await authService.getUserInfo()
-      const customStatus = userInfo.customStatus || ''
-      const newStatus: UserStatus = customStatus === '' ? 'online' :
-                                   customStatus === '空闲' ? 'idle' :
-                                   customStatus === '请勿打扰' ? 'dnd' : 'offline'
-      set({ currentUser: userInfo, isLoading: false, isAuthenticated: true, status: newStatus })
-    } catch (_err) {
-      authService.logout()
-      set({ currentUser: null, isLoading: false, isAuthenticated: false, status: 'online' })
-    }
-  },
-
-  updateProfile: async (data) => {
-    set({ isLoading: true, error: null })
-    try {
-      await authService.updateProfile(data)
-      const userInfo = await authService.getUserInfo()
-      set({ currentUser: userInfo, isLoading: false })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update profile'
-      set({ isLoading: false, error: message })
-      throw err
-    }
-  },
-
-  changePassword: async (data) => {
-    set({ isLoading: true, error: null })
-    try {
-      await authService.changePassword(data)
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 500))
       set({ isLoading: false })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to change password'
-      set({ isLoading: false, error: message })
-      throw err
+    } catch (_err) {
+      set({ isLoading: false })
     }
   },
 
-  setCustomStatus: async (data) => {
+  // Set status
+  setStatus: (status: UserStatus) => {
+    set({ status })
+  },
+
+  // Set custom status
+  setCustomStatus: async (status: { customStatus: string }) => {
+    set((state) => ({
+      currentUser: state.currentUser
+        ? { ...state.currentUser, customStatus: status.customStatus }
+        : null,
+    }))
+  },
+
+  // Update profile
+  updateProfile: async (data: Partial<User>) => {
+    set((state) => ({
+      currentUser: state.currentUser
+        ? { ...state.currentUser, ...data }
+        : null,
+    }))
+  },
+
+  // Change password
+  changePassword: async (_oldPassword: string, _newPassword: string) => {
+    set({ isLoading: true })
     try {
-      await authService.setCustomStatus(data)
-      const customStatus = data.customStatus || ''
-      const newStatus: UserStatus = customStatus === '' ? 'online' :
-                                   customStatus === '空闲' ? 'idle' :
-                                   customStatus === '请勿打扰' ? 'dnd' : 'offline'
-      set((state) => ({
-        currentUser: state.currentUser
-          ? { ...state.currentUser, customStatus }
-          : null,
-        status: newStatus,
-      }))
-    } catch (err) {
-      console.error('Failed to set custom status:', err)
+      // TODO: Replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      set({ isLoading: false })
+    } catch (_err) {
+      set({
+        isLoading: false,
+        error: _err instanceof Error ? _err.message : '密码修改失败',
+      })
+      throw _err
     }
-  },
-
-  setError: (error) => set({ error }),
-  clearError: () => set({ error: null }),
-
-  setStatus: (status) => set((state) => ({
-    status,
-    currentUser: state.currentUser
-      ? { ...state.currentUser, customStatus: status === 'online' ? '' : status === 'idle' ? '空闲' : status === 'dnd' ? '请勿打扰' : '隐身' }
-      : null,
-  })),
-
-  cacheUser: (user) => set((state) => {
-    const newCachedUsers = new Map(state.cachedUsers)
-    newCachedUsers.set(user.id, user)
-    return { cachedUsers: newCachedUsers }
-  }),
-
-  getCachedUser: (userId) => {
-    return get().cachedUsers.get(userId)
-  },
-
-  getUsersByIds: (userIds) => {
-    const state = get()
-    return userIds.map(id => state.cachedUsers.get(id)).filter(Boolean) as User[]
   },
 }))
-
-// Listen for logout events from apiClient
-if (typeof window !== 'undefined') {
-  window.addEventListener('auth:logout', () => {
-    useAuthStore.getState().logout()
-  })
-}
-
-export default useAuthStore

@@ -1,17 +1,17 @@
 /**
  * Skeleton Component
  *
- * Loading placeholder component with shimmer animation
+ * Loading placeholder component with pulse animation.
+ * Supports circle, text, and rect variants.
  */
 
 import { cn } from '@renderer/utils/cn'
 
-interface SkeletonProps {
+export interface SkeletonProps {
   className?: string
-  variant?: 'text' | 'circular' | 'rectangular' | 'rounded'
+  variant?: 'circle' | 'text' | 'rect'
   width?: string | number
   height?: string | number
-  animation?: 'shimmer' | 'pulse' | 'none'
   style?: React.CSSProperties
 }
 
@@ -20,247 +20,114 @@ export function Skeleton({
   variant = 'text',
   width,
   height,
-  animation = 'shimmer',
   style,
 }: SkeletonProps) {
   const variants = {
-    text: 'h-4 rounded',
-    circular: 'rounded-full',
-    rectangular: '',
-    rounded: 'rounded-lg',
-  }
-
-  const animations = {
-    shimmer: 'animate-shimmer',
-    pulse: 'animate-pulse-slow',
-    none: '',
+    circle: 'rounded-full',
+    text: 'rounded',
+    rect: 'rounded-lg',
   }
 
   return (
     <div
       className={cn(
         variants[variant],
-        animations[animation],
-        animation === 'shimmer'
-          ? 'bg-gradient-to-r from-[var(--color-bg-tertiary)] via-[var(--color-bg-darker)] to-[var(--color-bg-tertiary)] bg-[length:200%_100%]'
-          : 'bg-[var(--color-bg-tertiary)]',
+        'animate-pulse bg-bg-tertiary',
         className
       )}
       style={{
         width: width,
         height: height,
-        willChange: animation === 'shimmer' ? 'background-position' : undefined,
         ...style,
       }}
     />
   )
 }
 
-// Skeleton for avatar
-interface SkeletonAvatarProps {
-  size?: 'sm' | 'md' | 'lg' | number
+/**
+ * SkeletonMessageList
+ *
+ * Loading placeholder for a list of chat messages.
+ * Renders `count` skeleton rows, each mimicking an avatar + text lines.
+ */
+export interface SkeletonMessageListProps {
+  /** Number of skeleton message rows to render */
+  count?: number
   className?: string
 }
 
-export function SkeletonAvatar({ size = 'md', className }: SkeletonAvatarProps) {
-  const sizes = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-12 h-12',
-  }
-
-  const sizeClass = typeof size === 'number' ? '' : sizes[size]
-  const sizeStyle = typeof size === 'number' ? { width: size, height: size } : undefined
-
+export function SkeletonMessageList({ count = 5, className }: SkeletonMessageListProps) {
   return (
-    <Skeleton
-      variant="circular"
-      className={cn(sizeClass, className)}
-      style={sizeStyle}
-    />
-  )
-}
-
-// Skeleton for text content
-interface SkeletonTextProps {
-  lines?: number
-  className?: string
-  lineHeight?: string | number
-  lastLineWidth?: string
-}
-
-export function SkeletonText({
-  lines = 3,
-  className,
-  lineHeight = '1rem',
-  lastLineWidth = '60%',
-}: SkeletonTextProps) {
-  return (
-    <div className={cn('space-y-2', className)}>
-      {Array.from({ length: lines }).map((_, i) => (
-        <Skeleton
-          key={i}
-          variant="text"
-          height={lineHeight}
-          width={i === lines - 1 ? lastLineWidth : '100%'}
-          className={i === lines - 1 ? 'mb-0' : ''}
-        />
-      ))}
-    </div>
-  )
-}
-
-// Skeleton for message item
-export function SkeletonMessage({ className }: { className?: string }) {
-  return (
-    <div className={cn('flex gap-4 py-2', className)}>
-      <SkeletonAvatar size={40} />
-      <div className="flex-1 space-y-2">
-        <div className="flex items-center gap-2">
-          <Skeleton variant="rounded" width={80} height={16} />
-          <Skeleton variant="rounded" width={40} height={12} />
-        </div>
-        <SkeletonText lines={2} lastLineWidth="70%" />
-      </div>
-    </div>
-  )
-}
-
-// Skeleton for channel item
-export function SkeletonChannel({ className }: { className?: string }) {
-  return (
-    <div className={cn('flex items-center gap-2 px-2 py-1.5', className)}>
-      <Skeleton variant="rounded" width={20} height={20} />
-      <Skeleton variant="text" width={100} height={14} />
-    </div>
-  )
-}
-
-// Skeleton for server icon
-export function SkeletonServer({ className }: { className?: string }) {
-  return (
-    <Skeleton
-      variant="circular"
-      width={48}
-      height={48}
-      className={cn('mx-auto', className)}
-    />
-  )
-}
-
-// Skeleton for member item
-export function SkeletonMember({ className }: { className?: string }) {
-  return (
-    <div className={cn('flex items-center gap-3 px-2 py-1.5', className)}>
-      <SkeletonAvatar size={32} />
-      <div className="flex-1 space-y-1">
-        <Skeleton variant="text" width={80} height={14} />
-        <Skeleton variant="text" width={60} height={12} />
-      </div>
-    </div>
-  )
-}
-
-// Skeleton for card
-interface SkeletonCardProps {
-  className?: string
-  showAvatar?: boolean
-  lines?: number
-}
-
-export function SkeletonCard({
-  className,
-  showAvatar = true,
-  lines = 3,
-}: SkeletonCardProps) {
-  return (
-    <div className={cn('p-4 space-y-4', className)}>
-      {showAvatar && (
-        <div className="flex items-center gap-3">
-          <SkeletonAvatar />
-          <div className="space-y-2">
-            <Skeleton variant="text" width={100} height={16} />
-            <Skeleton variant="text" width={60} height={12} />
+    <div className={cn('flex flex-col gap-4 p-4', className)}>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="flex gap-3">
+          <Skeleton variant="circle" width={40} height={40} className="flex-shrink-0" />
+          <div className="flex flex-col gap-2 flex-1 py-1">
+            <Skeleton variant="rect" width={120} height={12} className="rounded" />
+            <Skeleton variant="rect" width="80%" height={12} className="rounded" />
+            <Skeleton variant="rect" width="60%" height={12} className="rounded" />
           </div>
         </div>
-      )}
-      <SkeletonText lines={lines} />
+      ))}
     </div>
   )
 }
 
-// Skeleton list component
-interface SkeletonListProps {
-  count?: number
-  itemSkeleton: React.ReactNode
+/**
+ * SkeletonAvatar
+ *
+ * Circular skeleton placeholder for avatars.
+ */
+export interface SkeletonAvatarProps {
+  size?: number
   className?: string
 }
 
-export function SkeletonList({ count = 5, itemSkeleton, className }: SkeletonListProps) {
+export function SkeletonAvatar({ size = 40, className }: SkeletonAvatarProps) {
+  return <Skeleton variant="circle" width={size} height={size} className={className} />
+}
+
+/**
+ * SkeletonMember
+ *
+ * Loading placeholder for a single member row (avatar + name).
+ */
+export function SkeletonMember() {
   return (
-    <div className={cn('space-y-2', className)}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i}>{itemSkeleton}</div>
-      ))}
+    <div className="flex items-center gap-3 p-2.5 rounded-xl">
+      <Skeleton variant="circle" width={36} height={36} className="flex-shrink-0" />
+      <div className="flex flex-col gap-2 flex-1">
+        <Skeleton variant="rect" width={100} height={12} className="rounded" />
+        <Skeleton variant="rect" width={60} height={10} className="rounded" />
+      </div>
     </div>
   )
 }
 
-// Skeleton for message list
-export function SkeletonMessageList({ count = 8 }: { count?: number }) {
-  return (
-    <div className="px-4 py-4 space-y-4">
-      {Array.from({ length: count }).map((_, i) => (
-        <SkeletonMessage key={i} />
-      ))}
-    </div>
-  )
+/**
+ * SkeletonCard
+ *
+ * Loading placeholder for a card with optional avatar and text lines.
+ */
+export interface SkeletonCardProps {
+  showAvatar?: boolean
+  lines?: number
+  className?: string
 }
 
-// Skeleton for server sidebar
-export function SkeletonServerSidebar() {
+export function SkeletonCard({ showAvatar = true, lines = 3, className }: SkeletonCardProps) {
   return (
-    <div className="w-[72px] bg-[var(--color-bg-darkest)] flex flex-col items-center py-3 gap-2 h-full">
-      {/* Home button skeleton */}
-      <SkeletonServer />
-      {/* Divider */}
-      <div className="w-8 h-[2px] bg-[var(--color-border)] rounded-full my-1" />
-      {/* Server list skeleton */}
-      {Array.from({ length: 6 }).map((_, i) => (
-        <SkeletonServer key={i} />
+    <div className={cn('p-4 rounded-2xl bg-bg-tertiary', className)}>
+      {showAvatar && <Skeleton variant="circle" width={48} height={48} className="mb-3" />}
+      {Array.from({ length: lines }, (_, i) => (
+        <Skeleton
+          key={i}
+          variant="rect"
+          width={i === lines - 1 ? '60%' : '100%'}
+          height={12}
+          className="rounded mb-2"
+        />
       ))}
-      {/* Spacer */}
-      <div className="flex-1" />
-      {/* Settings skeleton */}
-      <SkeletonServer />
-      {/* Avatar skeleton */}
-      <SkeletonAvatar size={40} />
-    </div>
-  )
-}
-
-// Skeleton for channel sidebar
-export function SkeletonChannelSidebar() {
-  return (
-    <div className="w-[240px] bg-[var(--color-bg-secondary)] flex flex-col h-full">
-      {/* Header skeleton */}
-      <div className="h-12 px-4 flex items-center border-b border-[var(--color-border)]">
-        <Skeleton variant="text" width={120} height={18} />
-      </div>
-      {/* Channel list skeleton */}
-      <div className="flex-1 overflow-hidden py-3 space-y-2">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <SkeletonChannel key={i} />
-        ))}
-      </div>
-      {/* User panel skeleton */}
-      <div className="h-14 px-2 flex items-center gap-2 border-t border-[var(--color-border)]">
-        <SkeletonAvatar size={32} />
-        <div className="flex-1 space-y-1">
-          <Skeleton variant="text" width={80} height={14} />
-          <Skeleton variant="text" width={50} height={12} />
-        </div>
-      </div>
     </div>
   )
 }

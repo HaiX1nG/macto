@@ -1,3 +1,8 @@
+/**
+ * @deprecated 此组件已在页面结构重塑（Phase 1A-1D）中弃用。
+ * 侧边栏现由 ServerSidebar / ChannelSidebar 替代。
+ * 后续清理阶段将删除此文件，请勿在新代码中引用。
+ */
 import { Menu, Badge, Avatar, Tooltip, Button } from 'antd'
 import { HomeOutlined, MoonOutlined, SunOutlined, TeamOutlined, AudioOutlined, VideoCameraOutlined, SettingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'

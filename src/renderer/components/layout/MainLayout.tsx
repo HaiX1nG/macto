@@ -1,14 +1,15 @@
 import { useEffect } from 'react'
 import { ServerSidebar } from './ServerSidebar'
 import { ChannelSidebar } from './ChannelSidebar'
-import { ChatView } from '../chat/ChatView'
 import { MemberList } from '../members/MemberList'
-import { RemoteScreensContainer } from '../screen/RemoteScreensContainer'
 import { useRoomStore } from '@renderer/stores/serverStore'
 import { useAuthStore } from '@renderer/stores/authStore'
 import { useThemeStore } from '@renderer/stores/themeStore'
 import { useLayoutStore, SIDEBAR_WIDTHS } from '@renderer/stores/layoutStore'
 import { useRoomWebSocket } from '@renderer/hooks/useRoomWebSocket'
+import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts'
+import { useAudioStore } from '@renderer/stores/voiceStore'
+import { NavigationShell } from '@renderer/pages'
 import { cn } from '@renderer/utils/cn'
 
 export function MainLayout() {
@@ -22,11 +23,42 @@ export function MainLayout() {
     currentBreakpoint,
     mobileChannelSidebarOpen,
     closeMobileChannelSidebar,
+    setActiveView,
   } = useLayoutStore()
+  const { setMute, isMuted } = useAudioStore()
 
   const currentServerId = currentRoomId
 
   useRoomWebSocket()
+
+  // Register global keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      id: 'toggleMute',
+      handler: () => {
+        setMute(!isMuted)
+      },
+      priority: 10,
+    },
+    {
+      id: 'toggleDeafen',
+      handler: () => {
+        // Toggle deafen - implement via store if available
+        setMute(!isMuted)
+      },
+      priority: 10,
+    },
+    ...Array.from({ length: 9 }, (_, i) => ({
+      id: `switchServer${i + 1}` as const,
+      handler: () => {
+        const room = rooms[i]
+        if (room) {
+          setCurrentRoomId(String(room.id))
+          setCurrentChannel(String(room.id))
+        }
+      },
+    })),
+  ])
 
   useEffect(() => {
     initTheme()
@@ -47,6 +79,7 @@ export function MainLayout() {
           const firstRoom = state.rooms[0]
           setCurrentRoomId(String(firstRoom.id))
           setCurrentChannel(String(firstRoom.id))
+          setActiveView('channel', { channelId: String(firstRoom.id) })
         }
       } catch (err) {
         console.error('Failed to fetch rooms:', err)
@@ -56,7 +89,7 @@ export function MainLayout() {
     if (isAuthenticated && rooms.length === 0) {
       loadRooms()
     }
-  }, [isAuthenticated, rooms.length, fetchRooms, setCurrentRoomId, setCurrentChannel])
+  }, [isAuthenticated, rooms.length, fetchRooms, setCurrentRoomId, setCurrentChannel, setActiveView])
 
   useEffect(() => {
     const handleResize = () => {
@@ -146,8 +179,7 @@ export function MainLayout() {
       )}
 
       <div className="h-full flex flex-col min-w-0 overflow-hidden bg-[var(--color-bg-base)]">
-        <RemoteScreensContainer />
-        <ChatView />
+        <NavigationShell />
       </div>
 
       <div

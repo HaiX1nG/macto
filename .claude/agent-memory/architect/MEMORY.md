@@ -1,0 +1,1 @@
+- [Architecture Design v2.0](project_architecture_v2.md) — Comprehensive architecture redesign covering frontend, Electron, WebRTC, build, testing, and extensibility

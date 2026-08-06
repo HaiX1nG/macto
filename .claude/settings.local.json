@@ -18,7 +18,9 @@
       "Bash(tmux kill-session *)",
       "Bash(rm -rf ~/.claude/teams/macto-dev ~/.claude/tasks/macto-dev)",
       "Bash(rm -rf ~/.claude/tasks/*)",
-      "Bash(rm -rf ~/.claude/teams/*)"
+      "Bash(rm -rf ~/.claude/teams/*)",
+      "Bash(mkdir -p /Users/megumikato/ReactProject/macto/.claude/agents)",
+      "Bash(cp /Users/megumikato/ReactProject/macto/.claude/agents.bak/ui-builder.md /Users/megumikato/ReactProject/macto/.claude/agents/ui-builder.md)"
     ]
   },
   "mcpServers": {

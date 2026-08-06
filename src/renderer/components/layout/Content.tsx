@@ -1,3 +1,8 @@
+/**
+ * @deprecated 此组件已在页面结构重塑（Phase 1A-1D）中弃用。
+ * 内容区现由 NavigationShell + 各 Page 组件替代。
+ * 后续清理阶段将删除此文件，请勿在新代码中引用。
+ */
 import type { ReactNode } from 'react'
 import { cn } from '@renderer/utils/cn'
 import { BREAKPOINTS } from '@renderer/stores/layoutStore'

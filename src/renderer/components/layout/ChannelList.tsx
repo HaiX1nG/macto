@@ -1,3 +1,8 @@
+/**
+ * @deprecated 此组件已在页面结构重塑（Phase 1A-1D）中弃用。
+ * 由 src/renderer/components/layout/ChannelSidebar 替代。
+ * 后续清理阶段将删除此文件，请勿在新代码中引用。
+ */
 import { useState } from 'react'
 import { cn } from '@renderer/utils/cn'
 import { TeamOutlined, VideoCameraOutlined, AudioOutlined, SettingOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
