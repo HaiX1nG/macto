@@ -183,7 +183,7 @@ class WebSocketService {
 }
 
 export function createWebSocketConnection(baseUrl?: string): WebSocketService {
-  const wsUrl = baseUrl || import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws'
+  const wsUrl = baseUrl || import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'
 
   return new WebSocketService({
     url: wsUrl,

@@ -62,7 +62,7 @@ export function useScreenShare() {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
-    const wsUrl = `ws://localhost:8080/ws?token=${token}&room_id=${currentRoomId}`
+    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'}?token=${token}&room_id=${currentRoomId}`
     const ws = new WebSocketService({
       url: wsUrl,
       reconnect: true,

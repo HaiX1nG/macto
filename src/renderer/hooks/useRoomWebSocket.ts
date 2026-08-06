@@ -188,7 +188,7 @@ export function useRoomWebSocket() {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
-    const wsUrl = `ws://localhost:8080/ws?token=${token}&room_id=${currentServerId}`
+    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'}?token=${token}&room_id=${currentServerId}`
     const ws = new WebSocketService({
       url: wsUrl,
       reconnect: true,
