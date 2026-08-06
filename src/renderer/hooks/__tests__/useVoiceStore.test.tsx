@@ -73,7 +73,6 @@ describe('useAudioStore hooks', () => {
       isInVoice: false,
       isLoading: false,
       error: null,
-      audioLevel: 0,
       isSpeaking: false,
     })
   })

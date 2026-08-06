@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { useSettingsStore } from '@renderer/stores/settingsStore'
+import { useSettingsStore, type AppTheme } from '@renderer/stores/settingsStore'
 
 interface SettingsContextType {
-  theme: 'light' | 'dark' | 'system'
-  setTheme: (theme: 'light' | 'dark' | 'system') => void
+  theme: AppTheme
+  setTheme: (theme: AppTheme) => void
   audioInputDeviceId: string
   audioOutputDeviceId: string
   setAudioInputDevice: (deviceId: string) => void

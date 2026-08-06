@@ -11,8 +11,6 @@ interface AudioContextType {
   setMute: (muted: boolean) => void
   setVolume: (volume: number) => void
   setDevices: (devices: MediaDeviceInfo[]) => void
-  joinVoice: (roomId: number) => Promise<void>
-  leaveVoice: (roomId: number) => Promise<void>
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined)
@@ -28,8 +26,6 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     setMute,
     setVolume,
     setDevices,
-    joinVoice,
-    leaveVoice,
   } = useAudioStore()
   const [mounted, setMounted] = useState(false)
 
@@ -52,8 +48,6 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
       setMute,
       setVolume,
       setDevices,
-      joinVoice,
-      leaveVoice,
     }}>
       {children}
     </AudioContext.Provider>

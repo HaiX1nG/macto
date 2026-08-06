@@ -28,7 +28,7 @@ export function useRoomWebSocket() {
 
   const showNewMessageNotification = useCallback(
     (message: NewMessagePayload) => {
-      if (message.senderUserId === currentUser?.userId) {
+      if (String(message.senderUserId) === currentUser?.id) {
         return
       }
 
@@ -102,21 +102,21 @@ export function useRoomWebSocket() {
         addVoiceParticipant({
           id: Date.now(),
           roomId: data.roomId,
-          userId: data.userId,
+          userId: String(data.userId),
           username: data.username,
           joinedAt: new Date().toISOString(),
         })
       } else if (data.action === 'leave') {
-        const participant = voiceParticipants.find(p => p.userId === data.userId)
+        const participant = voiceParticipants.find(p => p.userId === String(data.userId))
         if (participant) {
           removeVoiceParticipant(participant)
         }
       } else if (data.action === 'mute' || data.action === 'unmute') {
-        if (currentUser?.userId !== data.userId) {
-          updateVoiceParticipant(data.userId, { isMuted: data.action === 'mute' })
+        if (currentUser?.id !== String(data.userId)) {
+          updateVoiceParticipant(String(data.userId), { isMuted: data.action === 'mute' })
         }
       } else if (data.action === 'speaking' || data.action === 'stopped_speaking') {
-        updateVoiceParticipant(data.userId, { isSpeaking: data.action === 'speaking' })
+        updateVoiceParticipant(String(data.userId), { isSpeaking: data.action === 'speaking' })
       }
     },
     [addVoiceParticipant, removeVoiceParticipant, voiceParticipants, updateVoiceParticipant, currentUser]
@@ -124,18 +124,18 @@ export function useRoomWebSocket() {
 
   const handleTyping = useCallback(
     (data: TypingPayload) => {
-      if (data.userId === currentUser?.userId) {
+      if (String(data.userId) === currentUser?.id) {
         return
       }
 
       if (data.isTyping) {
         addTypingUser(data.roomId, {
-          userId: data.userId,
+          userId: String(data.userId),
           username: data.username,
           timestamp: Date.now(),
         })
       } else {
-        removeTypingUser(data.roomId, data.userId)
+        removeTypingUser(data.roomId, String(data.userId))
       }
     },
     [addTypingUser, removeTypingUser, currentUser]

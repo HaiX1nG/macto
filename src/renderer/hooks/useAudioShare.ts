@@ -167,7 +167,7 @@ export function useAudioShare() {
 
       wsRef.current?.send({
         type: 'audio_share_start',
-        userId: currentUser?.userId,
+        userId: currentUser?.id,
         username: currentUser?.username,
       })
 
@@ -176,7 +176,7 @@ export function useAudioShare() {
       console.error('Audio share error:', err)
       message.error('开始音频分享失败')
     }
-  }, [currentRoomId, currentUser?.userId, currentUser?.username, message])
+  }, [currentRoomId, currentUser?.id, currentUser?.username, message])
 
   const stopAudioShare = useCallback(async () => {
     if (!currentRoomId) return
@@ -194,7 +194,7 @@ export function useAudioShare() {
 
       wsRef.current?.send({
         type: 'audio_share_stop',
-        userId: currentUser?.userId,
+        userId: currentUser?.id,
       })
 
       message.success('音频分享已停止')
@@ -202,7 +202,7 @@ export function useAudioShare() {
       console.error('Stop audio share error:', err)
       message.error('停止音频分享失败')
     }
-  }, [currentRoomId, currentUser?.userId, message])
+  }, [currentRoomId, currentUser?.id, message])
 
   useEffect(() => {
     const audioStream = audioStreamRef.current

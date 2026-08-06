@@ -120,10 +120,10 @@ export function ChannelView({
                 <div key={i} className="rounded-2xl p-6 bg-[var(--color-bg-base)] border border-[var(--color-border)]">
                   <div className="flex flex-col items-center gap-4">
                     <SkeletonAvatar size={96} />
-                    <Skeleton variant="rounded" width="75%" height={18} />
+                    <Skeleton variant="rect" width="75%" height={18} />
                     <Skeleton variant="text" width="50%" height={14} />
                     <div className="w-full mt-2">
-                      <Skeleton variant="rounded" width="100%" height={40} className="rounded-xl" />
+                      <Skeleton variant="rect" width="100%" height={40} className="rounded-xl" />
                     </div>
                   </div>
                 </div>

@@ -89,7 +89,7 @@ const containerVariants = {
     y: 0,
     transition: {
       duration: 0.4,
-      ease: [0.25, 0.46, 0.45, 0.94],
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
       staggerChildren: 0.08,
       delayChildren: 0.1,
     },
@@ -101,7 +101,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
   },
 }
 
@@ -110,7 +110,7 @@ const iconVariants = {
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
   },
 }
 

@@ -523,7 +523,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               >
                 <motion.div variants={itemVariants}>
                   <SettingsSection
-                    icon={<KeyboardOutlined />}
+                    icon={<KeyOutlined />}
                     title="快捷键"
                     description="自定义您的键盘快捷键设置"
                   >

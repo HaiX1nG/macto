@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+export type MessageSendStatus = 'sent' | 'sending' | 'failed'
+
 export interface MessageWithStatus {
   id: number
   roomId: number

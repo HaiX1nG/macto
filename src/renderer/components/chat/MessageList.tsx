@@ -359,12 +359,12 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
 
   const timestamp = new Date(message.createdAt).getTime()
   const isPinned = pinnedMessageIds?.includes(String(message.id))
-  const isFailed = message._status === 'failed'
-  const isSending = message._status === 'sending'
-  const isSent = message._status === 'sent'
+  const isFailed = message.status === 'failed'
+  const isSending = message.status === 'sending'
+  const isSent = message.status === 'sent'
 
   // Check if this message is from the current user (for bubble alignment)
-  const isOwnMessage = currentUser && message.senderUserId === currentUser.userId
+  const isOwnMessage = currentUser && String(message.senderUserId) === currentUser.id
 
   // Focus textarea when editing starts
   useEffect(() => {

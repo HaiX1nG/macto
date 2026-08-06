@@ -14,7 +14,7 @@ import {
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@renderer/utils/cn'
 import { EmptyState } from '@renderer/components/ui/EmptyState'
 import { Skeleton, SkeletonCard } from '@renderer/components/ui/Skeleton'
@@ -52,7 +52,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] }
   }
 }
 
@@ -61,7 +61,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] }
   }
 }
 
@@ -70,7 +70,7 @@ const scaleIn = {
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] }
   }
 }
 
@@ -315,7 +315,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             'transition-colors cursor-pointer'
           )}>
             {isLoadingUser ? (
-              <Skeleton variant="circular" width={32} height={32} />
+              <Skeleton variant="circle" width={32} height={32} />
             ) : (
               <div className={cn(
                 'w-8 h-8 rounded-full',
@@ -547,7 +547,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         )}
                       >
                         <div className="flex items-center gap-4">
-                          <Skeleton variant="rounded" width={40} height={40} />
+                          <Skeleton variant="rect" width={40} height={40} />
                           <div className="flex-1 space-y-2">
                             <Skeleton variant="text" width={100} height={16} />
                             <Skeleton variant="text" width={60} height={12} />

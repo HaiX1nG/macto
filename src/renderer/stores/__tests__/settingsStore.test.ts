@@ -10,7 +10,7 @@ describe('useSettingsStore', () => {
       defaultVolume: 100,
       autoJoinLastSession: false,
       showNotification: true,
-      theme: 'system',
+      theme: 'sakura',
     })
   })
 
@@ -23,7 +23,7 @@ describe('useSettingsStore', () => {
       expect(state.defaultVolume).toBe(100)
       expect(state.autoJoinLastSession).toBe(false)
       expect(state.showNotification).toBe(true)
-      expect(state.theme).toBe('system')
+      expect(state.theme).toBe('sakura')
     })
   })
 
@@ -107,25 +107,25 @@ describe('useSettingsStore', () => {
   })
 
   describe('setTheme action', () => {
-    it('should set theme to light', () => {
+    it('should set theme to sakura', () => {
       const { setTheme } = useSettingsStore.getState()
-      setTheme('light')
+      setTheme('sakura')
 
-      expect(useSettingsStore.getState().theme).toBe('light')
+      expect(useSettingsStore.getState().theme).toBe('sakura')
     })
 
-    it('should set theme to dark', () => {
+    it('should set theme to ancient', () => {
       const { setTheme } = useSettingsStore.getState()
-      setTheme('dark')
+      setTheme('ancient')
 
-      expect(useSettingsStore.getState().theme).toBe('dark')
+      expect(useSettingsStore.getState().theme).toBe('ancient')
     })
 
-    it('should set theme to system', () => {
+    it('should set theme to tech', () => {
       const { setTheme } = useSettingsStore.getState()
-      setTheme('system')
+      setTheme('tech')
 
-      expect(useSettingsStore.getState().theme).toBe('system')
+      expect(useSettingsStore.getState().theme).toBe('tech')
     })
   })
 
@@ -148,14 +148,14 @@ describe('useSettingsStore', () => {
       store.setAudioInputDevice('mic-1')
       store.setDefaultVolume(80)
       store.setAutoJoinLastSession(true)
-      store.setTheme('dark')
+      store.setTheme('ancient')
 
       const state = useSettingsStore.getState()
 
       expect(state.audioInputDeviceId).toBe('mic-1')
       expect(state.defaultVolume).toBe(80)
       expect(state.autoJoinLastSession).toBe(true)
-      expect(state.theme).toBe('dark')
+      expect(state.theme).toBe('ancient')
     })
   })
 
@@ -175,7 +175,7 @@ describe('useSettingsStore', () => {
       expect(typeof state.showNotification).toBe('boolean')
 
       // Theme property
-      expect(['light', 'dark', 'system']).toContain(state.theme)
+      expect(['sakura', 'ancient', 'tech']).toContain(state.theme)
     })
 
     it('should have all action methods', () => {

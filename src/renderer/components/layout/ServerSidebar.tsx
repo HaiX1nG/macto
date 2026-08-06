@@ -122,7 +122,7 @@ export function ServerSidebar() {
 
     setDeleteLoading(true)
     try {
-      await deleteRoom(Number(serverToDelete.id))
+      await deleteRoom(serverToDelete.id)
       message.success('房间已删除')
       setDeleteModalOpen(false)
       setServerToDelete(null)
@@ -160,7 +160,7 @@ export function ServerSidebar() {
   }
 
   const displayName = currentUser?.username || '用户'
-  const avatar = currentUser?.avatarUrl || undefined
+  const avatar = currentUser?.avatar || undefined
 
   const handleServerClick = useCallback((serverId: string | null) => {
     setCurrentRoomId(serverId || '')

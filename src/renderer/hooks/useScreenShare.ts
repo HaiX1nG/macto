@@ -28,10 +28,10 @@ export function useScreenShare() {
 
   // Initialize WebRTC manager
   const initWebRTCManager = useCallback(() => {
-    if (!currentUser?.userId || webrtcManagerRef.current) return
+    if (!currentUser?.id || webrtcManagerRef.current) return
 
     const manager = new WebRTCManager(
-      currentUser.userId,
+      Number(currentUser.id),
       async (signal: WebRTCSignalRequest) => {
         if (!currentRoomId) return
         try {
@@ -53,7 +53,7 @@ export function useScreenShare() {
     )
 
     webrtcManagerRef.current = manager
-  }, [currentUser?.userId, currentRoomId, addRemoteScreen, removeRemoteScreen, message])
+  }, [currentUser?.id, currentRoomId, addRemoteScreen, removeRemoteScreen, message])
 
   // Setup WebSocket listeners for WebRTC signals
   useEffect(() => {
@@ -148,7 +148,7 @@ export function useScreenShare() {
 
       wsRef.current?.send({
         type: 'screen_share_start',
-        userId: currentUser?.userId,
+        userId: currentUser?.id,
         username: currentUser?.username,
       })
 
@@ -172,7 +172,7 @@ export function useScreenShare() {
       }
       message.error(errorMessage)
     }
-  }, [currentRoomId, setLocalStream, setIsSharing, message, currentUser?.userId, currentUser?.username])
+  }, [currentRoomId, setLocalStream, setIsSharing, message, currentUser?.id, currentUser?.username])
 
   const stopScreenShare = useCallback(async () => {
     if (!currentRoomId) return
@@ -187,7 +187,7 @@ export function useScreenShare() {
 
       wsRef.current?.send({
         type: 'screen_share_stop',
-        userId: currentUser?.userId,
+        userId: currentUser?.id,
       })
 
       await screenShareService.stopScreenShare(Number(currentRoomId))
@@ -198,7 +198,7 @@ export function useScreenShare() {
       console.error('Stop screen share error:', err)
       message.error('停止屏幕共享失败')
     }
-  }, [currentRoomId, localStream, setLocalStream, setIsSharing, message, currentUser?.userId])
+  }, [currentRoomId, localStream, setLocalStream, setIsSharing, message, currentUser?.id])
 
   // Cleanup on unmount
   useEffect(() => {

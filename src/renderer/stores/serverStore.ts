@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ServerMember, Channel } from '@shared/types/kook'
+import type { ServerMember, Channel, Server } from '@shared/types/kook'
 import type { RoomInfoResponse, ParticipantResponse } from '@shared/types/api'
 import type { SessionParticipant } from '@shared/types'
 
@@ -249,11 +249,16 @@ export function getServerFromRoom(_roomId: string) {
   return null
 }
 
-export function getServersFromRooms(rooms: RoomInfoResponse[]) {
+export function getServersFromRooms(rooms: RoomInfoResponse[]): Server[] {
   return rooms.map(room => ({
     id: String(room.id),
     name: room.roomName,
     icon: '',
+    ownerId: '',
+    channels: [],
+    roles: [],
+    memberCount: 0,
+    createdAt: 0,
   }))
 }
 

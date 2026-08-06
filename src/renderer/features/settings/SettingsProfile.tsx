@@ -16,7 +16,7 @@ export const SettingsProfile = () => {
   }, [fetchUserInfo])
 
   // Avatar state
-  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '')
+  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatar || '')
   const [isEditingAvatar, setIsEditingAvatar] = useState(false)
 
   // Username state
@@ -42,7 +42,7 @@ export const SettingsProfile = () => {
       return
     }
     try {
-      await updateProfile({ avatarUrl })
+      await updateProfile({ avatar: avatarUrl })
       message.success('头像更新成功')
       setIsEditingAvatar(false)
     } catch (_err) {
@@ -104,7 +104,7 @@ export const SettingsProfile = () => {
       return
     }
     try {
-      await changePassword({ oldPassword, newPassword })
+      await changePassword(oldPassword, newPassword)
       message.success('密码修改成功')
       setShowPasswordModal(false)
       setOldPassword('')
@@ -150,7 +150,7 @@ export const SettingsProfile = () => {
         const dataUrl = reader.result as string
         setAvatarUrl(dataUrl)
         // Auto save on upload
-        updateProfile({ avatarUrl: dataUrl }).then(() => {
+        updateProfile({ avatar: dataUrl }).then(() => {
           message.success('头像更新成功')
         }).catch(() => {
           message.error('头像更新失败')
@@ -168,7 +168,7 @@ export const SettingsProfile = () => {
         <div className="relative group">
           <Avatar
             size={80}
-            src={currentUser?.avatarUrl || undefined}
+            src={currentUser?.avatar || undefined}
             className="bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white text-2xl font-bold shadow-lg ring-2 ring-white/10"
           >
             {currentUser?.username?.charAt(0)?.toUpperCase() || 'U'}
@@ -215,7 +215,7 @@ export const SettingsProfile = () => {
             <Button
               onClick={() => {
                 setIsEditingAvatar(false)
-                setAvatarUrl(currentUser?.avatarUrl || '')
+                setAvatarUrl(currentUser?.avatar || '')
               }}
               className="rounded-lg"
             >
@@ -296,7 +296,7 @@ export const SettingsProfile = () => {
           <LockOutlined className="text-[var(--color-text-muted)]" />
           <div className="flex-1 min-w-0">
             <p className="text-xs text-[var(--color-text-muted)]">用户 ID</p>
-            <p className="font-medium text-[var(--color-text-normal)]">{currentUser?.userId || '-'}</p>
+            <p className="font-medium text-[var(--color-text-normal)]">{currentUser?.id || '-'}</p>
           </div>
         </div>
       </div>

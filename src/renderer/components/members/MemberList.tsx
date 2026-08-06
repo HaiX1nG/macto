@@ -92,7 +92,7 @@ export function MemberList() {
     const fetchMembers = async () => {
       if (!currentRoomId) return
 
-      if (serverMembers.has(currentRoomId)) return
+      if (serverMembers.length > 0) return
 
       setLoading(true)
       try {
@@ -106,7 +106,7 @@ export function MemberList() {
         const convertedMembers = participants.map((p, i) =>
           participantToMember(p, statuses[i] || undefined)
         )
-        setServerMembers(currentRoomId, convertedMembers)
+        setServerMembers(convertedMembers)
       } catch (err) {
         console.error('Failed to fetch participants:', err)
       } finally {
@@ -157,7 +157,7 @@ export function MemberList() {
           }
         })
 
-        setServerMembers(currentRoomId, updatedMembers)
+        setServerMembers(updatedMembers)
       } catch (err) {
         console.error('Failed to poll member status:', err)
       }
@@ -272,11 +272,11 @@ function MemberItem({ member, isOffline, onOpenProfile }: MemberItemProps) {
   const avatarSrc = member.user.avatar || undefined
 
   const roomMembers = currentRoomId ? getServerMembers(currentRoomId) : []
-  const currentMember = roomMembers.find(m => m.userId === String(currentUser?.userId))
+  const currentMember = roomMembers.find(m => m.userId === String(currentUser?.id))
   const canManageMembers = currentMember?.isOwner || currentMember?.roles.includes('管理员')
 
   const isTargetOwner = member.isOwner || member.roles.includes('房主')
-  const isSelf = member.userId === String(currentUser?.userId)
+  const isSelf = member.userId === String(currentUser?.id)
 
   const handleViewProfile = useCallback(() => {
     onOpenProfile(member)
@@ -299,7 +299,7 @@ function MemberItem({ member, isOffline, onOpenProfile }: MemberItemProps) {
     setKickLoading(true)
     try {
       await roomService.kickParticipant(Number(currentRoomId), Number(member.userId))
-      removeMember(currentRoomId, member.userId)
+      removeMember(member.userId)
       message.success(`已将 ${member.user.displayName || member.user.name} 移出房间`)
     } catch (_err) {
       message.info('踢出功能开发中，后端 API 尚未实现')
