@@ -1,4 +1,4 @@
 # Git Manager Memory
 
-- [Collab guardrail: empty task pipeline](collab-guardrail-empty-pipeline.md) - pre-commit hook blocks all commits; tasks table empty, --no-verify is the escape hatch
+- [Collab guardrail: empty task pipeline](collab-guardrail-empty-pipeline.md) - engine_mode=disabled since 2026-08-06, commits pass normally; hook would block again if re-enabled to "both"
 - [Go backend repo](go-backend-repo.md) - Macto Go backend at /Users/megumikato/GoProject/Gin-macto/server, no pre-commit hooks unlike frontend
