@@ -26,12 +26,17 @@ const themeColors: Record<string, { primary: string; bg: string; text: string }>
 
 function AppContent() {
   const { theme: appTheme, initTheme } = useThemeStore()
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, initAuth } = useAuthStore()
 
   // Initialize theme on app start
   useEffect(() => {
     initTheme()
   }, [initTheme])
+
+  // Initialize auth from stored tokens on app start
+  useEffect(() => {
+    initAuth()
+  }, [initAuth])
 
   // Apply theme to document
   useEffect(() => {

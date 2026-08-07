@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import type { ServerMember, Channel, Server } from '@shared/types/kook'
-import type { RoomInfoResponse, ParticipantResponse } from '@shared/types/api'
+import type { RoomInfoResponse, ParticipantResponse, CreateRoomRequest, RoomListRequest } from '@shared/types/api'
 import type { SessionParticipant } from '@shared/types'
+import { roomService } from '../services/roomService'
 
 // Legacy Session type for backward compatibility
 export interface Session {
@@ -60,36 +61,25 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   error: null,
 
   // Fetch rooms
-  fetchRooms: async (_params?: unknown) => {
+  fetchRooms: async (params?: unknown) => {
     set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      set({ isLoading: false })
+      const rooms = await roomService.getRoomList(params as RoomListRequest | undefined)
+      set({ rooms, isLoading: false })
     } catch (err) {
       set({
         isLoading: false,
         error: err instanceof Error ? err.message : '获取房间列表失败',
       })
+      throw err
     }
   },
 
   // Create room
-  createRoom: async (_data: unknown) => {
+  createRoom: async (data: unknown) => {
     set({ isCreating: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const newRoom: RoomInfoResponse = {
-        id: Date.now(),
-        roomName: 'New Room',
-        roomType: 2,
-        hostUserId: 1,
-        isPrivate: false,
-        maxParticipants: 10,
-        participantCount: 0,
-        createdAt: new Date().toISOString(),
-      }
+      const newRoom = await roomService.createRoom(data as CreateRoomRequest)
       set((state) => ({
         rooms: [...state.rooms, newRoom],
         isCreating: false,
@@ -108,8 +98,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   deleteRoom: async (roomId: string) => {
     set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await roomService.deleteRoom(Number(roomId))
       set((state) => ({
         rooms: state.rooms.filter(r => String(r.id) !== roomId),
         isLoading: false,
@@ -124,11 +113,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
 
   // Join room
-  joinRoom: async (_roomId: number, _data?: unknown) => {
+  joinRoom: async (roomId: number, data?: unknown) => {
     set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await roomService.joinRoom(roomId, data)
       set({ isLoading: false })
     } catch (err) {
       set({
@@ -140,11 +128,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
 
   // Leave room
-  leaveRoom: async (_roomId: number) => {
+  leaveRoom: async (roomId: number) => {
     set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await roomService.leaveRoom(roomId)
       set({ isLoading: false })
     } catch (err) {
       set({
@@ -215,17 +202,17 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
 
   // Fetch participants
-  fetchParticipants: async (_roomId: number) => {
+  fetchParticipants: async (roomId: number) => {
     set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      set({ isLoading: false })
+      const participants = await roomService.getRoomParticipants(roomId)
+      set({ apiParticipants: participants, isLoading: false })
     } catch (err) {
       set({
         isLoading: false,
         error: err instanceof Error ? err.message : '获取参与者失败',
       })
+      throw err
     }
   },
 

@@ -1,5 +1,8 @@
 import { create } from 'zustand'
 import type { UserStatus } from '@shared/types/kook'
+import type { UpdateProfileRequest, ChangePasswordRequest } from '@shared/types/api'
+import { authService } from '../services/authService'
+import { apiClient } from '../services/apiClient'
 
 export interface User {
   id: string
@@ -22,6 +25,7 @@ export interface AuthState {
   status: UserStatus
 
   // Actions
+  initAuth: () => Promise<void>
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string, email?: string) => Promise<void>
   logout: () => void
@@ -33,7 +37,7 @@ export interface AuthState {
   changePassword: (oldPassword: string, newPassword: string) => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   // Initial state
   isAuthenticated: false,
   currentUser: null,
@@ -42,64 +46,85 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
   status: 'online',
 
+  // Initialize auth from stored tokens (called on app startup)
+  initAuth: async () => {
+    if (apiClient.isAuthenticated()) {
+      set({ isAuthenticated: true, token: apiClient.getAccessToken() })
+      try {
+        await get().fetchUserInfo()
+      } catch {
+        // If fetching user info fails (e.g. token expired), the apiClient
+        // interceptor will dispatch auth:logout which resets state via logout()
+      }
+    }
+  },
+
   // Login action
-  login: async (username: string, _password: string) => {
+  login: async (username: string, password: string) => {
     set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const mockUser: User = {
-        id: '1',
-        username,
-        nickname: username,
-        status: 'online',
-      }
+      const response = await authService.login(username, password)
       set({
         isAuthenticated: true,
-        currentUser: mockUser,
-        token: 'mock-token',
+        currentUser: {
+          id: String(response.userId),
+          username: response.username,
+          nickname: response.username,
+          email: response.email,
+          avatar: response.avatarUrl || undefined,
+          status: 'online',
+        },
+        token: response.accessToken,
         isLoading: false,
         error: null,
       })
-    } catch (_err) {
+    } catch (err) {
       set({
         isLoading: false,
-        error: _err instanceof Error ? _err.message : '登录失败',
+        error: err instanceof Error ? err.message : '登录失败',
       })
-      throw _err
+      throw err
     }
   },
 
   // Register action
-  register: async (username: string, _password: string, email?: string) => {
+  // Backend POST /auth/register only returns {userId, username, email} (no token).
+  // We attempt authService.register (which expects LoginResponse) in a try-catch.
+  // If registration succeeds on the backend, the apiClient.register call may fail
+  // when trying to access the missing token fields. We catch that error and then
+  // call authService.login to obtain actual tokens and complete the flow.
+  register: async (username: string, password: string, email?: string) => {
     set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const mockUser: User = {
-        id: '1',
-        username,
-        email,
-        status: 'online',
+      const emailValue = email || ''
+      try {
+        // Attempt register - may fail because backend doesn't return tokens
+        await authService.register(username, password, emailValue)
+      } catch (registerErr) {
+        // If register endpoint returned a non-2xx status, this is a real error
+        // (e.g. username already exists). Check the status code to decide.
+        // ApiClientError with statusCode 400/409 etc. means registration failed.
+        const apiErr = registerErr as { statusCode?: number }
+        if (apiErr && apiErr.statusCode && apiErr.statusCode >= 400 && apiErr.statusCode < 500) {
+          throw registerErr
+        }
+        // For other errors (e.g. response parsing due to missing token fields),
+        // we assume registration might have succeeded and try login.
       }
-      set({
-        isAuthenticated: true,
-        currentUser: mockUser,
-        token: 'mock-token',
-        isLoading: false,
-        error: null,
-      })
-    } catch (_err) {
+      // Always login after successful registration to get tokens
+      await get().login(username, password)
+    } catch (err) {
       set({
         isLoading: false,
-        error: _err instanceof Error ? _err.message : '注册失败',
+        error: err instanceof Error ? err.message : '注册失败',
       })
-      throw _err
+      throw err
     }
   },
 
   // Logout action
   logout: () => {
+    authService.logout()
     set({
       isAuthenticated: false,
       currentUser: null,
@@ -117,50 +142,90 @@ export const useAuthStore = create<AuthState>((set) => ({
   fetchUserInfo: async () => {
     set({ isLoading: true })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      set({ isLoading: false })
-    } catch (_err) {
-      set({ isLoading: false })
+      const userInfo = await authService.getUserInfo()
+      set({
+        isLoading: false,
+        currentUser: {
+          id: String(userInfo.userId),
+          username: userInfo.username,
+          email: userInfo.email,
+          avatar: userInfo.avatarUrl || undefined,
+          customStatus: userInfo.customStatus || undefined,
+          status: userInfo.isOnline ? 'online' : 'offline',
+        },
+      })
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '获取用户信息失败',
+      })
+      throw err
     }
   },
 
-  // Set status
+  // Set status (local only, no API call)
   setStatus: (status: UserStatus) => {
     set({ status })
   },
 
   // Set custom status
   setCustomStatus: async (status: { customStatus: string }) => {
-    set((state) => ({
-      currentUser: state.currentUser
-        ? { ...state.currentUser, customStatus: status.customStatus }
-        : null,
-    }))
+    set({ isLoading: true, error: null })
+    try {
+      await authService.setCustomStatus({ customStatus: status.customStatus })
+      set((state) => ({
+        isLoading: false,
+        currentUser: state.currentUser
+          ? { ...state.currentUser, customStatus: status.customStatus }
+          : null,
+      }))
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '设置自定义状态失败',
+      })
+      throw err
+    }
   },
 
   // Update profile
   updateProfile: async (data: Partial<User>) => {
-    set((state) => ({
-      currentUser: state.currentUser
-        ? { ...state.currentUser, ...data }
-        : null,
-    }))
+    set({ isLoading: true, error: null })
+    try {
+      const updateData: UpdateProfileRequest = {}
+      if (data.username !== undefined) updateData.username = data.username
+      if (data.email !== undefined) updateData.email = data.email
+      if (data.avatar !== undefined) updateData.avatarUrl = data.avatar
+
+      await authService.updateProfile(updateData)
+      set((state) => ({
+        isLoading: false,
+        currentUser: state.currentUser
+          ? { ...state.currentUser, ...data }
+          : null,
+      }))
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '更新资料失败',
+      })
+      throw err
+    }
   },
 
   // Change password
-  changePassword: async (_oldPassword: string, _newPassword: string) => {
-    set({ isLoading: true })
+  changePassword: async (oldPassword: string, newPassword: string) => {
+    set({ isLoading: true, error: null })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const requestData: ChangePasswordRequest = { oldPassword, newPassword }
+      await authService.changePassword(requestData)
       set({ isLoading: false })
-    } catch (_err) {
+    } catch (err) {
       set({
         isLoading: false,
-        error: _err instanceof Error ? _err.message : '密码修改失败',
+        error: err instanceof Error ? err.message : '密码修改失败',
       })
-      throw _err
+      throw err
     }
   },
 }))

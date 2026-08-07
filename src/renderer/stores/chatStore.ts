@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import type { MessageResponse, SendMessageRequest, MessageListRequest } from '@shared/types/api'
+import { chatService } from '../services/chatService'
 
 export type MessageSendStatus = 'sent' | 'sending' | 'failed'
 
@@ -52,6 +54,20 @@ export interface ChatState {
   removeTypingUser: (roomId: number, userId: string) => void
 }
 
+// Helper to map API MessageResponse to store MessageWithStatus
+function mapToMessageWithStatus(msg: MessageResponse, status: MessageSendStatus = 'sent'): MessageWithStatus {
+  return {
+    id: msg.id,
+    roomId: msg.roomId,
+    senderUserId: msg.senderUserId,
+    senderName: msg.senderName,
+    content: msg.content,
+    messageType: msg.messageType,
+    createdAt: msg.createdAt,
+    status,
+  }
+}
+
 export const useChatStore = create<ChatState>((set) => ({
   // Initial state
   messages: [],
@@ -65,25 +81,66 @@ export const useChatStore = create<ChatState>((set) => ({
   currentRoomId: null,
 
   // Fetch messages
-  fetchMessages: async (_channelId: number, _params?: { page?: number; pageSize?: number }) => {
+  fetchMessages: async (channelId: number, params?: { page?: number; pageSize?: number }) => {
     set({ isLoading: true })
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      set({ isLoading: false, hasMore: false })
-    } catch (_err) {
+      const messageList = await chatService.getMessages(channelId, params as MessageListRequest | undefined)
+      const messages = messageList.map(msg => mapToMessageWithStatus(msg, 'sent'))
+      set({
+        messages,
+        currentRoomId: channelId,
+        isLoading: false,
+        hasMore: messageList.length >= (params?.pageSize ?? 50),
+      })
+    } catch (err) {
       set({ isLoading: false })
+      throw err
     }
   },
 
-  // Send message
-  sendMessage: async (_channelId: number, _data: { messageType: number; content: string }) => {
+  // Send message (optimistic update pattern)
+  sendMessage: async (channelId: number, data: { messageType: number; content: string }) => {
+    const tempId = Date.now()
+    const retryId = `retry-${tempId}`
+
+    // Optimistically add message with 'sending' status
+    const optimisticMessage: MessageWithStatus = {
+      id: tempId,
+      roomId: channelId,
+      senderUserId: 0, // Will be updated from response
+      senderName: '',  // Will be updated from response
+      content: data.content,
+      messageType: data.messageType,
+      createdAt: new Date().toISOString(),
+      status: 'sending',
+      _retryId: retryId,
+    }
+    set((state) => ({
+      messages: [...state.messages, optimisticMessage],
+      currentRoomId: channelId,
+    }))
+
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-    } catch (_err) {
-      console.error('Failed to send message:', _err)
-      throw _err
+      const requestData: SendMessageRequest = {
+        messageType: data.messageType,
+        content: data.content,
+      }
+      const response = await chatService.sendMessage(channelId, requestData)
+
+      // Replace optimistic message with real one
+      set((state) => ({
+        messages: state.messages.map(m =>
+          m.id === tempId ? mapToMessageWithStatus(response, 'sent') : m
+        ),
+      }))
+    } catch (err) {
+      // Mark message as failed
+      set((state) => ({
+        messages: state.messages.map(m =>
+          m.id === tempId ? { ...m, status: 'failed' as const } : m
+        ),
+      }))
+      throw err
     }
   },
 
@@ -125,45 +182,69 @@ export const useChatStore = create<ChatState>((set) => ({
     }))
   },
 
-  // Retry message
-  retryMessage: async (_retryId: string, _channelId: number, _data: { messageType: number; content: string }) => {
+  // Retry message - re-send the failed message
+  retryMessage: async (retryId: string, channelId: number, data: { messageType: number; content: string }) => {
+    // Remove the failed message with this retryId
+    set((state) => ({
+      messages: state.messages.filter(m => m._retryId !== retryId),
+    }))
+
+    // Re-send via the service directly
+    const tempId = Date.now()
+    const newRetryId = `retry-${tempId}`
+
+    const optimisticMessage: MessageWithStatus = {
+      id: tempId,
+      roomId: channelId,
+      senderUserId: 0,
+      senderName: '',
+      content: data.content,
+      messageType: data.messageType,
+      createdAt: new Date().toISOString(),
+      status: 'sending',
+      _retryId: newRetryId,
+    }
+    set((state) => ({
+      messages: [...state.messages, optimisticMessage],
+    }))
+
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-    } catch (_err) {
-      console.error('Failed to retry message:', _err)
-      throw _err
+      const requestData: SendMessageRequest = {
+        messageType: data.messageType,
+        content: data.content,
+      }
+      const response = await chatService.sendMessage(channelId, requestData)
+      set((state) => ({
+        messages: state.messages.map(m =>
+          m.id === tempId ? mapToMessageWithStatus(response, 'sent') : m
+        ),
+      }))
+    } catch (err) {
+      set((state) => ({
+        messages: state.messages.map(m =>
+          m.id === tempId ? { ...m, status: 'failed' as const } : m
+        ),
+      }))
+      throw err
     }
   },
 
   // Edit message
-  editMessage: async (_channelId: number, messageId: number, content: string) => {
-    try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      set((state) => ({
-        messages: state.messages.map(m =>
-          m.id === messageId ? { ...m, content } : m
-        ),
-      }))
-    } catch (_err) {
-      console.error('Failed to edit message:', _err)
-      throw _err
-    }
+  editMessage: async (channelId: number, messageId: number, content: string) => {
+    const response = await chatService.updateMessage(channelId, messageId, content)
+    set((state) => ({
+      messages: state.messages.map(m =>
+        m.id === messageId ? mapToMessageWithStatus(response, 'sent') : m
+      ),
+    }))
   },
 
   // Delete message
-  deleteMessageAsync: async (_channelId: number, messageId: number) => {
-    try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      set((state) => ({
-        messages: state.messages.filter(m => m.id !== messageId),
-      }))
-    } catch (_err) {
-      console.error('Failed to delete message:', _err)
-      throw _err
-    }
+  deleteMessageAsync: async (channelId: number, messageId: number) => {
+    await chatService.deleteMessage(channelId, messageId)
+    set((state) => ({
+      messages: state.messages.filter(m => m.id !== messageId),
+    }))
   },
 
   // Set replying to
