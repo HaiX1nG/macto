@@ -91,7 +91,7 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
     setLoading(true)
     try {
       await voiceService.joinVoice(roomId)
-      await startCapture()
+      await startCapture(roomId)
       messageApi.success('已加入语音频道')
     } catch (err) {
       console.error('[VoicePage] Failed to join voice:', err)
@@ -103,7 +103,7 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
   const handleLeaveVoice = useCallback(async () => {
     if (!roomId) return
     try {
-      await voiceService.leaveVoice(roomId)
+      // stopCapture handles leaveVoice API call and WebRTC cleanup
       await stopCapture()
       setIsDeafened(false)
       setParticipants([])

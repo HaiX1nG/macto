@@ -5,9 +5,7 @@ import { cn } from '@renderer/utils/cn'
 import { useRoomStore } from '@renderer/stores/serverStore'
 import { useScreenShare } from '@renderer/hooks/useScreenShare'
 import { useAudioShare } from '@renderer/hooks/useAudioShare'
-import { ScreenSharePicker } from '../screen/ScreenSharePicker'
 import { ScreenSharePreview } from '../screen/ScreenSharePreview'
-import { AudioSharePicker } from '../audio/AudioSharePicker'
 import { AudioSettings } from '../settings/AudioSettings'
 
 const USER_PANEL_HEIGHT = 60
@@ -22,9 +20,7 @@ export function UserPanel() {
   const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
   const [screenShareLoading, setScreenShareLoading] = useState(false)
-  const [showScreenPicker, setShowScreenPicker] = useState(false)
   const [audioShareLoading, setAudioShareLoading] = useState(false)
-  const [showAudioPicker, setShowAudioPicker] = useState(false)
   const [showAudioSettings, setShowAudioSettings] = useState(false)
 
   const handleScreenShareClick = () => {
@@ -36,14 +32,14 @@ export function UserPanel() {
     if (isSharing) {
       handleStopScreenShare()
     } else {
-      setShowScreenPicker(true)
+      // getDisplayMedia shows the system picker dialog directly
+      handleStartScreenShare()
     }
   }
 
-  const handleStartScreenShare = async (sourceId: string) => {
-    setShowScreenPicker(false)
+  const handleStartScreenShare = async () => {
     setScreenShareLoading(true)
-    await startScreenShare(sourceId)
+    await startScreenShare()
     setScreenShareLoading(false)
   }
 
@@ -62,14 +58,14 @@ export function UserPanel() {
     if (isAudioSharing) {
       handleStopAudioShare()
     } else {
-      setShowAudioPicker(true)
+      // getDisplayMedia shows the system picker dialog directly
+      handleStartAudioShare()
     }
   }
 
-  const handleStartAudioShare = async (deviceId: string) => {
-    setShowAudioPicker(false)
+  const handleStartAudioShare = async () => {
     setAudioShareLoading(true)
-    await startAudioShare(deviceId)
+    await startAudioShare()
     setAudioShareLoading(false)
   }
 
@@ -129,18 +125,6 @@ export function UserPanel() {
           icon={<SettingOutlined />}
         />
       </div>
-
-      <ScreenSharePicker
-        open={showScreenPicker}
-        onSelect={handleStartScreenShare}
-        onCancel={() => setShowScreenPicker(false)}
-      />
-
-      <AudioSharePicker
-        open={showAudioPicker}
-        onSelect={handleStartAudioShare}
-        onCancel={() => setShowAudioPicker(false)}
-      />
 
       <ScreenSharePreview
         stream={isSharing ? localStream : null}

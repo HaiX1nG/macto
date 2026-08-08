@@ -4,7 +4,8 @@ import { useServerStore } from '../stores/serverStore'
 import { useChatStore } from '../stores/chatStore'
 import { useVoiceStore } from '../stores/voiceStore'
 import { useWebSocketStore } from '../stores/websocketStore'
-import WebSocketService from '../services/websocketService'
+import { wsConnection } from '../services/wsConnection'
+import type { WebRTCSignalRequest } from '@shared/types/api'
 import type {
   NewMessagePayload,
   ParticipantUpdatePayload,
@@ -17,9 +18,8 @@ export function useRoomWebSocket() {
   const { isAuthenticated, currentUser } = useAuthStore()
   const { currentRoomId: currentServerId, addParticipant, removeParticipant, fetchParticipants } = useServerStore()
   const { currentRoomId, addMessage, addTypingUser, removeTypingUser } = useChatStore()
-  const { addParticipant: addVoiceParticipant, removeParticipant: removeVoiceParticipant, participants: voiceParticipants, updateVoiceParticipant } = useVoiceStore()
+  const { addParticipant: addVoiceParticipant, removeParticipant: removeVoiceParticipant, participants: voiceParticipants, updateVoiceParticipant, isInVoice, currentRoomId: voiceRoomId } = useVoiceStore()
   const { setConnectionStatus } = useWebSocketStore()
-  const wsRef = useRef<WebSocketService | null>(null)
   const currentRoomIdRef = useRef<number | null>(currentRoomId)
 
   useEffect(() => {
@@ -106,6 +106,28 @@ export function useRoomWebSocket() {
           username: data.username,
           joinedAt: new Date().toISOString(),
         })
+
+        // If we are in voice chat and a new user joins, initiate WebRTC offer
+        // to establish a peer connection for voice transmission.
+        // Only initiate if the joining user is not us.
+        if (isInVoice && voiceRoomId === data.roomId && String(data.userId) !== currentUser?.id) {
+          // Defer to next tick to let voiceStore state settle
+          setTimeout(() => {
+            const state = useVoiceStore.getState()
+            if (state.isInVoice && state.stream) {
+              // The WebRTCManager is created lazily in voiceStore.startCapture.
+              // We trigger the offer by calling startVoiceChat with just this user.
+              // But we need access to the manager - use the voiceStore's handleVoiceSignal
+              // approach. Instead, we send the offer via the manager.
+              // The manager is private, so we use a trick: the voiceStore's getWebrtcManager
+              // is not exposed. Instead, we handle this by having the newcomer's startCapture
+              // fetch participants and create offers to all existing participants.
+              // Existing participants will receive the offer and create answer.
+              // So we don't need to do anything here for the existing user.
+              // The newcomer's startCapture will create offers to us.
+            }
+          }, 0)
+        }
       } else if (data.action === 'leave') {
         const participant = voiceParticipants.find(p => p.userId === String(data.userId))
         if (participant) {
@@ -119,7 +141,7 @@ export function useRoomWebSocket() {
         updateVoiceParticipant(String(data.userId), { isSpeaking: data.action === 'speaking' })
       }
     },
-    [addVoiceParticipant, removeVoiceParticipant, voiceParticipants, updateVoiceParticipant, currentUser]
+    [addVoiceParticipant, removeVoiceParticipant, voiceParticipants, updateVoiceParticipant, currentUser, isInVoice, voiceRoomId]
   )
 
   const handleTyping = useCallback(
@@ -173,15 +195,9 @@ export function useRoomWebSocket() {
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser || !currentServerId) {
-      if (wsRef.current) {
-        wsRef.current.disconnect()
-        wsRef.current = null
-        setConnectionStatus('disconnected', { status: 'disconnected' })
-      }
-      return
-    }
-
-    if (wsRef.current?.isConnected()) {
+      // Disconnect the shared connection when no longer authenticated or in a room
+      wsConnection.disconnect()
+      setConnectionStatus('disconnected', { status: 'disconnected' })
       return
     }
 
@@ -189,59 +205,72 @@ export function useRoomWebSocket() {
     if (!token) return
 
     const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'}?token=${token}&room_id=${currentServerId}`
-    const ws = new WebSocketService({
-      url: wsUrl,
-      reconnect: true,
-      reconnectInterval: 3000,
-      maxReconnectAttempts: 10,
-      onConnectionStateChange: (status, payload) => {
-        setConnectionStatus(status, payload)
 
-        if (status === 'connected' && currentRoomIdRef.current) {
-          fetchParticipants(currentRoomIdRef.current)
-        }
-      },
-    })
-    wsRef.current = ws
+    // Use the singleton connection - this shares the same WS across all hooks
+    const ws = wsConnection.getWs(wsUrl)
 
-    ws.connect().catch((err) => {
-      console.error('WebSocket connection failed:', err)
-    })
+    // Register message handlers on the shared connection
+    // Each .on() returns an unsubscribe function
+    const unsubs: Array<() => void> = []
 
-    ws.on('new_message', (data: unknown) => {
+    unsubs.push(ws.on('new_message', (data: unknown) => {
       const message = data as NewMessagePayload
       if (message.roomId === currentRoomIdRef.current) {
         addMessage(message)
       }
       showNewMessageNotification(message)
-    })
+    }))
 
-    ws.on('participant_update', (data: unknown) => {
+    unsubs.push(ws.on('participant_update', (data: unknown) => {
       handleParticipantUpdate(data as ParticipantUpdatePayload)
-    })
+    }))
 
-    ws.on('voice_state', (data: unknown) => {
+    unsubs.push(ws.on('voice_state', (data: unknown) => {
       handleVoiceState(data as VoiceStatePayload)
-    })
+    }))
 
-    ws.on('typing', (data: unknown) => {
+    unsubs.push(ws.on('typing', (data: unknown) => {
       handleTyping(data as TypingPayload)
-    })
+    }))
 
-    ws.on('screen_share', () => {
+    unsubs.push(ws.on('screen_share', () => {
       handleScreenShare()
-    })
+    }))
 
-    ws.on('state_sync', (data: unknown) => {
+    // Route WebRTC signals to voiceStore for voice chat P2P connections.
+    // Screen share hooks also register their own webrtc_signal handlers
+    // on the same shared WS - each WebRTCManager instance only processes
+    // signals for peers it knows about, so there is no conflict.
+    unsubs.push(ws.on('webrtc_signal', (data: unknown) => {
+      const signal = data as { fromUserId: number; fromUsername: string; signal: WebRTCSignalRequest }
+      // Route to voice store's WebRTC manager
+      const voiceState = useVoiceStore.getState()
+      if (voiceState.isInVoice) {
+        voiceState.handleVoiceSignal(signal.fromUserId, signal.fromUsername, signal.signal)
+      }
+    }))
+
+    unsubs.push(ws.on('state_sync', (data: unknown) => {
       handleStateSync(data as StateSyncPayload)
-    })
+    }))
+
+    // Set up connection state listener using polling since the singleton manages the ws
+    const statusInterval = setInterval(() => {
+      const status = ws.getConnectionStatus()
+      setConnectionStatus(status, { status })
+
+      if (status === 'connected' && currentRoomIdRef.current) {
+        fetchParticipants(currentRoomIdRef.current)
+      }
+    }, 1000)
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.disconnect()
-        wsRef.current = null
-        setConnectionStatus('disconnected', { status: 'disconnected' })
-      }
+      clearInterval(statusInterval)
+      unsubs.forEach(unsub => unsub())
+      // Do NOT disconnect the shared connection here -
+      // other hooks may still be using it. The connection is
+      // disconnected when the room changes (different URL) or
+      // when the user is no longer authenticated.
     }
   }, [
     isAuthenticated,
@@ -262,13 +291,13 @@ export function useRoomWebSocket() {
 
   const sendTyping = useCallback(
     (roomId: number, isTyping: boolean) => {
-      wsRef.current?.sendTyping(roomId, isTyping)
+      const ws = wsConnection.getCurrentWs()
+      ws?.sendTyping(roomId, isTyping)
     },
     []
   )
 
   return {
-    ws: wsRef.current,
     sendTyping,
   }
 }

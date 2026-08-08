@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { MessageResponse, SendMessageRequest, MessageListRequest } from '@shared/types/api'
+import type { MessageResponse, SendMessageRequest, MessageListRequest, MessageType } from '@shared/types/api'
 import { chatService } from '../services/chatService'
 
 export type MessageSendStatus = 'sent' | 'sending' | 'failed'
@@ -10,7 +10,7 @@ export interface MessageWithStatus {
   senderUserId: number
   senderName: string
   content: string
-  messageType: number
+  messageType: MessageType
   createdAt: string
   updatedAt?: string
   status: 'sent' | 'sending' | 'failed'
@@ -23,7 +23,7 @@ export interface PinnedMessage {
   senderUserId: number
   senderName: string
   content: string
-  messageType: number
+  messageType: MessageType
   createdAt: string
 }
 
@@ -41,12 +41,12 @@ export interface ChatState {
 
   // Actions
   fetchMessages: (channelId: number, params?: { page?: number; pageSize?: number }) => Promise<void>
-  sendMessage: (channelId: number, data: { messageType: number; content: string }) => Promise<void>
+  sendMessage: (channelId: number, data: { messageType: MessageType; content: string }) => Promise<void>
   addMessage: (message: MessageWithStatus | unknown) => void
   clearMessages: () => void
   pinMessage: (messageId: number) => void
   unpinMessage: (messageId: number) => void
-  retryMessage: (retryId: string, channelId: number, data: { messageType: number; content: string }) => Promise<void>
+  retryMessage: (retryId: string, channelId: number, data: { messageType: MessageType; content: string }) => Promise<void>
   editMessage: (channelId: number, messageId: number, content: string) => Promise<void>
   deleteMessageAsync: (channelId: number, messageId: number) => Promise<void>
   setReplyingTo: (message: MessageWithStatus | null) => void
@@ -99,7 +99,7 @@ export const useChatStore = create<ChatState>((set) => ({
   },
 
   // Send message (optimistic update pattern)
-  sendMessage: async (channelId: number, data: { messageType: number; content: string }) => {
+  sendMessage: async (channelId: number, data: { messageType: MessageType; content: string }) => {
     const tempId = Date.now()
     const retryId = `retry-${tempId}`
 
@@ -183,7 +183,7 @@ export const useChatStore = create<ChatState>((set) => ({
   },
 
   // Retry message - re-send the failed message
-  retryMessage: async (retryId: string, channelId: number, data: { messageType: number; content: string }) => {
+  retryMessage: async (retryId: string, channelId: number, data: { messageType: MessageType; content: string }) => {
     // Remove the failed message with this retryId
     set((state) => ({
       messages: state.messages.filter(m => m._retryId !== retryId),

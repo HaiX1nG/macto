@@ -65,7 +65,7 @@ export interface ScreenSharePayload {
 }
 
 export interface ConnectionStatePayload {
-  status: 'connected' | 'disconnected' | 'reconnecting' | 'error'
+  status: WebSocketConnectionStatus
   reconnectAttempt?: number
   maxReconnectAttempts?: number
 }

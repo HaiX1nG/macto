@@ -170,7 +170,7 @@ describe('Modal', () => {
   describe('z-index and positioning', () => {
     it('should render with correct z-index', () => {
       renderModal()
-      const modal = document.querySelector('.z-50')
+      const modal = document.querySelector('.z-\\[2000\\]')
       expect(modal).toBeInTheDocument()
     })
 

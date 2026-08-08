@@ -130,7 +130,15 @@ describe('useAudioStore hooks', () => {
       })
 
       expect(result.current).toBe(true)
-      expect(mockMediaDevices.getUserMedia).toHaveBeenCalledWith({ audio: true })
+      expect(mockMediaDevices.getUserMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audio: expect.objectContaining({
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          }),
+        })
+      )
     })
 
     it('should update devices after capture starts', async () => {

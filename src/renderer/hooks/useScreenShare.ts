@@ -5,8 +5,8 @@ import { useRoomStore } from '../stores/serverStore'
 import { useMediaStore } from '../stores/mediaStore'
 import { screenShareService, voiceService } from '../services'
 import { WebRTCManager } from '../utils/webrtcManager'
+import { wsConnection } from '../services/wsConnection'
 import type { WebRTCSignalRequest } from '@shared/types/api'
-import WebSocketService from '../services/websocketService'
 
 export function useScreenShare() {
   const { message } = App.useApp()
@@ -24,7 +24,7 @@ export function useScreenShare() {
   } = useMediaStore()
 
   const webrtcManagerRef = useRef<WebRTCManager | null>(null)
-  const wsRef = useRef<WebSocketService | null>(null)
+  const unsubsRef = useRef<Array<() => void>>([])
 
   // Initialize WebRTC manager
   const initWebRTCManager = useCallback(() => {
@@ -33,9 +33,10 @@ export function useScreenShare() {
     const manager = new WebRTCManager(
       Number(currentUser.id),
       async (signal: WebRTCSignalRequest) => {
-        if (!currentRoomId) return
+        const ws = wsConnection.getCurrentWs()
+        if (!ws) return
         try {
-          wsRef.current?.send({
+          ws.send({
             type: 'webrtc_signal',
             payload: signal,
           })
@@ -53,52 +54,59 @@ export function useScreenShare() {
     )
 
     webrtcManagerRef.current = manager
-  }, [currentUser?.id, currentRoomId, addRemoteScreen, removeRemoteScreen, message])
+  }, [currentUser?.id, addRemoteScreen, removeRemoteScreen, message])
 
-  // Setup WebSocket listeners for WebRTC signals
+  // Register WebSocket listeners for screen share events on the shared connection
   useEffect(() => {
     if (!currentRoomId || !currentUser) return
 
-    const token = localStorage.getItem('accessToken')
-    if (!token) return
+    // Unregister previous handlers
+    unsubsRef.current.forEach(unsub => unsub())
+    unsubsRef.current = []
 
-    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'}?token=${token}&room_id=${currentRoomId}`
-    const ws = new WebSocketService({
-      url: wsUrl,
-      reconnect: true,
-      reconnectInterval: 3000,
-      maxReconnectAttempts: 10,
-    })
-
-    ws.connect().then(() => {
-      wsRef.current = ws
+    // Wait for the shared WS to be available, then register handlers
+    const registerHandlers = () => {
+      const ws = wsConnection.getCurrentWs()
+      if (!ws) {
+        // Retry shortly - the shared connection may still be establishing
+        setTimeout(registerHandlers, 500)
+        return
+      }
 
       // Listen for WebRTC signals
-      ws.on('webrtc_signal', (data: unknown) => {
-        const signal = data as { fromUserId: number; fromUsername: string; signal: WebRTCSignalRequest }
-        webrtcManagerRef.current?.handleSignal(
-          signal.fromUserId,
-          signal.fromUsername,
-          signal.signal
-        )
-      })
+      unsubsRef.current.push(
+        ws.on('webrtc_signal', (data: unknown) => {
+          const signal = data as { fromUserId: number; fromUsername: string; signal: WebRTCSignalRequest }
+          webrtcManagerRef.current?.handleSignal(
+            signal.fromUserId,
+            signal.fromUsername,
+            signal.signal
+          )
+        })
+      )
 
       // Listen for screen share started event
-      ws.on('screen_share_started', (data: unknown) => {
-        const info = data as { userId: number; username: string }
-        message.info(`${info.username} 开始共享屏幕`)
-      })
+      unsubsRef.current.push(
+        ws.on('screen_share_started', (data: unknown) => {
+          const info = data as { userId: number; username: string }
+          message.info(`${info.username} 开始共享屏幕`)
+        })
+      )
 
       // Listen for screen share stopped event
-      ws.on('screen_share_stopped', (data: unknown) => {
-        const info = data as { userId: number }
-        removeRemoteScreen(info.userId)
-      })
-    })
+      unsubsRef.current.push(
+        ws.on('screen_share_stopped', (data: unknown) => {
+          const info = data as { userId: number }
+          removeRemoteScreen(info.userId)
+        })
+      )
+    }
+
+    registerHandlers()
 
     return () => {
-      ws.disconnect()
-      wsRef.current = null
+      unsubsRef.current.forEach(unsub => unsub())
+      unsubsRef.current = []
     }
   }, [currentRoomId, currentUser, removeRemoteScreen, message])
 
@@ -110,8 +118,10 @@ export function useScreenShare() {
     }
   }, [initWebRTCManager])
 
-  // Start screen share
-  const startScreenShare = useCallback(async (sourceId: string) => {
+  // Start screen share using getDisplayMedia (modern API)
+  // sourceId is kept for backward compatibility but ignored -
+  // getDisplayMedia shows the system picker dialog
+  const startScreenShare = useCallback(async (_sourceId?: string) => {
     if (!currentRoomId) return
 
     let stream: MediaStream | null = null
@@ -122,31 +132,23 @@ export function useScreenShare() {
         // Ignore voice join error, continue with screen share
       }
 
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-          },
-        } as MediaTrackConstraints,
+      // Use getDisplayMedia - the standard API for screen capture.
+      // This works in modern Electron without desktopCapturer source IDs.
+      stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: sourceId,
-            maxWidth: 1920,
-            maxHeight: 1080,
-            maxFrameRate: 30,
-          },
-        } as MediaTrackConstraints,
+          width: { max: 1920 },
+          height: { max: 1080 },
+          frameRate: { max: 30 },
+        },
+        audio: true,
       })
-
-      console.error('Got screen stream:', stream)
-      console.error('Video tracks:', stream.getVideoTracks())
-      console.error('Audio tracks:', stream.getAudioTracks())
 
       setLocalStream(stream)
       setIsSharing(true)
 
-      wsRef.current?.send({
+      // Notify others via the shared WebSocket
+      const ws = wsConnection.getCurrentWs()
+      ws?.send({
         type: 'screen_share_start',
         userId: currentUser?.id,
         username: currentUser?.username,
@@ -185,7 +187,8 @@ export function useScreenShare() {
 
       webrtcManagerRef.current?.stopScreenShare()
 
-      wsRef.current?.send({
+      const ws = wsConnection.getCurrentWs()
+      ws?.send({
         type: 'screen_share_stop',
         userId: currentUser?.id,
       })

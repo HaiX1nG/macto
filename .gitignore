@@ -34,3 +34,7 @@ coverage/
 
 .agent-collab/
 scripts/logs/
+
+# Redis dump files
+dump.rdb
+*.rdb

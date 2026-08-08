@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ServerMember, Channel, Server } from '@shared/types/kook'
-import type { RoomInfoResponse, ParticipantResponse, CreateRoomRequest, RoomListRequest } from '@shared/types/api'
+import type { RoomInfoResponse, ParticipantResponse, CreateRoomRequest, RoomListRequest, JoinRoomRequest } from '@shared/types/api'
 import type { SessionParticipant } from '@shared/types'
 import { roomService } from '../services/roomService'
 
@@ -31,7 +31,7 @@ export interface RoomState {
   fetchRooms: (params?: unknown) => Promise<void>
   createRoom: (data: unknown) => Promise<RoomInfoResponse>
   deleteRoom: (roomId: string) => Promise<void>
-  joinRoom: (roomId: number, data?: unknown) => Promise<void>
+  joinRoom: (roomId: number, data?: JoinRoomRequest) => Promise<void>
   leaveRoom: (roomId: number) => Promise<void>
   setCurrentRoom: (room: RoomInfoResponse | null) => void
   setCurrentRoomId: (roomId: string) => void
@@ -113,7 +113,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
 
   // Join room
-  joinRoom: async (roomId: number, data?: unknown) => {
+  joinRoom: async (roomId: number, data?: JoinRoomRequest) => {
     set({ isLoading: true, error: null })
     try {
       await roomService.joinRoom(roomId, data)
