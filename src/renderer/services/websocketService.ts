@@ -50,8 +50,9 @@ class WebSocketService {
       try {
         this.setConnectionStatus('connecting')
 
+        // KOOK-style: connection URL only carries token, no room_id
         const url = token
-          ? `${this.options.url}&token=${token}`
+          ? `${this.options.url}?token=${token}`
           : this.options.url
 
         this.ws = new WebSocket(url)
@@ -95,10 +96,10 @@ class WebSocketService {
   private handleMessage(data: WebSocketMessage): void {
     this.options.onMessage?.(data)
 
-    if (data.type) {
-      const handlers = this.handlers.get(data.type)
+    if (data.event) {
+      const handlers = this.handlers.get(data.event)
       if (handlers) {
-        handlers.forEach((handler) => handler(data.payload))
+        handlers.forEach((handler) => handler(data.data))
       }
     }
   }
@@ -142,26 +143,73 @@ class WebSocketService {
     }
   }
 
-  sendTyping(roomId: number, isTyping: boolean): void {
+  /**
+   * Send a channel-scoped chat message via WebSocket.
+   */
+  sendChatMessage(channelId: number, type: number, content: string, replyToId?: number): void {
     this.send({
-      type: 'typing',
-      payload: { roomId, isTyping },
+      event: 'chat_message',
+      data: { channelId, type, content, replyToId },
     })
   }
 
-  on(type: string, handler: WebSocketMessageHandler): () => void {
-    if (!this.handlers.has(type)) {
-      this.handlers.set(type, new Set())
+  /**
+   * Subscribe to a channel's events.
+   */
+  joinChannel(channelId: number): void {
+    this.send({
+      event: 'join_channel',
+      data: { channelId },
+    })
+  }
+
+  /**
+   * Unsubscribe from a channel's events.
+   */
+  leaveChannel(channelId: number): void {
+    this.send({
+      event: 'leave_channel',
+      data: { channelId },
+    })
+  }
+
+  /**
+   * Send a typing indicator.
+   */
+  sendTyping(channelId: number, isTyping: boolean): void {
+    this.send({
+      event: 'typing',
+      data: { channelId, isTyping },
+    })
+  }
+
+  /**
+   * Send a WebRTC signal to a target user.
+   */
+  sendWebRTCSignal(
+    type: 'offer' | 'answer' | 'ice-candidate',
+    targetId: number,
+    payload: string
+  ): void {
+    this.send({
+      event: 'webrtc_signal',
+      data: { type, targetId, payload },
+    })
+  }
+
+  on(event: string, handler: WebSocketMessageHandler): () => void {
+    if (!this.handlers.has(event)) {
+      this.handlers.set(event, new Set())
     }
-    this.handlers.get(type)!.add(handler)
+    this.handlers.get(event)!.add(handler)
 
     return () => {
-      this.handlers.get(type)?.delete(handler)
+      this.handlers.get(event)?.delete(handler)
     }
   }
 
-  off(type: string, handler: WebSocketMessageHandler): void {
-    this.handlers.get(type)?.delete(handler)
+  off(event: string, handler: WebSocketMessageHandler): void {
+    this.handlers.get(event)?.delete(handler)
   }
 
   disconnect(): void {

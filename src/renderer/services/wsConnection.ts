@@ -1,10 +1,9 @@
 /**
  * Singleton WebSocket connection manager.
  *
- * Ensures a single WebSocket connection is shared across all hooks
- * (useRoomWebSocket, useScreenShare, useAudioShare, voice chat).
- * Only one connection per (token, roomId) — prevents the reconnect
- * storm caused by multiple hooks each creating their own WebSocket.
+ * KOOK-style: single per-app connection, not bound to room_id.
+ * Token is the only connection parameter. Channel subscription
+ * is managed via join_channel/leave_channel events.
  */
 import WebSocketService from './websocketService'
 
@@ -14,16 +13,15 @@ class WsConnectionManager {
 
   /**
    * Get the shared WebSocketService instance, connecting if needed.
-   * If the URL differs from the current connection, the old one is
-   * torn down and a new one is established.
+   * URL should include the token query parameter: `${wsBaseUrl}?token=${token}`
    */
   getWs(url: string): WebSocketService {
-    // Same URL — reuse existing connection
+    // Same URL - reuse existing connection
     if (this.ws && this.currentUrl === url && this.ws.isConnected()) {
       return this.ws
     }
 
-    // Different URL or disconnected — tear down old and create new
+    // Different URL or disconnected - tear down old and create new
     if (this.ws) {
       this.ws.disconnect()
       this.ws = null
@@ -45,6 +43,16 @@ class WsConnectionManager {
   }
 
   /**
+   * Convenience method: connect using just a token.
+   * Builds the URL from VITE_WS_URL + token query param.
+   */
+  connectWithToken(token: string): WebSocketService {
+    const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'
+    const url = `${wsBaseUrl}?token=${token}`
+    return this.getWs(url)
+  }
+
+  /**
    * Get the current connected WebSocketService without initiating a connection.
    * Returns null if not connected.
    */
@@ -57,7 +65,6 @@ class WsConnectionManager {
 
   /**
    * Disconnect and clear the shared connection.
-   * Called when the user leaves the room entirely.
    */
   disconnect(): void {
     if (this.ws) {

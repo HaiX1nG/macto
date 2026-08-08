@@ -1,68 +1,139 @@
-export type WebSocketMessageType =
-  | 'new_message'
-  | 'participant_update'
-  | 'voice_state'
-  | 'typing'
-  | 'screen_share'
-  | 'connection_state'
-  | 'state_sync'
+/**
+ * WebSocket Types
+ *
+ * Event protocol for the KOOK-style channel-based WebSocket.
+ * Connection is per-app (not per-room); subscription via join_channel/leave_channel.
+ */
+
+// ==================== Connection Status ====================
+
+export type WebSocketConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
+
+// ==================== Generic WS Message ====================
 
 export interface WebSocketMessage<T = unknown> {
-  type: WebSocketMessageType
-  payload: T
-  timestamp?: number
+  event: string
+  data: T
 }
 
 export type WebSocketMessageHandler = (data: unknown) => void
 export type WebSocketEventHandler = () => void
 
-export interface NewMessagePayload {
-  id: number
-  roomId: number
-  senderUserId: number
-  senderName: string
-  messageType: 1 | 2 | 3
-  content: string
-  createdAt: string
+// ==================== C->S Events ====================
+
+export interface JoinChannelPayload {
+  channelId: number
 }
 
-export interface ParticipantUpdatePayload {
-  roomId: number
-  action: 'join' | 'leave'
-  participant: {
+export interface LeaveChannelPayload {
+  channelId: number
+}
+
+export interface ChatMessagePayload {
+  channelId: number
+  type: number
+  content: string
+  replyToId?: number
+}
+
+export interface TypingPayload {
+  channelId: number
+  isTyping: boolean
+}
+
+export interface WebRTCSignalPayload {
+  type: 'offer' | 'answer' | 'ice-candidate'
+  targetId: number
+  payload: string
+}
+
+// ==================== S->C Events ====================
+
+export interface ChatMessageEvent {
+  channelId: number
+  message: import('@shared/types/message').ChannelMessage
+}
+
+export interface MessageDeleteEvent {
+  channelId: number
+  messageId: number
+}
+
+export interface MessageUpdateEvent {
+  channelId: number
+  message: import('@shared/types/message').ChannelMessage
+}
+
+export interface ReactionAddEvent {
+  messageId: number
+  emoji: string
+  userId: number
+}
+
+export interface ReactionRemoveEvent {
+  messageId: number
+  emoji: string
+  userId: number
+}
+
+export interface VoiceUserJoinedEvent {
+  channelId: number
+  user: {
+    id: number
     userId: number
     username: string
     avatarUrl: string
-    role: 1 | 2 | 3
     isMuted: boolean
-    isScreenSharing: boolean
+    isDeafened: boolean
+    isSpeaking: boolean
+    volume: number
     joinedAt: string
   }
 }
 
-export interface VoiceStatePayload {
-  roomId: number
+export interface VoiceUserLeftEvent {
+  channelId: number
   userId: number
-  username: string
-  action: 'join' | 'leave' | 'mute' | 'unmute' | 'speaking' | 'stopped_speaking'
+}
+
+export interface VoiceStateUpdateEvent {
+  channelId: number
+  userId: number
   isMuted?: boolean
+  isDeafened?: boolean
   isSpeaking?: boolean
 }
 
-export interface TypingPayload {
-  roomId: number
+export interface ScreenShareStartEvent {
+  channelId: number
   userId: number
-  username: string
-  isTyping: boolean
 }
 
-export interface ScreenSharePayload {
-  roomId: number
+export interface ScreenShareStopEvent {
+  channelId: number
   userId: number
-  username: string
-  action: 'start' | 'stop'
-  screenShareId?: number
 }
+
+export interface WebRTCSignalEvent {
+  fromUserId: number
+  fromUsername: string
+  signal: {
+    type: 'offer' | 'answer' | 'ice-candidate'
+    payload: string
+  }
+}
+
+export interface MemberJoinedEvent {
+  serverId: number
+  member: import('@shared/types/server').ServerMember
+}
+
+export interface MemberLeftEvent {
+  serverId: number
+  userId: number
+}
+
+// ==================== Connection State ====================
 
 export interface ConnectionStatePayload {
   status: WebSocketConnectionStatus
@@ -70,33 +141,22 @@ export interface ConnectionStatePayload {
   maxReconnectAttempts?: number
 }
 
-export interface StateSyncPayload {
-  roomId: number
-  participants: Array<{
-    userId: number
-    username: string
-    avatarUrl: string
-    role: 1 | 2 | 3
-    isMuted: boolean
-    isScreenSharing: boolean
-    joinedAt: string
-  }>
-  voiceParticipants: Array<{
-    id: number
-    roomId: number
-    userId: number
-    username: string
-    joinedAt: string
-  }>
-  recentMessages: Array<{
-    id: number
-    roomId: number
-    senderUserId: number
-    senderName: string
-    messageType: 1 | 2 | 3
-    content: string
-    createdAt: string
-  }>
-}
+// ==================== Event Map ====================
 
-export type WebSocketConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
+export interface WSEventMap {
+  // S->C events
+  chat_message: ChatMessageEvent
+  message_delete: MessageDeleteEvent
+  message_update: MessageUpdateEvent
+  reaction_add: ReactionAddEvent
+  reaction_remove: ReactionRemoveEvent
+  voice_user_joined: VoiceUserJoinedEvent
+  voice_user_left: VoiceUserLeftEvent
+  voice_state_update: VoiceStateUpdateEvent
+  screen_share_start: ScreenShareStartEvent
+  screen_share_stop: ScreenShareStopEvent
+  webrtc_signal: WebRTCSignalEvent
+  member_joined: MemberJoinedEvent
+  member_left: MemberLeftEvent
+  connection_state: ConnectionStatePayload
+}

@@ -1,37 +1,40 @@
 import apiClient from './apiClient'
 import type {
+  PlaylistItem,
   AddPlaylistItemRequest,
-  PlaylistItemResponse,
   ReorderPlaylistRequest,
-} from '@shared/types/api'
+} from '@shared/types/playlist'
 
 export const playlistService = {
-  async getPlaylist(roomId: number): Promise<PlaylistItemResponse[]> {
-    return apiClient.get<PlaylistItemResponse[]>(`/rooms/${roomId}/playlist`)
+  async getPlaylist(channelId: number): Promise<PlaylistItem[]> {
+    return apiClient.get<PlaylistItem[]>(`/channels/${channelId}/playlist`)
   },
 
-  async addItem(roomId: number, data: AddPlaylistItemRequest): Promise<PlaylistItemResponse> {
-    return apiClient.post<PlaylistItemResponse>(`/rooms/${roomId}/playlist`, data)
+  async addItem(
+    channelId: number,
+    data: AddPlaylistItemRequest
+  ): Promise<PlaylistItem> {
+    return apiClient.post<PlaylistItem>(`/channels/${channelId}/playlist`, data)
   },
 
-  async removeItem(roomId: number, itemId: number): Promise<void> {
-    return apiClient.delete<void>(`/rooms/${roomId}/playlist/${itemId}`)
+  async removeItem(channelId: number, itemId: number): Promise<void> {
+    return apiClient.delete<void>(`/channels/${channelId}/playlist/${itemId}`)
   },
 
-  async play(roomId: number): Promise<void> {
-    return apiClient.post<void>(`/rooms/${roomId}/playlist/play`)
+  async play(channelId: number): Promise<void> {
+    return apiClient.post<void>(`/channels/${channelId}/playlist/play`)
   },
 
-  async pause(roomId: number): Promise<void> {
-    return apiClient.post<void>(`/rooms/${roomId}/playlist/pause`)
+  async pause(channelId: number): Promise<void> {
+    return apiClient.post<void>(`/channels/${channelId}/playlist/pause`)
   },
 
-  async skip(roomId: number): Promise<void> {
-    return apiClient.post<void>(`/rooms/${roomId}/playlist/skip`)
+  async skip(channelId: number): Promise<void> {
+    return apiClient.post<void>(`/channels/${channelId}/playlist/skip`)
   },
 
-  async reorder(roomId: number, data: ReorderPlaylistRequest): Promise<void> {
-    return apiClient.post<void>(`/rooms/${roomId}/playlist/reorder`, data)
+  async reorder(channelId: number, data: ReorderPlaylistRequest): Promise<void> {
+    return apiClient.post<void>(`/channels/${channelId}/playlist/reorder`, data)
   },
 }
 

@@ -1,15 +1,28 @@
-import apiClient from './apiClient'
-import type { WebRTCSignalRequest, ScreenShareResponse } from '@shared/types/api'
+import type { WebRTCSignalRequest } from '@shared/types/voice'
 
+/**
+ * WebRTC signaling is now sent via WebSocket events (webrtc_signal),
+ * not REST endpoints. This service provides a thin wrapper for
+ * constructing signal payloads to send through wsConnection.
+ */
 export const webrtcService = {
-  // Send WebRTC signal to backend (offer, answer, ice-candidate)
-  async sendSignal(roomId: number, signal: WebRTCSignalRequest): Promise<void> {
-    return apiClient.post<void>(`/rooms/${roomId}/webrtc/signal`, signal)
-  },
-
-  // Get screen share info
-  async getActiveScreenShare(roomId: number): Promise<ScreenShareResponse | null> {
-    return apiClient.get<ScreenShareResponse | null>(`/rooms/${roomId}/screenshare`)
+  /**
+   * Build a WebRTC signal payload for sending through the WebSocket.
+   * The caller is responsible for dispatching via wsConnection.send().
+   */
+  buildSignal(
+    type: WebRTCSignalRequest['type'],
+    targetId: number,
+    payload: string
+  ): { event: 'webrtc_signal'; data: WebRTCSignalRequest & { targetId: number } } {
+    return {
+      event: 'webrtc_signal',
+      data: {
+        type,
+        targetId,
+        payload,
+      },
+    }
   },
 }
 

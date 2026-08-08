@@ -6,7 +6,7 @@ import type {
   ChangePasswordRequest,
   SetCustomStatusRequest,
   UserOnlineStatusResponse,
-} from '@shared/types/api'
+} from '@shared/types/auth'
 
 export const authService = {
   async login(username: string, password: string): Promise<LoginResponse> {

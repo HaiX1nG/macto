@@ -6,20 +6,23 @@
  */
 
 /**
- * 视图标识符。
- * 每个值对应 pages/ 目录下的一个页面组件。
+ * View identifiers for the KOOK-style navigation system.
+ * Each value corresponds to a page component in pages/.
  */
-export type ViewId = 'home' | 'channel' | 'voice' | 'screen' | 'settings'
+export type ViewId =
+  | 'server-home'
+  | 'text-channel'
+  | 'voice-channel'
+  | 'settings'
+  | 'friends'
 
 /**
- * 传递给页面组件的导航参数。
- * 所有字段可选，不同页面按需读取。
+ * Navigation parameters passed to page components.
+ * All fields optional; different pages read what they need.
  */
 export interface ViewParams {
-  /** 当前房间 ID */
-  readonly roomId?: string
-  /** 当前频道 ID */
-  readonly channelId?: string
-  /** 会话 ID（语音/屏幕共享会话） */
-  readonly sessionId?: string
+  /** Current server ID */
+  readonly serverId?: number
+  /** Current channel ID */
+  readonly channelId?: number
 }
