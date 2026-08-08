@@ -1,254 +1,355 @@
 import { create } from 'zustand'
-import type { ServerMember, Channel, Server } from '@shared/types/kook'
-import type { RoomInfoResponse, ParticipantResponse, CreateRoomRequest, RoomListRequest, JoinRoomRequest } from '@shared/types/api'
-import type { SessionParticipant } from '@shared/types'
-import { roomService } from '../services/roomService'
+import type {
+  Server,
+  ServerDetail,
+  ServerMember,
+  Role,
+  CreateServerRequest,
+  UpdateServerRequest,
+  JoinServerRequest,
+  UpdateServerMemberRequest,
+  CreateRoleRequest,
+  UpdateRoleRequest,
+} from '@shared/types/server'
+import type { Permission as PermissionType } from '@shared/types/permission'
+import {
+  hasPermission,
+  mergePermissions,
+  parsePermissions,
+} from '@shared/types/permission'
+import { serverService } from '../services/serverService'
+import { useAuthStore } from './authStore'
 
-// Legacy Session type for backward compatibility
-export interface Session {
-  id: string
-  name: string
-  hostId: string
-  participants: SessionParticipant[]
-  createdAt: number
-  isActive: boolean
-}
-
-export interface RoomState {
+export interface ServerState {
   // State
-  rooms: RoomInfoResponse[]
-  currentRoom: RoomInfoResponse | null
-  currentRoomId: string
-  currentChannelId: string | null
-  participants: SessionParticipant[]
-  apiParticipants: ParticipantResponse[]
-  serverMembers: ServerMember[]
+  servers: Server[]
+  currentServer: ServerDetail | null
+  currentServerId: number | null
+  members: ServerMember[]
+  roles: Role[]
   isLoading: boolean
-  isCreating: boolean
   error: string | null
 
-  // Actions
-  fetchRooms: (params?: unknown) => Promise<void>
-  createRoom: (data: unknown) => Promise<RoomInfoResponse>
-  deleteRoom: (roomId: string) => Promise<void>
-  joinRoom: (roomId: number, data?: JoinRoomRequest) => Promise<void>
-  leaveRoom: (roomId: number) => Promise<void>
-  setCurrentRoom: (room: RoomInfoResponse | null) => void
-  setCurrentRoomId: (roomId: string) => void
-  setCurrentChannel: (channelId: string | null) => void
-  addParticipant: (participant: SessionParticipant) => void
-  removeParticipant: (participantId: string) => void
-  updateParticipant: (participantId: string, updates: Partial<SessionParticipant>) => void
-  getServerMembers: (serverId: string) => ServerMember[]
-  setServerMembers: (members: ServerMember[]) => void
-  removeServerMember: (userId: string) => void
-  fetchParticipants: (roomId: number) => Promise<void>
-  setError: (error: string | null) => void
+  // Server actions
+  fetchServers: () => Promise<void>
+  fetchServerDetail: (id: number) => Promise<void>
+  createServer: (data: CreateServerRequest) => Promise<ServerDetail>
+  updateServer: (id: number, data: UpdateServerRequest) => Promise<void>
+  deleteServer: (id: number) => Promise<void>
+  joinServer: (id: number, data: JoinServerRequest) => Promise<void>
+  leaveServer: (id: number) => Promise<void>
+  setCurrentServer: (id: number) => void
+
+  // Member actions
+  fetchMembers: (serverId: number) => Promise<void>
+  updateMember: (serverId: number, userId: number, data: UpdateServerMemberRequest) => Promise<void>
+  kickMember: (serverId: number, userId: number) => Promise<void>
+
+  // Role actions
+  fetchRoles: (serverId: number) => Promise<void>
+  createRole: (serverId: number, data: CreateRoleRequest) => Promise<void>
+  updateRole: (serverId: number, roleId: number, data: UpdateRoleRequest) => Promise<void>
+  deleteRole: (serverId: number, roleId: number) => Promise<void>
+
+  // Permission
+  hasPermission: (perm: bigint) => boolean
+
   clearError: () => void
 }
 
-export const useRoomStore = create<RoomState>((set, get) => ({
+export const useServerStore = create<ServerState>((set, get) => ({
   // Initial state
-  rooms: [],
-  currentRoom: null,
-  currentRoomId: '',
-  currentChannelId: null,
-  participants: [],
-  apiParticipants: [],
-  serverMembers: [],
+  servers: [],
+  currentServer: null,
+  currentServerId: null,
+  members: [],
+  roles: [],
   isLoading: false,
-  isCreating: false,
   error: null,
 
-  // Fetch rooms
-  fetchRooms: async (params?: unknown) => {
+  // Fetch server list
+  fetchServers: async () => {
     set({ isLoading: true, error: null })
     try {
-      const rooms = await roomService.getRoomList(params as RoomListRequest | undefined)
-      set({ rooms, isLoading: false })
+      const servers = await serverService.getServerList()
+      set({ servers, isLoading: false })
     } catch (err) {
       set({
         isLoading: false,
-        error: err instanceof Error ? err.message : '获取房间列表失败',
+        error: err instanceof Error ? err.message : '获取服务器列表失败',
       })
       throw err
     }
   },
 
-  // Create room
-  createRoom: async (data: unknown) => {
-    set({ isCreating: true, error: null })
+  // Fetch server detail (with channels)
+  fetchServerDetail: async (id: number) => {
+    set({ isLoading: true, error: null })
     try {
-      const newRoom = await roomService.createRoom(data as CreateRoomRequest)
+      const detail = await serverService.getServerDetail(id)
+      set({
+        currentServer: detail,
+        currentServerId: id,
+        isLoading: false,
+      })
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '获取服务器详情失败',
+      })
+      throw err
+    }
+  },
+
+  // Create server
+  createServer: async (data: CreateServerRequest) => {
+    set({ isLoading: true, error: null })
+    try {
+      const newServer = await serverService.createServer(data)
       set((state) => ({
-        rooms: [...state.rooms, newRoom],
-        isCreating: false,
+        servers: [...state.servers, newServer],
+        isLoading: false,
       }))
-      return newRoom
+      return newServer
     } catch (err) {
       set({
-        isCreating: false,
-        error: err instanceof Error ? err.message : '创建房间失败',
+        isLoading: false,
+        error: err instanceof Error ? err.message : '创建服务器失败',
       })
       throw err
     }
   },
 
-  // Delete room
-  deleteRoom: async (roomId: string) => {
+  // Update server
+  updateServer: async (id: number, data: UpdateServerRequest) => {
     set({ isLoading: true, error: null })
     try {
-      await roomService.deleteRoom(Number(roomId))
-      set((state) => ({
-        rooms: state.rooms.filter(r => String(r.id) !== roomId),
-        isLoading: false,
-      }))
-    } catch (err) {
-      set({
-        isLoading: false,
-        error: err instanceof Error ? err.message : '删除房间失败',
-      })
-      throw err
-    }
-  },
-
-  // Join room
-  joinRoom: async (roomId: number, data?: JoinRoomRequest) => {
-    set({ isLoading: true, error: null })
-    try {
-      await roomService.joinRoom(roomId, data)
+      await serverService.updateServer(id, data)
+      // Refresh server detail if it's the current server
+      if (get().currentServerId === id) {
+        await get().fetchServerDetail(id)
+      }
       set({ isLoading: false })
     } catch (err) {
       set({
         isLoading: false,
-        error: err instanceof Error ? err.message : '加入房间失败',
+        error: err instanceof Error ? err.message : '更新服务器失败',
       })
       throw err
     }
   },
 
-  // Leave room
-  leaveRoom: async (roomId: number) => {
+  // Delete server
+  deleteServer: async (id: number) => {
     set({ isLoading: true, error: null })
     try {
-      await roomService.leaveRoom(roomId)
+      await serverService.deleteServer(id)
+      set((state) => ({
+        servers: state.servers.filter((s) => s.id !== id),
+        currentServer: state.currentServerId === id ? null : state.currentServer,
+        currentServerId: state.currentServerId === id ? null : state.currentServerId,
+        isLoading: false,
+      }))
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '删除服务器失败',
+      })
+      throw err
+    }
+  },
+
+  // Join server
+  joinServer: async (id: number, data: JoinServerRequest) => {
+    set({ isLoading: true, error: null })
+    try {
+      await serverService.joinServer(id, data)
+      // Refresh server list after joining
+      await get().fetchServers()
       set({ isLoading: false })
     } catch (err) {
       set({
         isLoading: false,
-        error: err instanceof Error ? err.message : '离开房间失败',
+        error: err instanceof Error ? err.message : '加入服务器失败',
       })
       throw err
     }
   },
 
-  // Set current room
-  setCurrentRoom: (room: RoomInfoResponse | null) => {
-    set({
-      currentRoom: room,
-      currentRoomId: room ? String(room.id) : '',
-      participants: [],
-    })
-  },
-
-  // Set current room ID
-  setCurrentRoomId: (roomId: string) => {
-    set({ currentRoomId: roomId })
-  },
-
-  // Set current channel
-  setCurrentChannel: (channelId: string | null) => {
-    set({ currentChannelId: channelId })
-  },
-
-  // Add participant
-  addParticipant: (participant: SessionParticipant) => {
-    set((state) => ({
-      participants: [...state.participants, participant],
-    }))
-  },
-
-  // Remove participant
-  removeParticipant: (participantId: string) => {
-    set((state) => ({
-      participants: state.participants.filter(p => p.id !== participantId),
-    }))
-  },
-
-  // Update participant
-  updateParticipant: (participantId: string, updates: Partial<SessionParticipant>) => {
-    set((state) => ({
-      participants: state.participants.map(p =>
-        p.id === participantId ? { ...p, ...updates } : p
-      ),
-    }))
-  },
-
-  // Get server members
-  getServerMembers: (_serverId: string) => {
-    return get().serverMembers
-  },
-
-  // Set server members
-  setServerMembers: (members: ServerMember[]) => {
-    set({ serverMembers: members })
-  },
-
-  // Remove server member
-  removeServerMember: (userId: string) => {
-    set((state) => ({
-      serverMembers: state.serverMembers.filter(m => m.userId !== userId),
-    }))
-  },
-
-  // Fetch participants
-  fetchParticipants: async (roomId: number) => {
+  // Leave server
+  leaveServer: async (id: number) => {
     set({ isLoading: true, error: null })
     try {
-      const participants = await roomService.getRoomParticipants(roomId)
-      set({ apiParticipants: participants, isLoading: false })
+      await serverService.leaveServer(id)
+      set((state) => ({
+        servers: state.servers.filter((s) => s.id !== id),
+        currentServer: state.currentServerId === id ? null : state.currentServer,
+        currentServerId: state.currentServerId === id ? null : state.currentServerId,
+        isLoading: false,
+      }))
     } catch (err) {
       set({
         isLoading: false,
-        error: err instanceof Error ? err.message : '获取参与者失败',
+        error: err instanceof Error ? err.message : '离开服务器失败',
       })
       throw err
     }
   },
 
-  // Set error
-  setError: (error: string | null) => {
-    set({ error })
+  // Set current server
+  setCurrentServer: (id: number) => {
+    set({ currentServerId: id })
   },
 
-  // Clear error
+  // Fetch members
+  fetchMembers: async (serverId: number) => {
+    set({ isLoading: true, error: null })
+    try {
+      const members = await serverService.getMembers(serverId)
+      set({ members, isLoading: false })
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '获取成员列表失败',
+      })
+      throw err
+    }
+  },
+
+  // Update member
+  updateMember: async (serverId: number, userId: number, data: UpdateServerMemberRequest) => {
+    set({ isLoading: true, error: null })
+    try {
+      await serverService.updateMember(serverId, userId, data)
+      // Refresh members
+      await get().fetchMembers(serverId)
+      set({ isLoading: false })
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '更新成员失败',
+      })
+      throw err
+    }
+  },
+
+  // Kick member
+  kickMember: async (serverId: number, userId: number) => {
+    set({ isLoading: true, error: null })
+    try {
+      await serverService.kickMember(serverId, userId)
+      set((state) => ({
+        members: state.members.filter((m) => m.userId !== userId),
+        isLoading: false,
+      }))
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '踢出成员失败',
+      })
+      throw err
+    }
+  },
+
+  // Fetch roles
+  fetchRoles: async (serverId: number) => {
+    set({ isLoading: true, error: null })
+    try {
+      const roles = await serverService.getRoles(serverId)
+      set({ roles, isLoading: false })
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '获取角色列表失败',
+      })
+      throw err
+    }
+  },
+
+  // Create role
+  createRole: async (serverId: number, data: CreateRoleRequest) => {
+    set({ isLoading: true, error: null })
+    try {
+      await serverService.createRole(serverId, data)
+      // Refresh roles
+      await get().fetchRoles(serverId)
+      set({ isLoading: false })
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '创建角色失败',
+      })
+      throw err
+    }
+  },
+
+  // Update role
+  updateRole: async (serverId: number, roleId: number, data: UpdateRoleRequest) => {
+    set({ isLoading: true, error: null })
+    try {
+      await serverService.updateRole(serverId, roleId, data)
+      // Refresh roles
+      await get().fetchRoles(serverId)
+      set({ isLoading: false })
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '更新角色失败',
+      })
+      throw err
+    }
+  },
+
+  // Delete role
+  deleteRole: async (serverId: number, roleId: number) => {
+    set({ isLoading: true, error: null })
+    try {
+      await serverService.deleteRole(serverId, roleId)
+      set((state) => ({
+        roles: state.roles.filter((r) => r.id !== roleId),
+        isLoading: false,
+      }))
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '删除角色失败',
+      })
+      throw err
+    }
+  },
+
+  // Permission check based on current user's roles in current server
+  hasPermission: (perm: bigint) => {
+    const { members, currentServer } = get()
+    if (!currentServer) return false
+
+    const authState = useAuthStore.getState()
+    const currentUserId = authState.currentUser?.id
+    if (currentUserId === undefined) return false
+
+    // Owner always has all permissions
+    if (currentServer.ownerId === currentUserId) return true
+
+    // Find current user's member record
+    const member = members.find((m) => m.userId === currentUserId)
+    if (!member) return false
+
+    // Merge all role permissions
+    const rolePerms = member.roles.map((r) => parsePermissions(r.permissions))
+    const mergedPerms = mergePermissions(rolePerms)
+
+    return hasPermission(mergedPerms, perm)
+  },
+
   clearError: () => {
     set({ error: null })
   },
 }))
 
-// Re-export for backward compatibility
-export { useRoomStore as useServerStore }
-export type { RoomState as ServerState }
+// Re-export Permission type for convenience
+export type { PermissionType }
 
-// Helper functions
-export function getServerFromRoom(_roomId: string) {
-  return null
-}
-
-export function getServersFromRooms(rooms: RoomInfoResponse[]): Server[] {
-  return rooms.map(room => ({
-    id: String(room.id),
-    name: room.roomName,
-    icon: '',
-    ownerId: '',
-    channels: [],
-    roles: [],
-    memberCount: 0,
-    createdAt: 0,
-  }))
-}
-
-export function getChannelFromRoom(_roomId: string): Channel[] {
-  return []
-}
+// Backward compatibility: roomStore re-exported useRoomStore from serverStore
+// We keep a minimal alias so imports don't break during phase 5 migration
+export { useServerStore as useRoomStore }
+export type { ServerState as RoomState }

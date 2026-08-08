@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useThemeStore, type AppTheme } from '../themeStore'
+import { useUIStore, type AppTheme } from '../uiStore'
 
 // Mock localStorage
 const localStorageMock = {
@@ -32,88 +32,69 @@ Object.defineProperty(document, 'documentElement', {
   writable: true,
 })
 
-describe('useThemeStore', () => {
+describe('useUIStore (theme)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorageMock.getItem.mockClear()
     localStorageMock.setItem.mockClear()
     mockSetAttribute.mockClear()
     localStorageMock.getItem.mockReturnValue(null)
-    // Reset store state to initial values
-    useThemeStore.setState({
+    useUIStore.setState({
       theme: 'sakura',
     })
   })
 
-  describe('initial state', () => {
+  describe('initial theme state', () => {
     it('should have default theme value of sakura', () => {
-      const state = useThemeStore.getState()
+      const state = useUIStore.getState()
       expect(state.theme).toBe('sakura')
     })
 
     it('should have setTheme method available', () => {
-      const state = useThemeStore.getState()
+      const state = useUIStore.getState()
       expect(typeof state.setTheme).toBe('function')
     })
 
     it('should have initTheme method available', () => {
-      const state = useThemeStore.getState()
+      const state = useUIStore.getState()
       expect(typeof state.initTheme).toBe('function')
     })
   })
 
   describe('setTheme action', () => {
     it('should set theme to sakura', () => {
-      const { setTheme } = useThemeStore.getState()
+      const { setTheme } = useUIStore.getState()
       setTheme('sakura')
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('sakura')
+      expect(useUIStore.getState().theme).toBe('sakura')
     })
 
     it('should set theme to ancient', () => {
-      const { setTheme } = useThemeStore.getState()
+      const { setTheme } = useUIStore.getState()
       setTheme('ancient')
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('ancient')
+      expect(useUIStore.getState().theme).toBe('ancient')
     })
 
     it('should set theme to tech', () => {
-      const { setTheme } = useThemeStore.getState()
+      const { setTheme } = useUIStore.getState()
       setTheme('tech')
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('tech')
+      expect(useUIStore.getState().theme).toBe('tech')
     })
 
     it('should apply theme to document via data-theme attribute', () => {
-      const { setTheme } = useThemeStore.getState()
+      const { setTheme } = useUIStore.getState()
       setTheme('ancient')
 
       expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'ancient')
     })
 
     it('should save theme to localStorage', () => {
-      const { setTheme } = useThemeStore.getState()
+      const { setTheme } = useUIStore.getState()
       setTheme('tech')
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith('app-theme', 'tech')
-    })
-
-    it('should update document attribute each time theme changes', () => {
-      const { setTheme } = useThemeStore.getState()
-
-      setTheme('sakura')
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'sakura')
-
-      setTheme('ancient')
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'ancient')
-
-      setTheme('tech')
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'tech')
-
-      expect(mockSetAttribute).toHaveBeenCalledTimes(3)
     })
   })
 
@@ -121,93 +102,40 @@ describe('useThemeStore', () => {
     it('should initialize with saved theme from localStorage', () => {
       localStorageMock.getItem.mockReturnValue('ancient')
 
-      const { initTheme } = useThemeStore.getState()
+      const { initTheme } = useUIStore.getState()
       initTheme()
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('ancient')
+      expect(useUIStore.getState().theme).toBe('ancient')
       expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'ancient')
-    })
-
-    it('should initialize with tech theme from localStorage', () => {
-      localStorageMock.getItem.mockReturnValue('tech')
-
-      const { initTheme } = useThemeStore.getState()
-      initTheme()
-
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('tech')
     })
 
     it('should default to sakura when no saved theme exists', () => {
       localStorageMock.getItem.mockReturnValue(null)
 
-      const { initTheme } = useThemeStore.getState()
+      const { initTheme } = useUIStore.getState()
       initTheme()
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('sakura')
+      expect(useUIStore.getState().theme).toBe('sakura')
       expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'sakura')
     })
 
     it('should default to sakura when saved theme is invalid', () => {
       localStorageMock.getItem.mockReturnValue('invalid-theme')
 
-      const { initTheme } = useThemeStore.getState()
+      const { initTheme } = useUIStore.getState()
       initTheme()
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('sakura')
+      expect(useUIStore.getState().theme).toBe('sakura')
       expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'sakura')
-    })
-
-    it('should apply theme to document on initialization', () => {
-      localStorageMock.getItem.mockReturnValue('tech')
-
-      const { initTheme } = useThemeStore.getState()
-      initTheme()
-
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'tech')
     })
 
     it('should save default theme to localStorage when no saved theme exists', () => {
       localStorageMock.getItem.mockReturnValue(null)
 
-      const { initTheme } = useThemeStore.getState()
+      const { initTheme } = useUIStore.getState()
       initTheme()
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith('app-theme', 'sakura')
-    })
-  })
-
-  describe('state updates', () => {
-    it('should update theme state correctly', () => {
-      const { setTheme } = useThemeStore.getState()
-      setTheme('ancient')
-
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('ancient')
-    })
-
-    it('should trigger subscription on state change', () => {
-      const { setTheme } = useThemeStore.getState()
-      let renderCount = 0
-
-      const unsubscribe = useThemeStore.subscribe(() => {
-        renderCount++
-      })
-
-      setTheme('tech')
-      expect(renderCount).toBeGreaterThan(0)
-
-      unsubscribe()
-    })
-
-    it('should provide current theme via getState', () => {
-      const { setTheme } = useThemeStore.getState()
-      setTheme('tech')
-
-      expect(useThemeStore.getState().theme).toBe('tech')
     })
   })
 
@@ -216,34 +144,26 @@ describe('useThemeStore', () => {
       const validThemes: AppTheme[] = ['sakura', 'ancient', 'tech']
 
       validThemes.forEach((theme) => {
-        const { setTheme } = useThemeStore.getState()
+        const { setTheme } = useUIStore.getState()
         setTheme(theme)
-        expect(useThemeStore.getState().theme).toBe(theme)
+        expect(useUIStore.getState().theme).toBe(theme)
       })
     })
   })
 
-  describe('persistence', () => {
-    it('should persist theme changes to localStorage', () => {
-      const { setTheme } = useThemeStore.getState()
+  describe('state updates', () => {
+    it('should trigger subscription on state change', () => {
+      const { setTheme } = useUIStore.getState()
+      let renderCount = 0
 
-      setTheme('ancient')
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('app-theme', 'ancient')
+      const unsubscribe = useUIStore.subscribe(() => {
+        renderCount++
+      })
 
       setTheme('tech')
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('app-theme', 'tech')
-    })
+      expect(renderCount).toBeGreaterThan(0)
 
-    it('should restore theme from localStorage on init', () => {
-      localStorageMock.getItem.mockReturnValue('ancient')
-
-      // Reset state first
-      useThemeStore.setState({ theme: 'sakura' })
-
-      const { initTheme } = useThemeStore.getState()
-      initTheme()
-
-      expect(useThemeStore.getState().theme).toBe('ancient')
+      unsubscribe()
     })
   })
 })

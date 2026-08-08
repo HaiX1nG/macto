@@ -1,278 +1,342 @@
 import { create } from 'zustand'
-import type { MessageResponse, SendMessageRequest, MessageListRequest, MessageType } from '@shared/types/api'
-import { chatService } from '../services/chatService'
+import type {
+  ChannelMessage,
+  SendMessageRequest,
+  UpdateMessageRequest,
+  ReactionRequest,
+  MessageListParams,
+} from '@shared/types/message'
+import type { MessageType } from '@shared/types/message'
+import { messageService } from '../services/messageService'
 
 export type MessageSendStatus = 'sent' | 'sending' | 'failed'
 
-export interface MessageWithStatus {
-  id: number
-  roomId: number
-  senderUserId: number
-  senderName: string
-  content: string
-  messageType: MessageType
-  createdAt: string
-  updatedAt?: string
-  status: 'sent' | 'sending' | 'failed'
+export interface MessageWithStatus extends ChannelMessage {
+  status: MessageSendStatus
   _retryId?: string
 }
 
-export interface PinnedMessage {
-  id: number
-  roomId: number
-  senderUserId: number
-  senderName: string
-  content: string
-  messageType: MessageType
-  createdAt: string
-}
-
 export interface ChatState {
-  // State
-  messages: MessageWithStatus[]
-  pinnedMessages: PinnedMessage[]
+  // State - multi-channel message cache
+  messages: Map<number, MessageWithStatus[]>
+  typingUsers: Map<number, Set<number>>
   isLoading: boolean
-  hasMore: boolean
-  replyingTo: MessageWithStatus | null
-  editingMessageId: number | null
-  deletingMessageId: number | null
-  typingUsers: Map<number, Array<{ userId: string; username: string; timestamp: number }>>
-  currentRoomId: number | null
+  hasMore: Map<number, boolean>
+  error: string | null
 
-  // Actions
-  fetchMessages: (channelId: number, params?: { page?: number; pageSize?: number }) => Promise<void>
-  sendMessage: (channelId: number, data: { messageType: MessageType; content: string }) => Promise<void>
-  addMessage: (message: MessageWithStatus | unknown) => void
-  clearMessages: () => void
-  pinMessage: (messageId: number) => void
-  unpinMessage: (messageId: number) => void
-  retryMessage: (retryId: string, channelId: number, data: { messageType: MessageType; content: string }) => Promise<void>
-  editMessage: (channelId: number, messageId: number, content: string) => Promise<void>
-  deleteMessageAsync: (channelId: number, messageId: number) => Promise<void>
-  setReplyingTo: (message: MessageWithStatus | null) => void
-  addTypingUser: (roomId: number, user: { userId: string; username: string; timestamp: number }) => void
-  removeTypingUser: (roomId: number, userId: string) => void
+  // Message actions
+  fetchMessages: (channelId: number, before?: number) => Promise<void>
+  sendMessage: (channelId: number, data: SendMessageRequest) => Promise<void>
+  updateMessage: (channelId: number, messageId: number, content: string) => Promise<void>
+  deleteMessage: (channelId: number, messageId: number) => Promise<void>
+  pinMessage: (channelId: number, messageId: number) => Promise<void>
+  addReaction: (channelId: number, messageId: number, emoji: string) => Promise<void>
+  removeReaction: (channelId: number, messageId: number, emoji: string) => Promise<void>
+
+  // WS event handlers (called by WS hook)
+  onMessageReceived: (channelId: number, message: ChannelMessage) => void
+  onMessageDeleted: (channelId: number, messageId: number) => void
+  onMessageUpdated: (channelId: number, message: ChannelMessage) => void
+  onReactionAdded: (channelId: number, messageId: number, emoji: string, userId: number) => void
+  onReactionRemoved: (channelId: number, messageId: number, emoji: string, userId: number) => void
+
+  // Typing
+  setTyping: (channelId: number, userId: number, isTyping: boolean) => void
+
+  // Channel management
+  clearChannel: (channelId: number) => void
+  getMessages: (channelId: number) => MessageWithStatus[]
+  clearError: () => void
+
+  // Retry failed message
+  retryMessage: (retryId: string, channelId: number, data: SendMessageRequest) => Promise<void>
 }
 
-// Helper to map API MessageResponse to store MessageWithStatus
-function mapToMessageWithStatus(msg: MessageResponse, status: MessageSendStatus = 'sent'): MessageWithStatus {
-  return {
-    id: msg.id,
-    roomId: msg.roomId,
-    senderUserId: msg.senderUserId,
-    senderName: msg.senderName,
-    content: msg.content,
-    messageType: msg.messageType,
-    createdAt: msg.createdAt,
-    status,
-  }
+function toMessageWithStatus(msg: ChannelMessage, status: MessageSendStatus = 'sent'): MessageWithStatus {
+  return { ...msg, status }
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   // Initial state
-  messages: [],
-  pinnedMessages: [],
-  isLoading: false,
-  hasMore: false,
-  replyingTo: null,
-  editingMessageId: null,
-  deletingMessageId: null,
+  messages: new Map(),
   typingUsers: new Map(),
-  currentRoomId: null,
+  isLoading: false,
+  hasMore: new Map(),
+  error: null,
 
-  // Fetch messages
-  fetchMessages: async (channelId: number, params?: { page?: number; pageSize?: number }) => {
-    set({ isLoading: true })
+  // Fetch messages (with cursor pagination)
+  fetchMessages: async (channelId: number, before?: number) => {
+    set({ isLoading: true, error: null })
     try {
-      const messageList = await chatService.getMessages(channelId, params as MessageListRequest | undefined)
-      const messages = messageList.map(msg => mapToMessageWithStatus(msg, 'sent'))
-      set({
-        messages,
-        currentRoomId: channelId,
-        isLoading: false,
-        hasMore: messageList.length >= (params?.pageSize ?? 50),
+      const params: MessageListParams = { pageSize: 50 }
+      if (before !== undefined) {
+        params.before = before
+      }
+      const result = await messageService.getMessages(channelId, params)
+      const newMessages = result.list.map((msg) => toMessageWithStatus(msg, 'sent'))
+
+      set((state) => {
+        const messagesMap = new Map(state.messages)
+        if (before !== undefined) {
+          // Prepend older messages
+          const existing = messagesMap.get(channelId) || []
+          messagesMap.set(channelId, [...newMessages, ...existing])
+        } else {
+          // Initial load
+          messagesMap.set(channelId, newMessages)
+        }
+
+        const hasMoreMap = new Map(state.hasMore)
+        hasMoreMap.set(channelId, newMessages.length >= 50)
+
+        return { messages: messagesMap, isLoading: false, hasMore: hasMoreMap }
       })
     } catch (err) {
-      set({ isLoading: false })
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : '获取消息失败',
+      })
       throw err
     }
   },
 
-  // Send message (optimistic update pattern)
-  sendMessage: async (channelId: number, data: { messageType: MessageType; content: string }) => {
+  // Send message (optimistic update)
+  sendMessage: async (channelId: number, data: SendMessageRequest) => {
     const tempId = Date.now()
     const retryId = `retry-${tempId}`
 
-    // Optimistically add message with 'sending' status
     const optimisticMessage: MessageWithStatus = {
       id: tempId,
-      roomId: channelId,
-      senderUserId: 0, // Will be updated from response
-      senderName: '',  // Will be updated from response
+      channelId,
+      senderUserId: 0,
+      senderName: '',
+      senderAvatarUrl: '',
+      type: data.type,
       content: data.content,
-      messageType: data.messageType,
+      replyToId: data.replyToId ?? null,
+      replyTo: null,
+      editedAt: null,
+      isPinned: false,
+      attachments: [],
+      reactions: [],
       createdAt: new Date().toISOString(),
       status: 'sending',
       _retryId: retryId,
     }
-    set((state) => ({
-      messages: [...state.messages, optimisticMessage],
-      currentRoomId: channelId,
-    }))
 
-    try {
-      const requestData: SendMessageRequest = {
-        messageType: data.messageType,
-        content: data.content,
-      }
-      const response = await chatService.sendMessage(channelId, requestData)
-
-      // Replace optimistic message with real one
-      set((state) => ({
-        messages: state.messages.map(m =>
-          m.id === tempId ? mapToMessageWithStatus(response, 'sent') : m
-        ),
-      }))
-    } catch (err) {
-      // Mark message as failed
-      set((state) => ({
-        messages: state.messages.map(m =>
-          m.id === tempId ? { ...m, status: 'failed' as const } : m
-        ),
-      }))
-      throw err
-    }
-  },
-
-  // Add message
-  addMessage: (message: MessageWithStatus | unknown) => {
-    set((state) => ({
-      messages: [...state.messages, message as MessageWithStatus],
-    }))
-  },
-
-  // Clear messages
-  clearMessages: () => {
-    set({ messages: [], hasMore: false })
-  },
-
-  // Pin message
-  pinMessage: (messageId: number) => {
     set((state) => {
-      const message = state.messages.find(m => m.id === messageId)
-      if (!message) return state
-      return {
-        pinnedMessages: [...state.pinnedMessages, {
-          id: message.id,
-          roomId: message.roomId,
-          senderUserId: message.senderUserId,
-          senderName: message.senderName,
-          content: message.content,
-          messageType: message.messageType,
-          createdAt: message.createdAt,
-        }],
-      }
+      const messagesMap = new Map(state.messages)
+      const existing = messagesMap.get(channelId) || []
+      messagesMap.set(channelId, [...existing, optimisticMessage])
+      return { messages: messagesMap }
     })
-  },
-
-  // Unpin message
-  unpinMessage: (messageId: number) => {
-    set((state) => ({
-      pinnedMessages: state.pinnedMessages.filter(m => m.id !== messageId),
-    }))
-  },
-
-  // Retry message - re-send the failed message
-  retryMessage: async (retryId: string, channelId: number, data: { messageType: MessageType; content: string }) => {
-    // Remove the failed message with this retryId
-    set((state) => ({
-      messages: state.messages.filter(m => m._retryId !== retryId),
-    }))
-
-    // Re-send via the service directly
-    const tempId = Date.now()
-    const newRetryId = `retry-${tempId}`
-
-    const optimisticMessage: MessageWithStatus = {
-      id: tempId,
-      roomId: channelId,
-      senderUserId: 0,
-      senderName: '',
-      content: data.content,
-      messageType: data.messageType,
-      createdAt: new Date().toISOString(),
-      status: 'sending',
-      _retryId: newRetryId,
-    }
-    set((state) => ({
-      messages: [...state.messages, optimisticMessage],
-    }))
 
     try {
-      const requestData: SendMessageRequest = {
-        messageType: data.messageType,
-        content: data.content,
-      }
-      const response = await chatService.sendMessage(channelId, requestData)
-      set((state) => ({
-        messages: state.messages.map(m =>
-          m.id === tempId ? mapToMessageWithStatus(response, 'sent') : m
-        ),
-      }))
+      const response = await messageService.sendMessage(channelId, data)
+      set((state) => {
+        const messagesMap = new Map(state.messages)
+        const existing = messagesMap.get(channelId) || []
+        messagesMap.set(
+          channelId,
+          existing.map((m) => (m.id === tempId ? toMessageWithStatus(response, 'sent') : m))
+        )
+        return { messages: messagesMap }
+      })
     } catch (err) {
-      set((state) => ({
-        messages: state.messages.map(m =>
-          m.id === tempId ? { ...m, status: 'failed' as const } : m
-        ),
-      }))
+      set((state) => {
+        const messagesMap = new Map(state.messages)
+        const existing = messagesMap.get(channelId) || []
+        messagesMap.set(
+          channelId,
+          existing.map((m) => (m.id === tempId ? { ...m, status: 'failed' as const } : m))
+        )
+        return { messages: messagesMap }
+      })
       throw err
     }
   },
 
-  // Edit message
-  editMessage: async (channelId: number, messageId: number, content: string) => {
-    const response = await chatService.updateMessage(channelId, messageId, content)
-    set((state) => ({
-      messages: state.messages.map(m =>
-        m.id === messageId ? mapToMessageWithStatus(response, 'sent') : m
-      ),
-    }))
+  // Update message
+  updateMessage: async (channelId: number, messageId: number, content: string) => {
+    const requestData: UpdateMessageRequest = { content }
+    const response = await messageService.updateMessage(channelId, messageId, requestData)
+    get().onMessageUpdated(channelId, response)
   },
 
   // Delete message
-  deleteMessageAsync: async (channelId: number, messageId: number) => {
-    await chatService.deleteMessage(channelId, messageId)
-    set((state) => ({
-      messages: state.messages.filter(m => m.id !== messageId),
-    }))
+  deleteMessage: async (channelId: number, messageId: number) => {
+    await messageService.deleteMessage(channelId, messageId)
+    get().onMessageDeleted(channelId, messageId)
   },
 
-  // Set replying to
-  setReplyingTo: (message: MessageWithStatus | null) => {
-    set({ replyingTo: message })
+  // Pin message
+  pinMessage: async (channelId: number, messageId: number) => {
+    await messageService.pinMessage(channelId, messageId)
+    // The server will broadcast message_update event which will update via onMessageUpdated
   },
 
-  // Add typing user
-  addTypingUser: (roomId: number, user: { userId: string; username: string; timestamp: number }) => {
+  // Add reaction
+  addReaction: async (channelId: number, messageId: number, emoji: string) => {
+    const data: ReactionRequest = { emoji }
+    await messageService.addReaction(channelId, messageId, data)
+    // Server will broadcast reaction_add event
+  },
+
+  // Remove reaction
+  removeReaction: async (channelId: number, messageId: number, emoji: string) => {
+    await messageService.removeReaction(channelId, messageId, emoji)
+    // Server will broadcast reaction_remove event
+  },
+
+  // WS event: message received
+  onMessageReceived: (channelId: number, message: ChannelMessage) => {
     set((state) => {
-      const newMap = new Map(state.typingUsers)
-      const roomTyping = newMap.get(roomId) || []
-      const filtered = roomTyping.filter(u => u.userId !== user.userId)
-      filtered.push(user)
-      newMap.set(roomId, filtered)
-      return { typingUsers: newMap }
+      const messagesMap = new Map(state.messages)
+      const existing = messagesMap.get(channelId) || []
+      // Check for duplicate (e.g., our own optimistic message already has the real ID)
+      if (existing.some((m) => m.id === message.id)) {
+        // Update the existing message with the real data
+        messagesMap.set(
+          channelId,
+          existing.map((m) => (m.id === message.id ? toMessageWithStatus(message, 'sent') : m))
+        )
+      } else {
+        messagesMap.set(channelId, [...existing, toMessageWithStatus(message, 'sent')])
+      }
+      return { messages: messagesMap }
     })
   },
 
-  // Remove typing user
-  removeTypingUser: (roomId: number, userId: string) => {
+  // WS event: message deleted
+  onMessageDeleted: (channelId: number, messageId: number) => {
     set((state) => {
-      const newMap = new Map(state.typingUsers)
-      const roomTyping = newMap.get(roomId) || []
-      newMap.set(roomId, roomTyping.filter(u => u.userId !== userId))
-      return { typingUsers: newMap }
+      const messagesMap = new Map(state.messages)
+      const existing = messagesMap.get(channelId) || []
+      messagesMap.set(
+        channelId,
+        existing.filter((m) => m.id !== messageId)
+      )
+      return { messages: messagesMap }
     })
+  },
+
+  // WS event: message updated
+  onMessageUpdated: (channelId: number, message: ChannelMessage) => {
+    set((state) => {
+      const messagesMap = new Map(state.messages)
+      const existing = messagesMap.get(channelId) || []
+      messagesMap.set(
+        channelId,
+        existing.map((m) => (m.id === message.id ? { ...m, ...message, status: m.status } : m))
+      )
+      return { messages: messagesMap }
+    })
+  },
+
+  // WS event: reaction added
+  onReactionAdded: (channelId: number, messageId: number, emoji: string, userId: number) => {
+    set((state) => {
+      const messagesMap = new Map(state.messages)
+      const existing = messagesMap.get(channelId) || []
+      messagesMap.set(
+        channelId,
+        existing.map((m) => {
+          if (m.id !== messageId) return m
+          const reactions = [...m.reactions]
+          const existingReaction = reactions.find((r) => r.emoji === emoji)
+          if (existingReaction) {
+            if (!existingReaction.users.includes(userId)) {
+              existingReaction.users = [...existingReaction.users, userId]
+              existingReaction.count = existingReaction.users.length
+            }
+          } else {
+            reactions.push({ emoji, count: 1, users: [userId] })
+          }
+          return { ...m, reactions }
+        })
+      )
+      return { messages: messagesMap }
+    })
+  },
+
+  // WS event: reaction removed
+  onReactionRemoved: (channelId: number, messageId: number, emoji: string, userId: number) => {
+    set((state) => {
+      const messagesMap = new Map(state.messages)
+      const existing = messagesMap.get(channelId) || []
+      messagesMap.set(
+        channelId,
+        existing.map((m) => {
+          if (m.id !== messageId) return m
+          const reactions = m.reactions
+            .map((r) => {
+              if (r.emoji !== emoji) return r
+              const users = r.users.filter((u) => u !== userId)
+              return { ...r, users, count: users.length }
+            })
+            .filter((r) => r.count > 0)
+          return { ...m, reactions }
+        })
+      )
+      return { messages: messagesMap }
+    })
+  },
+
+  // Set typing state
+  setTyping: (channelId: number, userId: number, isTyping: boolean) => {
+    set((state) => {
+      const typingMap = new Map(state.typingUsers)
+      const typingSet = new Set(typingMap.get(channelId) || new Set<number>())
+      if (isTyping) {
+        typingSet.add(userId)
+      } else {
+        typingSet.delete(userId)
+      }
+      typingMap.set(channelId, typingSet)
+      return { typingUsers: typingMap }
+    })
+  },
+
+  // Clear channel messages
+  clearChannel: (channelId: number) => {
+    set((state) => {
+      const messagesMap = new Map(state.messages)
+      messagesMap.delete(channelId)
+      const hasMoreMap = new Map(state.hasMore)
+      hasMoreMap.delete(channelId)
+      const typingMap = new Map(state.typingUsers)
+      typingMap.delete(channelId)
+      return { messages: messagesMap, hasMore: hasMoreMap, typingUsers: typingMap }
+    })
+  },
+
+  // Get messages for a channel (convenience accessor)
+  getMessages: (channelId: number) => {
+    return get().messages.get(channelId) || []
+  },
+
+  // Clear error
+  clearError: () => {
+    set({ error: null })
+  },
+
+  // Retry failed message
+  retryMessage: async (retryId: string, channelId: number, data: SendMessageRequest) => {
+    // Remove the failed message with this retryId
+    set((state) => {
+      const messagesMap = new Map(state.messages)
+      const existing = messagesMap.get(channelId) || []
+      messagesMap.set(
+        channelId,
+        existing.filter((m) => m._retryId !== retryId)
+      )
+      return { messages: messagesMap }
+    })
+
+    // Re-send via sendMessage
+    await get().sendMessage(channelId, data)
   },
 }))
 
 export type { ChatState as ContentDomainState }
+export type { MessageType }

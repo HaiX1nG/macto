@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useAudioStore } from '../voiceStore'
+import { useVoiceStore, useAudioStore } from '../voiceStore'
 
 // Mock navigator.mediaDevices
 const mockAudioTrack = {
@@ -53,207 +53,212 @@ Object.defineProperty(global.navigator, 'mediaDevices', {
   writable: true,
 })
 
-describe('useAudioStore', () => {
+describe('useVoiceStore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Re-establish default mocks after clearAllMocks
-    mockMediaDevices.getUserMedia = vi.fn().mockResolvedValue(mockStream)
-    mockMediaDevices.enumerateDevices = vi.fn().mockResolvedValue([
-      { kind: 'audioinput', deviceId: 'input-1', label: 'Microphone', groupId: 'group-1', toJSON: () => ({ kind: 'audioinput', deviceId: 'input-1', label: 'Microphone', groupId: 'group-1' }) } as MediaDeviceInfo,
-      { kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers', groupId: 'group-1', toJSON: () => ({ kind: 'audiooutput', deviceId: 'output-1', label: 'Speakers', groupId: 'group-1' }) } as MediaDeviceInfo,
-    ])
-    mockAudioTrack.stop = vi.fn()
+    // Reset voice store state
+    useVoiceStore.setState({
+      currentVoiceChannelId: null,
+      participants: [],
+      isMuted: false,
+      isDeafened: false,
+      isSpeaking: false,
+      isInVoice: false,
+      error: null,
+    })
   })
 
   describe('initial state', () => {
     it('should have correct default values', () => {
-      const state = useAudioStore.getState()
+      const state = useVoiceStore.getState()
 
-      expect(state.isCapturing).toBe(false)
-      expect(state.isMuted).toBe(false)
-      expect(state.volume).toBe(100)
-      expect(state.inputDeviceId).toBeNull()
-      expect(state.outputDeviceId).toBeNull()
-      expect(state.devices).toEqual([])
-      expect(state.stream).toBeNull()
-      // Voice room state
-      expect(state.currentRoomId).toBeNull()
+      expect(state.currentVoiceChannelId).toBeNull()
       expect(state.participants).toEqual([])
+      expect(state.isMuted).toBe(false)
+      expect(state.isDeafened).toBe(false)
+      expect(state.isSpeaking).toBe(false)
       expect(state.isInVoice).toBe(false)
-      expect(state.isLoading).toBe(false)
       expect(state.error).toBeNull()
     })
   })
 
-  describe('startCapture action', () => {
-    it('should start audio capture successfully', async () => {
-      const { startCapture } = useAudioStore.getState()
-      await startCapture()
-
-      const state = useAudioStore.getState()
-      expect(mockMediaDevices.getUserMedia).toHaveBeenCalledWith(
-        expect.objectContaining({
-          audio: expect.objectContaining({
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          }),
-        })
-      )
-      expect(state.isCapturing).toBe(true)
-      expect(state.stream).toBe(mockStream)
-      expect(state.devices.length).toBeGreaterThan(0)
-    })
-
-    it('should enumerate devices on startCapture', async () => {
-      const { startCapture } = useAudioStore.getState()
-      await startCapture()
-
-      const state = useAudioStore.getState()
-      // startCapture enumerates devices but does not auto-select input/output device IDs
-      expect(state.devices.length).toBeGreaterThan(0)
-      expect(state.inputDeviceId).toBeNull()
-      expect(state.outputDeviceId).toBeNull()
-    })
-
-    it('should throw error when getUserMedia fails', async () => {
-      mockMediaDevices.getUserMedia.mockRejectedValue(new Error('Permission denied'))
-
-      const { startCapture } = useAudioStore.getState()
-
-      await expect(startCapture()).rejects.toThrow('Permission denied')
-    })
-  })
-
-  describe('stopCapture action', () => {
-    it('should stop audio capture and clear state', async () => {
-      const { startCapture, stopCapture } = useAudioStore.getState()
-
-      // First start capture
-      await startCapture()
-
-      // Then stop
-      await stopCapture()
-
-      const state = useAudioStore.getState()
-      expect(mockAudioTrack.stop).toHaveBeenCalled()
-      expect(state.stream).toBeNull()
-      expect(state.isCapturing).toBe(false)
-    })
-
-    it('should not throw when stream is null', async () => {
-      const { stopCapture } = useAudioStore.getState()
-
-      await expect(stopCapture()).resolves.not.toThrow()
+  describe('useAudioStore alias', () => {
+    it('should be the same store as useVoiceStore', () => {
+      expect(useAudioStore).toBe(useVoiceStore)
     })
   })
 
   describe('setMute action', () => {
-    it('should mute audio state', async () => {
-      const { startCapture, setMute } = useAudioStore.getState()
-      await startCapture()
-
+    it('should set isMuted to true', () => {
+      const { setMute } = useVoiceStore.getState()
       setMute(true)
 
-      // setMute updates the isMuted state flag; it does not directly modify the track's enabled property
-      expect(useAudioStore.getState().isMuted).toBe(true)
+      expect(useVoiceStore.getState().isMuted).toBe(true)
     })
 
-    it('should unmute audio track', () => {
-      const { setMute } = useAudioStore.getState()
-
-      // First mute
+    it('should set isMuted to false', () => {
+      const { setMute } = useVoiceStore.getState()
       setMute(true)
-
-      // Then unmute
       setMute(false)
 
-      expect(mockAudioTrack.enabled).toBe(true)
-      expect(useAudioStore.getState().isMuted).toBe(false)
-    })
-
-    it('should not modify track when stream is null', () => {
-      const { setMute } = useAudioStore.getState()
-
-      setMute(true)
-
-      expect(useAudioStore.getState().isMuted).toBe(true)
+      expect(useVoiceStore.getState().isMuted).toBe(false)
     })
   })
 
-  describe('setVolume action', () => {
-    it('should set volume to specified value', () => {
-      const { setVolume } = useAudioStore.getState()
-      setVolume(50)
+  describe('setDeafen action', () => {
+    it('should set isDeafened to true', () => {
+      const { setDeafen } = useVoiceStore.getState()
+      setDeafen(true)
 
-      expect(useAudioStore.getState().volume).toBe(50)
-    })
-
-    it('should accept volume values from 0 to 100', () => {
-      const { setVolume } = useAudioStore.getState()
-
-      setVolume(0)
-      expect(useAudioStore.getState().volume).toBe(0)
-
-      setVolume(100)
-      expect(useAudioStore.getState().volume).toBe(100)
+      expect(useVoiceStore.getState().isDeafened).toBe(true)
     })
   })
 
-  describe('setDevices action', () => {
-    it('should set devices array', () => {
-      const { setDevices } = useAudioStore.getState()
-      const testDevices: MediaDeviceInfo[] = [
-        { kind: 'audioinput', deviceId: '1', label: 'Device 1', groupId: 'group-1', toJSON: () => ({}) } as MediaDeviceInfo,
-        { kind: 'audioinput', deviceId: '2', label: 'Device 2', groupId: 'group-2', toJSON: () => ({}) } as MediaDeviceInfo,
-      ]
+  describe('setSpeaking action', () => {
+    it('should set isSpeaking to true', () => {
+      const { setSpeaking } = useVoiceStore.getState()
+      setSpeaking(true)
 
-      setDevices(testDevices)
-
-      expect(useAudioStore.getState().devices).toEqual(testDevices)
+      expect(useVoiceStore.getState().isSpeaking).toBe(true)
     })
   })
 
-  describe('setInputDevice action', () => {
-    it('should set input device ID', () => {
-      const { setInputDevice } = useAudioStore.getState()
-      setInputDevice('device-123')
+  describe('clearError action', () => {
+    it('should clear error', () => {
+      useVoiceStore.setState({ error: 'test error' })
+      const { clearError } = useVoiceStore.getState()
+      clearError()
 
-      expect(useAudioStore.getState().inputDeviceId).toBe('device-123')
+      expect(useVoiceStore.getState().error).toBeNull()
     })
   })
 
-  describe('setOutputDevice action', () => {
-    it('should set output device ID', () => {
-      const { setOutputDevice } = useAudioStore.getState()
-      setOutputDevice('device-456')
+  describe('onParticipantJoined', () => {
+    it('should add participant when in the same voice channel', () => {
+      useVoiceStore.setState({ currentVoiceChannelId: 123, isInVoice: true })
+      const { onParticipantJoined } = useVoiceStore.getState()
 
-      expect(useAudioStore.getState().outputDeviceId).toBe('device-456')
+      onParticipantJoined(123, {
+        id: 1,
+        channelId: 123,
+        userId: 456,
+        username: 'testuser',
+        avatarUrl: '',
+        isMuted: false,
+        isDeafened: false,
+        isSpeaking: false,
+        volume: 100,
+        joinedAt: new Date().toISOString(),
+      })
+
+      expect(useVoiceStore.getState().participants).toHaveLength(1)
+      expect(useVoiceStore.getState().participants[0].userId).toBe(456)
+    })
+
+    it('should not add participant when in a different voice channel', () => {
+      useVoiceStore.setState({ currentVoiceChannelId: 123, isInVoice: true })
+      const { onParticipantJoined } = useVoiceStore.getState()
+
+      onParticipantJoined(999, {
+        id: 1,
+        channelId: 999,
+        userId: 456,
+        username: 'testuser',
+        avatarUrl: '',
+        isMuted: false,
+        isDeafened: false,
+        isSpeaking: false,
+        volume: 100,
+        joinedAt: new Date().toISOString(),
+      })
+
+      expect(useVoiceStore.getState().participants).toHaveLength(0)
+    })
+
+    it('should not add duplicate participant', () => {
+      useVoiceStore.setState({ currentVoiceChannelId: 123, isInVoice: true })
+      const { onParticipantJoined } = useVoiceStore.getState()
+
+      const participant = {
+        id: 1,
+        channelId: 123,
+        userId: 456,
+        username: 'testuser',
+        avatarUrl: '',
+        isMuted: false,
+        isDeafened: false,
+        isSpeaking: false,
+        volume: 100,
+        joinedAt: new Date().toISOString(),
+      }
+
+      onParticipantJoined(123, participant)
+      onParticipantJoined(123, participant)
+
+      expect(useVoiceStore.getState().participants).toHaveLength(1)
     })
   })
 
-  describe('setStream action', () => {
-    it('should set stream', () => {
-      const { setStream } = useAudioStore.getState()
-      setStream(mockStream)
+  describe('onParticipantLeft', () => {
+    it('should remove participant when in the same voice channel', () => {
+      useVoiceStore.setState({
+        currentVoiceChannelId: 123,
+        isInVoice: true,
+        participants: [
+          {
+            id: 1,
+            channelId: 123,
+            userId: 456,
+            username: 'testuser',
+            avatarUrl: '',
+            isMuted: false,
+            isDeafened: false,
+            isSpeaking: false,
+            volume: 100,
+            joinedAt: new Date().toISOString(),
+          },
+        ],
+      })
+      const { onParticipantLeft } = useVoiceStore.getState()
 
-      expect(useAudioStore.getState().stream).toBe(mockStream)
+      onParticipantLeft(123, 456)
+
+      expect(useVoiceStore.getState().participants).toHaveLength(0)
     })
 
-    it('should set stream to null', () => {
-      const { setStream } = useAudioStore.getState()
-      setStream(null)
+    it('should not remove participant when in a different voice channel', () => {
+      useVoiceStore.setState({
+        currentVoiceChannelId: 123,
+        isInVoice: true,
+        participants: [
+          {
+            id: 1,
+            channelId: 123,
+            userId: 456,
+            username: 'testuser',
+            avatarUrl: '',
+            isMuted: false,
+            isDeafened: false,
+            isSpeaking: false,
+            volume: 100,
+            joinedAt: new Date().toISOString(),
+          },
+        ],
+      })
+      const { onParticipantLeft } = useVoiceStore.getState()
 
-      expect(useAudioStore.getState().stream).toBeNull()
+      onParticipantLeft(999, 456)
+
+      expect(useVoiceStore.getState().participants).toHaveLength(1)
     })
   })
 
   describe('state subscriptions', () => {
     it('should trigger subscription on state change', () => {
       const subscription = vi.fn()
-      const unsubscribe = useAudioStore.subscribe(subscription)
+      const unsubscribe = useVoiceStore.subscribe(subscription)
 
-      useAudioStore.getState().setVolume(75)
+      useVoiceStore.getState().setMute(true)
 
       expect(subscription).toHaveBeenCalled()
       unsubscribe()

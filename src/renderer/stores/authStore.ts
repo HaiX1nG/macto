@@ -1,18 +1,25 @@
 import { create } from 'zustand'
-import type { UserStatus } from '@shared/types/kook'
-import type { UpdateProfileRequest, ChangePasswordRequest } from '@shared/types/api'
+import type { UserStatus } from '@shared/types/auth'
+import type {
+  LoginResponse,
+  UserInfoResponse,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+  SetCustomStatusRequest,
+} from '@shared/types/auth'
 import { authService } from '../services/authService'
 import { apiClient } from '../services/apiClient'
 
 export interface User {
-  id: string
+  id: number
   username: string
-  nickname?: string
-  avatar?: string
-  email?: string
-  phone?: string
-  status?: UserStatus
-  customStatus?: string
+  email: string
+  avatarUrl: string
+  bannerUrl: string
+  bio: string
+  customStatus: string
+  status: UserStatus
+  createdAt: string
 }
 
 export interface AuthState {
@@ -32,9 +39,37 @@ export interface AuthState {
   clearError: () => void
   fetchUserInfo: () => Promise<void>
   setStatus: (status: UserStatus) => void
-  setCustomStatus: (status: { customStatus: string }) => Promise<void>
-  updateProfile: (data: Partial<User>) => Promise<void>
+  setCustomStatus: (status: SetCustomStatusRequest) => Promise<void>
+  updateProfile: (data: UpdateProfileRequest) => Promise<void>
   changePassword: (oldPassword: string, newPassword: string) => Promise<void>
+}
+
+function mapLoginResponseToUser(response: LoginResponse): User {
+  return {
+    id: response.userId,
+    username: response.username,
+    email: response.email,
+    avatarUrl: response.avatarUrl || '',
+    bannerUrl: response.bannerUrl || '',
+    bio: '',
+    customStatus: '',
+    status: 'online',
+    createdAt: '',
+  }
+}
+
+function mapUserInfoToUser(info: UserInfoResponse): User {
+  return {
+    id: info.userId,
+    username: info.username,
+    email: info.email,
+    avatarUrl: info.avatarUrl || '',
+    bannerUrl: info.bannerUrl || '',
+    bio: info.bio || '',
+    customStatus: info.customStatus || '',
+    status: info.isOnline ? 'online' : 'offline',
+    createdAt: info.createdAt,
+  }
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -66,14 +101,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await authService.login(username, password)
       set({
         isAuthenticated: true,
-        currentUser: {
-          id: String(response.userId),
-          username: response.username,
-          nickname: response.username,
-          email: response.email,
-          avatar: response.avatarUrl || undefined,
-          status: 'online',
-        },
+        currentUser: mapLoginResponseToUser(response),
         token: response.accessToken,
         isLoading: false,
         error: null,
@@ -88,30 +116,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Register action
-  // Backend POST /auth/register only returns {userId, username, email} (no token).
-  // We attempt authService.register (which expects LoginResponse) in a try-catch.
-  // If registration succeeds on the backend, the apiClient.register call may fail
-  // when trying to access the missing token fields. We catch that error and then
-  // call authService.login to obtain actual tokens and complete the flow.
   register: async (username: string, password: string, email?: string) => {
     set({ isLoading: true, error: null })
     try {
       const emailValue = email || ''
       try {
-        // Attempt register - may fail because backend doesn't return tokens
         await authService.register(username, password, emailValue)
       } catch (registerErr) {
-        // If register endpoint returned a non-2xx status, this is a real error
-        // (e.g. username already exists). Check the status code to decide.
-        // ApiClientError with statusCode 400/409 etc. means registration failed.
         const apiErr = registerErr as { statusCode?: number }
         if (apiErr && apiErr.statusCode && apiErr.statusCode >= 400 && apiErr.statusCode < 500) {
           throw registerErr
         }
-        // For other errors (e.g. response parsing due to missing token fields),
-        // we assume registration might have succeeded and try login.
       }
-      // Always login after successful registration to get tokens
       await get().login(username, password)
     } catch (err) {
       set({
@@ -145,14 +161,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const userInfo = await authService.getUserInfo()
       set({
         isLoading: false,
-        currentUser: {
-          id: String(userInfo.userId),
-          username: userInfo.username,
-          email: userInfo.email,
-          avatar: userInfo.avatarUrl || undefined,
-          customStatus: userInfo.customStatus || undefined,
-          status: userInfo.isOnline ? 'online' : 'offline',
-        },
+        currentUser: mapUserInfoToUser(userInfo),
       })
     } catch (err) {
       set({
@@ -169,14 +178,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Set custom status
-  setCustomStatus: async (status: { customStatus: string }) => {
+  setCustomStatus: async (status: SetCustomStatusRequest) => {
     set({ isLoading: true, error: null })
     try {
-      await authService.setCustomStatus({ customStatus: status.customStatus })
+      await authService.setCustomStatus(status)
       set((state) => ({
         isLoading: false,
         currentUser: state.currentUser
-          ? { ...state.currentUser, customStatus: status.customStatus }
+          ? { ...state.currentUser, customStatus: status.customStatus ?? '' }
           : null,
       }))
     } catch (err) {
@@ -189,19 +198,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Update profile
-  updateProfile: async (data: Partial<User>) => {
+  updateProfile: async (data: UpdateProfileRequest) => {
     set({ isLoading: true, error: null })
     try {
-      const updateData: UpdateProfileRequest = {}
-      if (data.username !== undefined) updateData.username = data.username
-      if (data.email !== undefined) updateData.email = data.email
-      if (data.avatar !== undefined) updateData.avatarUrl = data.avatar
-
-      await authService.updateProfile(updateData)
+      await authService.updateProfile(data)
       set((state) => ({
         isLoading: false,
         currentUser: state.currentUser
-          ? { ...state.currentUser, ...data }
+          ? {
+              ...state.currentUser,
+              username: data.username ?? state.currentUser.username,
+              email: data.email ?? state.currentUser.email,
+              avatarUrl: data.avatarUrl ?? state.currentUser.avatarUrl,
+              bannerUrl: data.bannerUrl ?? state.currentUser.bannerUrl,
+              bio: data.bio ?? state.currentUser.bio,
+            }
           : null,
       }))
     } catch (err) {

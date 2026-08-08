@@ -1,5 +1,6 @@
 /**
- * @deprecated 此文件已被 settingsStore.ts 取代，theme 功能已合并到 settingsStore
- * 请使用新的导入: import { useSettingsStore } from '@renderer/stores/settingsStore'
+ * @deprecated themeStore has been merged into uiStore.
+ * This file re-exports from uiStore for backward compatibility.
+ * Import from '@renderer/stores/uiStore' directly in new code.
  */
-export { useSettingsStore as useThemeStore, type AppTheme } from './settingsStore'
+export { useUIStore as useThemeStore, type AppTheme } from './uiStore'

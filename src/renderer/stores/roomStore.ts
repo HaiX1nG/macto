@@ -1,4 +1,6 @@
-export { useRoomStore as useRoomStore, type RoomState as RoomState } from './serverStore'
-export { useRoomStore as useServerStore, type RoomState as ServerState } from './serverStore'
-export { getServerFromRoom, getServersFromRooms, getChannelFromRoom } from './serverStore'
-export type { Session } from './serverStore'
+/**
+ * @deprecated roomStore has been merged into serverStore.
+ * This file re-exports from serverStore for backward compatibility.
+ * Import from '@renderer/stores/serverStore' directly in new code.
+ */
+export { useServerStore as useRoomStore, type ServerState as RoomState } from './serverStore'
