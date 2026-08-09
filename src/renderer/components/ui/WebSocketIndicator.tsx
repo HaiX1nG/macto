@@ -35,9 +35,9 @@ export function WebSocketIndicator() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-mac-secondarysystemgroupedbackground/90 px-3 py-2 shadow-lg backdrop-blur-md dark:bg-mac-secondarysystemgroupedbackground-dark/90">
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-bg-secondary/90 px-3 py-2 shadow-lg backdrop-blur-md">
       <div className={`h-2 w-2 rounded-full ${config.color} ${wsConnectionStatus === 'connecting' || wsConnectionStatus === 'reconnecting' ? 'animate-pulse' : ''}`} />
-      <span className="text-xs text-mac-secondarylabel dark:text-mac-secondarylabel-dark">
+      <span className="text-xs text-text-muted">
         {config.text}
       </span>
     </div>

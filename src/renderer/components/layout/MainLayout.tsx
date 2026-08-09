@@ -3,7 +3,6 @@ import { ServerSidebar } from './ServerSidebar'
 import { ChannelSidebar } from './ChannelSidebar'
 import { MemberList } from '../members/MemberList'
 import { useServerStore } from '@renderer/stores/serverStore'
-import { useChannelStore } from '@renderer/stores/channelStore'
 import { useAuthStore } from '@renderer/stores/authStore'
 import { useUIStore, SIDEBAR_WIDTHS } from '@renderer/stores/uiStore'
 import { useRoomWebSocket } from '@renderer/hooks/useRoomWebSocket'
@@ -14,7 +13,6 @@ import { cn } from '@renderer/utils/cn'
 
 export function MainLayout() {
   const { servers, currentServerId, setCurrentServer, fetchServers, fetchServerDetail } = useServerStore()
-  const { setCurrentChannel } = useChannelStore()
   const { isAuthenticated, fetchUserInfo } = useAuthStore()
   const { initTheme } = useUIStore()
   const {
@@ -26,7 +24,6 @@ export function MainLayout() {
     closeMobileChannelSidebar,
     setActiveView,
     setCurrentServerId,
-    setCurrentChannelId,
   } = useUIStore()
   const { setMute, isMuted } = useVoiceStore()
 
@@ -113,10 +110,6 @@ export function MainLayout() {
     }
   }, [updateBreakpoint])
 
-  // Suppress unused warnings - these are used in keyboard shortcuts and effects
-  void setCurrentChannel
-  void setCurrentChannelId
-
   const showChannelSidebar = currentServerId !== null && currentBreakpoint !== 'sm'
   const showMobileChannelSidebar = currentServerId !== null && currentBreakpoint === 'sm'
   const showMemberList = currentServerId !== null && memberListVisible && ['lg', 'xl', '2xl'].includes(currentBreakpoint)
@@ -177,7 +170,7 @@ export function MainLayout() {
               'fixed left-0 top-0 h-screen z-[1050]',
               'transition-transform duration-300 ease-out',
               mobileChannelSidebarOpen
-                ? 'translate-x-0 shadow-[var(--shadow-floating)]'
+                ? 'translate-x-0 shadow-floating'
                 : '-translate-x-full'
             )}
           >

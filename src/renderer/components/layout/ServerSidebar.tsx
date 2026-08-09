@@ -19,7 +19,7 @@ import type { UserStatus } from '@shared/types/auth'
 export function ServerSidebar() {
   const { servers, currentServerId, createServer, deleteServer, setCurrentServer, fetchServerDetail } = useServerStore()
   const { currentUser, setCustomStatus, status, setStatus } = useAuthStore()
-  const { serverSidebarExpanded, toggleServerSidebar, setActiveView, setCurrentServerId, setCurrentChannelId } = useUIStore()
+  const { serverSidebarExpanded, toggleServerSidebar, setActiveView, setCurrentServerId } = useUIStore()
   const { message } = App.useApp()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCustomStatusModal, setShowCustomStatusModal] = useState(false)
@@ -129,9 +129,6 @@ export function ServerSidebar() {
       setActiveView('server-home', { serverId })
     }
   }, [setCurrentServer, setCurrentServerId, fetchServerDetail, setActiveView])
-
-  // Suppress unused warning - used in handleServerClick for channel navigation
-  void setCurrentChannelId
 
   return (
     <div
@@ -435,7 +432,7 @@ function ServerIcon({ server, icon, name, isActive, onClick, onDelete, isAction,
               <img
                 src={server.iconUrl}
                 alt={server.name}
-                className="w-full h-full rounded-inherit object-cover"
+                className="w-full h-full rounded-[inherit] object-cover"
               />
             ) : icon ? (
               <span className="flex-shrink-0">{icon}</span>
