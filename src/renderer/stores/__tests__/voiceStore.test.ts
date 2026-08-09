@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useVoiceStore, useAudioStore } from '../voiceStore'
+import { useVoiceStore } from '../voiceStore'
+import { useMediaStore } from '../mediaStore'
 
 // Mock navigator.mediaDevices
 const mockAudioTrack = {
@@ -60,12 +61,13 @@ describe('useVoiceStore', () => {
     useVoiceStore.setState({
       currentVoiceChannelId: null,
       participants: [],
-      isMuted: false,
       isDeafened: false,
       isSpeaking: false,
       isInVoice: false,
       error: null,
     })
+    // Reset media store mute state
+    useMediaStore.setState({ isMuted: false })
   })
 
   describe('initial state', () => {
@@ -74,7 +76,6 @@ describe('useVoiceStore', () => {
 
       expect(state.currentVoiceChannelId).toBeNull()
       expect(state.participants).toEqual([])
-      expect(state.isMuted).toBe(false)
       expect(state.isDeafened).toBe(false)
       expect(state.isSpeaking).toBe(false)
       expect(state.isInVoice).toBe(false)
@@ -82,26 +83,18 @@ describe('useVoiceStore', () => {
     })
   })
 
-  describe('useAudioStore alias', () => {
-    it('should be the same store as useVoiceStore', () => {
-      expect(useAudioStore).toBe(useVoiceStore)
-    })
-  })
+  describe('setMute action (delegates to mediaStore)', () => {
+    it('should set mediaStore isMuted to true', () => {
+      useVoiceStore.getState().setMute(true)
 
-  describe('setMute action', () => {
-    it('should set isMuted to true', () => {
-      const { setMute } = useVoiceStore.getState()
-      setMute(true)
-
-      expect(useVoiceStore.getState().isMuted).toBe(true)
+      expect(useMediaStore.getState().isMuted).toBe(true)
     })
 
-    it('should set isMuted to false', () => {
-      const { setMute } = useVoiceStore.getState()
-      setMute(true)
-      setMute(false)
+    it('should set mediaStore isMuted to false', () => {
+      useVoiceStore.getState().setMute(true)
+      useVoiceStore.getState().setMute(false)
 
-      expect(useVoiceStore.getState().isMuted).toBe(false)
+      expect(useMediaStore.getState().isMuted).toBe(false)
     })
   })
 
@@ -258,7 +251,7 @@ describe('useVoiceStore', () => {
       const subscription = vi.fn()
       const unsubscribe = useVoiceStore.subscribe(subscription)
 
-      useVoiceStore.getState().setMute(true)
+      useVoiceStore.getState().setDeafen(true)
 
       expect(subscription).toHaveBeenCalled()
       unsubscribe()

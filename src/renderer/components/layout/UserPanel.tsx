@@ -4,7 +4,6 @@ import { AudioOutlined, AudioMutedOutlined, SoundOutlined, DesktopOutlined, Stop
 import { cn } from '@renderer/utils/cn'
 import { useUIStore } from '@renderer/stores/uiStore'
 import { useMediaStore } from '@renderer/stores/mediaStore'
-import { useVoiceStore } from '@renderer/stores/voiceStore'
 import { ScreenSharePreview } from '../screen/ScreenSharePreview'
 import { AudioSettings } from '../settings/AudioSettings'
 
@@ -14,8 +13,7 @@ const CONTROL_BUTTON_SIZE = 40
 export function UserPanel() {
   const { message: messageApi } = App.useApp()
   const { currentChannelId } = useUIStore()
-  const { isSharing, localStream, startSharing, stopSharing } = useMediaStore()
-  const { isMuted, setMute } = useVoiceStore()
+  const { isSharing, localStream, startSharing, stopSharing, isMuted, setMute } = useMediaStore()
 
   const [isDeafened, setIsDeafened] = useState(false)
   const [screenShareLoading, setScreenShareLoading] = useState(false)

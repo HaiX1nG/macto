@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import type { VoiceParticipant } from '@shared/types/voice'
 import { voiceService } from '../services/voiceService'
+import { useMediaStore } from './mediaStore'
 
 export interface VoiceState {
-  // Voice state (slim - WebRTC and devices moved to mediaStore)
+  // Voice state (slim - WebRTC, devices AND mute moved to mediaStore)
   currentVoiceChannelId: number | null
   participants: VoiceParticipant[]
-  isMuted: boolean
   isDeafened: boolean
   isSpeaking: boolean
   isInVoice: boolean
@@ -15,6 +15,10 @@ export interface VoiceState {
   // Actions
   joinVoice: (channelId: number) => Promise<void>
   leaveVoice: () => Promise<void>
+  /**
+   * Legacy alias for mute. Mute state lives in mediaStore (single source of
+   * truth); this delegates to it so old call sites keep working.
+   */
   setMute: (muted: boolean) => void
   setDeafen: (deafened: boolean) => void
   setSpeaking: (speaking: boolean) => void
@@ -30,7 +34,6 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   // Initial state
   currentVoiceChannelId: null,
   participants: [],
-  isMuted: false,
   isDeafened: false,
   isSpeaking: false,
   isInVoice: false,
@@ -47,7 +50,6 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         currentVoiceChannelId: channelId,
         participants,
         isInVoice: true,
-        isMuted: false,
         isDeafened: false,
         isSpeaking: false,
       })
@@ -72,7 +74,6 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         currentVoiceChannelId: null,
         participants: [],
         isInVoice: false,
-        isMuted: false,
         isDeafened: false,
         isSpeaking: false,
       })
@@ -85,10 +86,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     }
   },
 
-  // Set mute state
+  // Set mute state (delegates to mediaStore - single source of truth)
   setMute: (muted: boolean) => {
-    set({ isMuted: muted })
-    // Note: actual audio track muting is handled by mediaStore
+    useMediaStore.getState().setMute(muted)
   },
 
   // Set deafen state
@@ -132,5 +132,5 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
 
 // Backward compatibility: components may still import useAudioStore
 // The device/audio capture methods are now in mediaStore, but the voice state
-// methods (setMute, setDeafen, etc.) are available here.
+// methods (setDeafen, setSpeaking, etc.) are available here.
 export const useAudioStore = useVoiceStore

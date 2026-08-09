@@ -34,8 +34,8 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
   const { currentServer } = useServerStore()
   const { currentChannelId } = useUIStore()
   const { currentUser } = useAuthStore()
-  const { isMuted: storeMuted, setMute: storeSetMute, isSpeaking, error: voiceError, clearError } = useVoiceStore()
-  const { isCapturing, startCapture, stopCapture } = useMediaStore()
+  const { isCapturing, startCapture, stopCapture, isMuted: storeMuted, setMute: storeSetMute } = useMediaStore()
+  const { isSpeaking, error: voiceError, clearError } = useVoiceStore()
 
   const [isConnected, setIsConnected] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)

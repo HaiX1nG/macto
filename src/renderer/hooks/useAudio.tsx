@@ -1,13 +1,12 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useMediaStore } from '@renderer/stores/mediaStore'
-import { useVoiceStore } from '@renderer/stores/voiceStore'
 
 /**
  * AudioContext provider (legacy compatibility shim)
  *
- * Audio capture and device management have moved to mediaStore.
- * Voice state (mute/deafen) remains in voiceStore.
- * This context combines both for components that haven't been migrated.
+ * Audio capture, device management AND mute state all live in mediaStore
+ * (single source of truth). This context exposes them for components that
+ * haven't been migrated to useMediaStore directly.
  */
 
 interface AudioContextType {
@@ -20,7 +19,7 @@ interface AudioContextType {
   setDevices: (devices: MediaDeviceInfo[]) => void
   setVolume: (volume: number) => void
 
-  // Voice state (from voiceStore)
+  // Mute state (from mediaStore)
   isMuted: boolean
   setMute: (muted: boolean) => void
 }
@@ -36,9 +35,9 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     stopCapture,
     setDevices,
     setVolume,
-    setMute: setMediaMute,
+    isMuted,
+    setMute,
   } = useMediaStore()
-  const { isMuted, setMute: setVoiceMute } = useVoiceStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -47,12 +46,6 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
 
   if (!mounted) {
     return <>{children}</>
-  }
-
-  // Combine mediaStore mute (manages audio track) with voiceStore mute (UI state)
-  const setMute = (muted: boolean) => {
-    setMediaMute(muted)
-    setVoiceMute(muted)
   }
 
   return (

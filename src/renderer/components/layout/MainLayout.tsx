@@ -7,7 +7,7 @@ import { useAuthStore } from '@renderer/stores/authStore'
 import { useUIStore, SIDEBAR_WIDTHS } from '@renderer/stores/uiStore'
 import { useRoomWebSocket } from '@renderer/hooks/useRoomWebSocket'
 import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts'
-import { useVoiceStore } from '@renderer/stores/voiceStore'
+import { useMediaStore } from '@renderer/stores/mediaStore'
 import { NavigationShell } from '@renderer/pages'
 import { cn } from '@renderer/utils/cn'
 
@@ -25,7 +25,7 @@ export function MainLayout() {
     setActiveView,
     setCurrentServerId,
   } = useUIStore()
-  const { setMute, isMuted } = useVoiceStore()
+  const { setMute, isMuted } = useMediaStore()
 
   useRoomWebSocket()
 

@@ -38,6 +38,9 @@ export interface MediaState {
   volume: number
   isCapturing: boolean
   voiceStream: MediaStream | null
+  // Mute state - single source of truth for UI mute indicator.
+  // The actual audio track muting is applied here too (track.enabled).
+  isMuted: boolean
 
   // Remote voice streams (WebRTC peers)
   voiceRemoteStreams: Map<number, RemoteVoiceStream>
@@ -142,6 +145,7 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   volume: 100,
   isCapturing: false,
   voiceStream: null,
+  isMuted: false,
 
   // Voice WebRTC initial state
   voiceRemoteStreams: new Map(),
@@ -288,11 +292,8 @@ export const useMediaStore = create<MediaState>((set, get) => ({
         track.enabled = !muted
       })
     }
-    // Also update voiceStore's isMuted for UI consistency
-    // We import lazily to avoid circular dependency
-    import('./voiceStore').then(({ useVoiceStore }) => {
-      useVoiceStore.getState().setMute(muted)
-    })
+    // Single source of truth for mute state lives here in mediaStore.
+    set({ isMuted: muted })
   },
 
   setStream: (stream: MediaStream | null) => {
