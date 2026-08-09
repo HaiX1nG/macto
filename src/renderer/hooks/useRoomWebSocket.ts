@@ -249,6 +249,9 @@ export function useRoomWebSocket() {
 
     // Connect via token-only (KOOK style, no room_id in URL)
     const ws = wsConnection.connectWithToken(token)
+    // Register a token provider so reconnects read the freshest token from
+    // localStorage instead of a stale cached one.
+    ws.setToken(token, () => localStorage.getItem('accessToken'))
 
     const unsubs: Array<() => void> = []
 

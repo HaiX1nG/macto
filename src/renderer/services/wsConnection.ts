@@ -16,12 +16,13 @@ class WsConnectionManager {
    * URL should include the token query parameter: `${wsBaseUrl}?token=${token}`
    */
   getWs(url: string): WebSocketService {
-    // Same URL - reuse existing connection
-    if (this.ws && this.currentUrl === url && this.ws.isConnected()) {
+    // Same URL - reuse existing instance even if it's reconnecting/connecting,
+    // so registered on() handlers and pending reconnects are preserved.
+    if (this.ws && this.currentUrl === url) {
       return this.ws
     }
 
-    // Different URL or disconnected - tear down old and create new
+    // Different URL - tear down old and create new
     if (this.ws) {
       this.ws.disconnect()
       this.ws = null
@@ -48,8 +49,18 @@ class WsConnectionManager {
    */
   connectWithToken(token: string): WebSocketService {
     const wsBaseUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'
-    const url = `${wsBaseUrl}?token=${token}`
+    const url = this.buildUrl(wsBaseUrl, token)
     return this.getWs(url)
+  }
+
+  /**
+   * Build a connection URL, encoding the token and preserving any existing
+   * query string on the base URL.
+   */
+  private buildUrl(baseUrl: string, token: string): string {
+    const url = new URL(baseUrl)
+    url.searchParams.set('token', token)
+    return url.toString()
   }
 
   /**

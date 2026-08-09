@@ -26,6 +26,17 @@ class WebSocketService {
   private handlers: Map<string, Set<WebSocketMessageHandler>> = new Map()
   private connectionStatus: WebSocketConnectionStatus = 'disconnected'
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
+  /**
+   * Auth token carried in the connection URL query (`?token=...`).
+   * Persisted across reconnects so a dropped connection re-authenticates.
+   */
+  private token: string | null = null
+  /**
+   * Optional external token source (e.g. a function reading localStorage).
+   * When set, reconnect reads the freshest token from here instead of the
+   * stale `this.token`, so a refreshed token is picked up automatically.
+   */
+  private tokenProvider: (() => string | null) | null = null
 
   constructor(options: WebSocketOptions) {
     this.options = {
@@ -50,9 +61,17 @@ class WebSocketService {
       try {
         this.setConnectionStatus('connecting')
 
+        // Persist token so reconnect can reuse it
+        if (token !== undefined) {
+          this.token = token
+        }
+
         // KOOK-style: connection URL only carries token, no room_id
-        const url = token
-          ? `${this.options.url}?token=${token}`
+        // Prefer the freshest token from the provider (if any) over the
+        // possibly-stale cached token.
+        const effectiveToken = token ?? this.tokenProvider?.() ?? this.token
+        const url = effectiveToken
+          ? `${this.options.url}?token=${encodeURIComponent(effectiveToken)}`
           : this.options.url
 
         this.ws = new WebSocket(url)
@@ -124,7 +143,14 @@ class WebSocketService {
     })
 
     this.reconnectTimeoutId = setTimeout(() => {
-      this.connect()
+      this.connect().catch(() => {
+        // connect() failed — advance to next attempt via onclose
+        // onclose already called attemptReconnect, but if connect() threw
+        // synchronously, onclose won't fire. Retry after interval.
+        this.reconnectTimeoutId = setTimeout(() => {
+          this.attemptReconnect()
+        }, this.options.reconnectInterval)
+      })
     }, this.options.reconnectInterval)
   }
 
@@ -212,6 +238,26 @@ class WebSocketService {
     this.handlers.get(event)?.delete(handler)
   }
 
+  /**
+   * Set the auth token used for (re)connection. Also registers an optional
+   * token provider so reconnects always read the freshest token.
+   */
+  setToken(token: string | null, tokenProvider?: () => string | null): void {
+    this.token = token
+    if (tokenProvider !== undefined) {
+      this.tokenProvider = tokenProvider
+    }
+  }
+
+  /**
+   * Clear the cached auth token. Call on logout so a reconnect never
+   * re-authenticates with a stale/expired token.
+   */
+  clearToken(): void {
+    this.token = null
+    this.tokenProvider = null
+  }
+
   disconnect(): void {
     if (this.reconnectTimeoutId) {
       clearTimeout(this.reconnectTimeoutId)
@@ -222,6 +268,7 @@ class WebSocketService {
       this.ws.close()
       this.ws = null
     }
+    this.token = null
     this.setConnectionStatus('disconnected', { status: 'disconnected' })
   }
 
