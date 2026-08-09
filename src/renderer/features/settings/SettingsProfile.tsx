@@ -16,7 +16,7 @@ export const SettingsProfile = () => {
   }, [fetchUserInfo])
 
   // Avatar state
-  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatar || '')
+  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '')
   const [isEditingAvatar, setIsEditingAvatar] = useState(false)
 
   // Username state
@@ -42,7 +42,7 @@ export const SettingsProfile = () => {
       return
     }
     try {
-      await updateProfile({ avatar: avatarUrl })
+      await updateProfile({ avatarUrl: avatarUrl })
       message.success('头像更新成功')
       setIsEditingAvatar(false)
     } catch (_err) {
@@ -146,15 +146,15 @@ export const SettingsProfile = () => {
         return false
       }
       const reader = new FileReader()
-      reader.onload = () => {
+      reader.onload = async () => {
         const dataUrl = reader.result as string
         setAvatarUrl(dataUrl)
-        // Auto save on upload
-        updateProfile({ avatar: dataUrl }).then(() => {
+        try {
+          await updateProfile({ avatarUrl: dataUrl })
           message.success('头像更新成功')
-        }).catch(() => {
+        } catch (_err) {
           message.error('头像更新失败')
-        })
+        }
       }
       reader.readAsDataURL(file)
       return false
@@ -168,7 +168,7 @@ export const SettingsProfile = () => {
         <div className="relative group">
           <Avatar
             size={80}
-            src={currentUser?.avatar || undefined}
+            src={currentUser?.avatarUrl || undefined}
             className="bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white text-2xl font-bold shadow-lg ring-2 ring-white/10"
           >
             {currentUser?.username?.charAt(0)?.toUpperCase() || 'U'}
@@ -215,7 +215,7 @@ export const SettingsProfile = () => {
             <Button
               onClick={() => {
                 setIsEditingAvatar(false)
-                setAvatarUrl(currentUser?.avatar || '')
+                setAvatarUrl(currentUser?.avatarUrl || '')
               }}
               className="rounded-lg"
             >

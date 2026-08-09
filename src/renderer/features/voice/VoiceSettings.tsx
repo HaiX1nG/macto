@@ -53,7 +53,7 @@ export const VoiceSettings = () => {
           <Button
             type={isCapturing ? 'default' : 'primary'}
             icon={isCapturing ? <CheckCircleOutlined /> : <AudioOutlined />}
-            onClick={isCapturing ? stopCapture : startCapture}
+            onClick={() => (isCapturing ? void stopCapture() : void startCapture())}
             className={cn(
               'rounded-xl px-6 font-semibold',
               isCapturing ? 'border-red-500 text-red-500 hover:bg-red-50' : ''
@@ -115,9 +115,11 @@ export const VoiceSettings = () => {
               value={volume}
               onChange={setVolume}
               className="w-full"
-              trackStyle={{ backgroundColor: '#1890ff', height: 6 }}
-              railStyle={{ backgroundColor: '#e5e7eb', height: 6 }}
-              handleStyle={{ borderColor: '#1890ff', width: 18, height: 18 }}
+              styles={{
+                track: { backgroundColor: '#1890ff', height: 6 },
+                rail: { backgroundColor: '#e5e7eb', height: 6 },
+                handle: { borderColor: '#1890ff', width: 18, height: 18 },
+              }}
             />
           </div>
         </div>
@@ -142,14 +144,13 @@ export const VoiceSettings = () => {
             className="w-full"
             prefix={<AudioOutlined />}
             allowClear
-          >
-            {devices
+            options={devices
               .filter((d) => d.kind === 'audioinput')
-              .map((device) => (
-                <Select.Option key={device.deviceId} value={device.deviceId}>
-                  {device.label || '麦克风'}
-                </Select.Option>
-              ))}
+              .map((device) => ({
+                value: device.deviceId,
+                label: device.label || '麦克风',
+              }))}
+          >
           </Select>
         </div>
       </Card>

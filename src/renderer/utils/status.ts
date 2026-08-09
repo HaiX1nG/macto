@@ -4,7 +4,7 @@
  * Shared status color mappings and status-related utilities.
  */
 
-import type { UserStatus } from '@shared/types/participant'
+import type { UserStatus } from '@shared/types/auth'
 
 /**
  * Status color mapping for user presence indicators
@@ -13,8 +13,8 @@ import type { UserStatus } from '@shared/types/participant'
  */
 export const statusColorMap: Record<UserStatus, string> = {
   online: 'bg-[var(--color-online)]',
-  away: 'bg-[var(--color-idle)]',
-  busy: 'bg-[var(--color-dnd)]',
+  idle: 'bg-[var(--color-idle)]',
+  dnd: 'bg-[var(--color-dnd)]',
   offline: 'bg-[var(--color-offline)]',
 }
 
@@ -32,8 +32,8 @@ export const statusColorsWithShadow = {
  */
 export const statusLabelMap: Record<UserStatus, string> = {
   online: '在线',
-  away: '离开',
-  busy: '忙碌',
+  idle: '离开',
+  dnd: '勿扰',
   offline: '离线',
 }
 

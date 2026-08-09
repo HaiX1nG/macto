@@ -6,7 +6,7 @@ import type { ViewId, ViewParams } from '@shared/types/view'
 
 /**
  * 所有页面组件必须实现的 Props 接口。
- * NavigationShell 会将 layoutStore 中的 activeViewParams 传入。
+ * NavigationShell 会将 uiStore 中的 activeViewParams 传入。
  */
 export interface ViewPageProps {
   readonly params: ViewParams
@@ -31,17 +31,17 @@ export interface ViewEntry {
 const HomePage = lazy(() => import('@renderer/pages/HomePage'))
 const ChannelPage = lazy(() => import('@renderer/pages/ChannelPage'))
 const VoicePage = lazy(() => import('@renderer/pages/VoicePage'))
-const ScreenSharePage = lazy(() => import('@renderer/pages/ScreenSharePage'))
 const SettingsPage = lazy(() => import('@renderer/pages/SettingsPage'))
+const FriendsPage = lazy(() => import('@renderer/pages/FriendsPage'))
 
 // ── 注册表实现 ────────────────────────────────────────
 
 const registry = new Map<ViewId, ViewEntry>([
-  ['home', { id: 'home', title: '首页', component: HomePage }],
-  ['channel', { id: 'channel', title: '频道', component: ChannelPage }],
-  ['voice', { id: 'voice', title: '语音', component: VoicePage }],
-  ['screen', { id: 'screen', title: '屏幕分享', component: ScreenSharePage }],
+  ['server-home', { id: 'server-home', title: '服务器首页', component: HomePage }],
+  ['text-channel', { id: 'text-channel', title: '文字频道', component: ChannelPage }],
+  ['voice-channel', { id: 'voice-channel', title: '语音频道', component: VoicePage }],
   ['settings', { id: 'settings', title: '设置', component: SettingsPage }],
+  ['friends', { id: 'friends', title: '好友', component: FriendsPage }],
 ])
 
 /**

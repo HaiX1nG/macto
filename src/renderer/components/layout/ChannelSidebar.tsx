@@ -1,37 +1,32 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Dropdown } from 'antd'
 import { SettingOutlined, DownOutlined, NumberOutlined, AudioOutlined, UserOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
-import { useRoomStore } from '@renderer/stores/serverStore'
-import { useLayoutStore } from '@renderer/stores/layoutStore'
+import { useServerStore } from '@renderer/stores/serverStore'
+import { useChannelStore } from '@renderer/stores/channelStore'
+import { useUIStore } from '@renderer/stores/uiStore'
 import { UserPanel } from './UserPanel'
-import type { Channel } from '@shared/types/kook'
+import type { ChannelTreeNode } from '@shared/types/channel'
+import { ChannelType } from '@shared/types/channel'
 
 const CHANNEL_SIDEBAR_MIN_WIDTH = 180
 const CHANNEL_SIDEBAR_MAX_WIDTH = 400
 const CHANNEL_SIDEBAR_DEFAULT_WIDTH = 240
 
-function getDefaultChannels(roomId: string): Channel[] {
-  return [
-    { id: roomId, serverId: roomId, name: '聊天室', type: 'text' as const, position: 0, topic: '' },
-    { id: `${roomId}-voice`, serverId: roomId, name: '语音室', type: 'voice' as const, position: 1 },
-  ]
-}
-
 export function ChannelSidebar() {
-  const { rooms, currentRoomId, currentChannelId, setCurrentChannel } = useRoomStore()
-  const { setActiveView } = useLayoutStore()
-  const currentRoom = rooms.find(r => String(r.id) === currentRoomId)
+  const { currentServer, currentServerId } = useServerStore()
+  const { channels, currentChannelId, setCurrentChannel, fetchChannels } = useChannelStore()
+  const { setActiveView, setCurrentChannelId: setUIChannelId } = useUIStore()
   const [sidebarWidth, setSidebarWidth] = useState(CHANNEL_SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<HTMLDivElement>(null)
 
-  const channels = useMemo(() => {
-    if (!currentRoomId) return []
-    return getDefaultChannels(currentRoomId)
-  }, [currentRoomId])
-
-  const roomName = currentRoom?.roomName || '房间'
+  // Fetch channels when server changes
+  useEffect(() => {
+    if (currentServerId) {
+      void fetchChannels(currentServerId)
+    }
+  }, [currentServerId, fetchChannels])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -63,9 +58,34 @@ export function ChannelSidebar() {
     }
   }, [isResizing])
 
-  if (!currentRoomId) return null
+  if (!currentServerId) return null
 
-  const uncategorizedChannels = channels.filter(c => c.type !== 'category')
+  const serverName = currentServer?.name || '服务器'
+
+  // Build a flat list of channels from the tree (non-category channels)
+  const allChannels: ChannelTreeNode[] = []
+  const renderChannelNode = (node: ChannelTreeNode) => {
+    if (node.type === ChannelType.Category) {
+      // Category header
+      allChannels.push(node)
+      if (node.children) {
+        node.children.forEach(child => allChannels.push(child as ChannelTreeNode))
+      }
+    } else {
+      allChannels.push(node)
+    }
+  }
+  channels.forEach(renderChannelNode)
+
+  const handleChannelClick = (channel: ChannelTreeNode) => {
+    setCurrentChannel(channel)
+    setUIChannelId(channel.id)
+    if (channel.type === ChannelType.Voice) {
+      setActiveView('voice-channel', { channelId: channel.id })
+    } else if (channel.type === ChannelType.Text) {
+      setActiveView('text-channel', { channelId: channel.id })
+    }
+  }
 
   return (
     <div
@@ -79,25 +99,20 @@ export function ChannelSidebar() {
       style={{ width: sidebarWidth }}
     >
       <div className="h-12 px-4 flex items-center justify-between border-b border-[var(--color-border)] flex-shrink-0">
-        <h2 className="font-semibold text-[var(--color-text-normal)] truncate">{roomName}</h2>
+        <h2 className="font-semibold text-[var(--color-text-normal)] truncate">{serverName}</h2>
         <DownOutlined className="text-[var(--color-text-muted)] text-xs" />
       </div>
 
       <div className="flex-1 overflow-y-auto py-3 scrollbar-thin">
-        {uncategorizedChannels.length > 0 && (
+        {allChannels.length > 0 && (
           <div className="mb-2">
-            {uncategorizedChannels.map(channel => (
+            {allChannels.map(channel => (
               <ChannelItem
                 key={channel.id}
                 channel={channel}
                 isActive={currentChannelId === channel.id}
-                onClick={() => {
-                  setCurrentChannel(channel.id)
-                  setActiveView(
-                    channel.type === 'voice' ? 'voice' : 'channel',
-                    { channelId: channel.id },
-                  )
-                }}
+                isCategory={channel.type === ChannelType.Category}
+                onClick={() => handleChannelClick(channel)}
               />
             ))}
           </div>
@@ -122,15 +137,28 @@ export function ChannelSidebar() {
 }
 
 interface ChannelItemProps {
-  channel: Channel
+  channel: ChannelTreeNode
   isActive?: boolean
+  isCategory?: boolean
   onClick?: () => void
 }
 
-function ChannelItem({ channel, isActive, onClick }: ChannelItemProps) {
+function ChannelItem({ channel, isActive, isCategory, onClick }: ChannelItemProps) {
   const getIcon = () => {
-    if (channel.type === 'voice') return <AudioOutlined className="text-lg" />
+    if (isCategory) return <DownOutlined className="text-xs" />
+    if (channel.type === 2) return <AudioOutlined className="text-lg" />
     return <NumberOutlined className="text-lg" />
+  }
+
+  if (isCategory) {
+    return (
+      <div className="px-2 mt-3 mb-1">
+        <div className="flex items-center gap-1 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          {getIcon()}
+          <span className="flex-1 text-left truncate">{channel.name}</span>
+        </div>
+      </div>
+    )
   }
 
   return (

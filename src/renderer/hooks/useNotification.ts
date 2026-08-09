@@ -1,23 +1,26 @@
 import { useEffect, useCallback, useRef } from 'react'
-import { useSettingsStore } from '../stores/settingsStore'
+import { useUIStore } from '../stores/uiStore'
 
 interface NotificationOptions {
   title: string
   body: string
-  roomId?: number
+  channelId?: number
   senderId?: number
 }
 
 interface NotificationClickData {
-  roomId?: number
+  channelId?: number
   senderId?: number
 }
 
 /**
- * Hook for managing desktop notifications in the renderer process
+ * Hook for managing desktop notifications in the renderer process.
+ *
+ * Notification enabled state lives in uiStore.settings.showNotification.
  */
 export function useNotification() {
-  const { showNotification: notificationEnabled } = useSettingsStore()
+  const showNotificationSetting = useUIStore((s) => s.settings.showNotification)
+  const setShowNotification = useUIStore((s) => s.setShowNotification)
   const clickCallbackRef = useRef<((data: NotificationClickData) => void) | null>(null)
 
   // Register notification click handler
@@ -57,7 +60,7 @@ export function useNotification() {
   const showNotification = useCallback(
     async (options: NotificationOptions): Promise<boolean> => {
       // Check if notifications are enabled in settings
-      if (!notificationEnabled) {
+      if (!showNotificationSetting) {
         return false
       }
 
@@ -73,7 +76,7 @@ export function useNotification() {
             options.title,
             options.body,
             {
-              roomId: options.roomId,
+              channelId: options.channelId,
               senderId: options.senderId,
             }
           )
@@ -108,7 +111,7 @@ export function useNotification() {
       console.warn('Notifications are not supported')
       return false
     },
-    [notificationEnabled]
+    [showNotificationSetting]
   )
 
   /**
@@ -118,13 +121,13 @@ export function useNotification() {
     async (params: {
       senderName: string
       messagePreview: string
-      roomId: number
+      channelId: number
       senderId: number
     }): Promise<boolean> => {
       return showNotification({
         title: params.senderName,
         body: params.messagePreview,
-        roomId: params.roomId,
+        channelId: params.channelId,
         senderId: params.senderId,
       })
     },
@@ -138,8 +141,8 @@ export function useNotification() {
     if (window.electronAPI?.setNotificationEnabled) {
       await window.electronAPI.setNotificationEnabled(enabled)
     }
-    useSettingsStore.getState().setShowNotification(enabled)
-  }, [])
+    setShowNotification(enabled)
+  }, [setShowNotification])
 
   /**
    * Get notification enabled state
@@ -149,8 +152,8 @@ export function useNotification() {
       const result = await window.electronAPI.getNotificationEnabled()
       return result.enabled
     }
-    return notificationEnabled
-  }, [notificationEnabled])
+    return showNotificationSetting
+  }, [showNotificationSetting])
 
   return {
     isSupported,

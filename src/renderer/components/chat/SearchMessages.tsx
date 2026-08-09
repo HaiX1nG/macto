@@ -1,59 +1,40 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { Input, List, Avatar, Empty, Spin, Select, Switch, Tooltip } from 'antd'
+import { Input, List, Avatar, Empty, Spin, Switch, Tooltip } from 'antd'
 import { SearchOutlined, ClockCircleOutlined, MessageOutlined } from '@ant-design/icons'
 import { Modal } from '@renderer/components/ui/Modal'
-import { chatService } from '@renderer/services/chatService'
-import { useRoomStore } from '@renderer/stores/roomStore'
-import type { MessageResponse } from '@shared/types/api'
+import { messageService } from '@renderer/services/messageService'
+import { useServerStore } from '@renderer/stores/serverStore'
+import { useUIStore } from '@renderer/stores/uiStore'
+import type { ChannelMessage } from '@shared/types/message'
 
 interface SearchMessagesProps {
   open: boolean
   onClose: () => void
-  onMessageClick?: (message: MessageResponse) => void
+  onMessageClick?: (message: ChannelMessage) => void
 }
 
 export function SearchMessages({ open, onClose, onMessageClick }: SearchMessagesProps) {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<MessageResponse[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [selectedRoomId, setSelectedRoomId] = useState<number | undefined>(undefined)
-  const [searchAllRooms, setSearchAllRooms] = useState(false)
+  const [results, setResults] = useState<ChannelMessage[]>([])
+  const [searchAllChannels, setSearchAllChannels] = useState(false)
 
-  const { rooms, currentRoomId } = useRoomStore()
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const { servers, currentServerId } = useServerStore()
+  const { currentChannelId } = useUIStore()
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const roomOptions = useMemo(() => {
-    return rooms.map(room => ({
-      label: room.roomName,
-      value: room.id,
-    }))
-  }, [rooms])
+  const effectiveChannelId = searchAllChannels ? undefined : currentChannelId ?? undefined
 
-  const effectiveRoomId = searchAllRooms ? undefined : (selectedRoomId ?? (currentRoomId ? Number(currentRoomId) : undefined))
-
-  const performSearch = useCallback(async (searchQuery: string, pageNum: number, roomId?: number) => {
+  const performSearch = useCallback(async (searchQuery: string, channelId?: number) => {
     if (!searchQuery.trim()) {
       setResults([])
-      setTotal(0)
       return
     }
 
     setLoading(true)
     try {
-      const response = await chatService.searchMessages({
-        query: searchQuery,
-        roomId: roomId,
-        page: pageNum,
-        pageSize: 20,
-      })
-      if (pageNum === 1) {
-        setResults(response.messages)
-      } else {
-        setResults(prev => [...prev, ...response.messages])
-      }
-      setTotal(response.total)
+      const response = await messageService.searchMessages(searchQuery, channelId)
+      setResults(response)
     } catch (err) {
       console.error('Search failed:', err)
     } finally {
@@ -63,7 +44,6 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
-    setPage(1)
     setResults([])
 
     if (searchTimeoutRef.current) {
@@ -72,29 +52,18 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
 
     searchTimeoutRef.current = setTimeout(() => {
       if (value.trim()) {
-        performSearch(value, 1, effectiveRoomId)
+        void performSearch(value, effectiveChannelId)
       } else {
         setResults([])
-        setTotal(0)
       }
     }, 300)
   }
 
-  const handleRoomChange = (roomId: number | undefined) => {
-    setSelectedRoomId(roomId)
-    setPage(1)
-    setResults([])
-    if (query.trim()) {
-      performSearch(query, 1, searchAllRooms ? undefined : roomId)
-    }
-  }
-
   const handleSearchAllChange = (checked: boolean) => {
-    setSearchAllRooms(checked)
-    setPage(1)
+    setSearchAllChannels(checked)
     setResults([])
     if (query.trim()) {
-      performSearch(query, 1, checked ? undefined : effectiveRoomId)
+      void performSearch(query, checked ? undefined : effectiveChannelId)
     }
   }
 
@@ -102,29 +71,14 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
     if (!open) {
       setQuery('')
       setResults([])
-      setTotal(0)
-      setPage(1)
-      setSelectedRoomId(undefined)
-      setSearchAllRooms(false)
+      setSearchAllChannels(false)
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current)
       }
     }
   }, [open])
 
-  useEffect(() => {
-    if (open && currentRoomId && !selectedRoomId) {
-      setSelectedRoomId(Number(currentRoomId))
-    }
-  }, [open, currentRoomId, selectedRoomId])
-
-  const handleLoadMore = () => {
-    const nextPage = page + 1
-    setPage(nextPage)
-    performSearch(query, nextPage, effectiveRoomId)
-  }
-
-  const handleMessageClick = (message: MessageResponse) => {
+  const handleMessageClick = (message: ChannelMessage) => {
     onMessageClick?.(message)
     onClose()
   }
@@ -146,10 +100,13 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
     )
   }
 
-  const getRoomName = (roomId: number) => {
-    const room = rooms.find(r => r.id === roomId)
-    return room?.roomName || `房间 ${roomId}`
-  }
+  const getServerName = useMemo(() => {
+    const server = servers.find(s => s.id === currentServerId)
+    return server?.name || '当前服务器'
+  }, [servers, currentServerId])
+
+  // Suppress unused warning - getServerName is used in the UI
+  void getServerName
 
   return (
     <Modal
@@ -174,26 +131,14 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
           <div className="flex items-center gap-2">
             <span className="text-sm text-[var(--color-text-muted)]">搜索范围:</span>
             <Switch
-              checked={searchAllRooms}
+              checked={searchAllChannels}
               onChange={handleSearchAllChange}
               size="small"
             />
             <span className="text-sm text-[var(--color-text-normal)]">
-              {searchAllRooms ? '所有房间' : '当前房间'}
+              {searchAllChannels ? '所有频道' : '当前频道'}
             </span>
           </div>
-
-          {!searchAllRooms && (
-            <Select
-              value={selectedRoomId}
-              onChange={handleRoomChange}
-              options={roomOptions}
-              placeholder="选择房间"
-              className="min-w-[150px]"
-              size="small"
-              allowClear
-            />
-          )}
         </div>
 
         {loading && results.length === 0 ? (
@@ -203,29 +148,16 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
         ) : results.length > 0 ? (
           <>
             <div className="text-sm text-[var(--color-text-muted)]">
-              找到 {total} 条结果
-              {effectiveRoomId && (
+              找到 {results.length} 条结果
+              {effectiveChannelId && (
                 <span className="ml-2">
-                  (在「{getRoomName(effectiveRoomId)}」中)
+                  (在当前频道中)
                 </span>
               )}
             </div>
             <List
               dataSource={results}
               className="max-h-[400px] overflow-y-auto"
-              loadMore={
-                results.length < total ? (
-                  <div className="text-center mt-4">
-                    <button
-                      onClick={handleLoadMore}
-                      disabled={loading}
-                      className="text-[var(--color-primary)] hover:underline disabled:opacity-50 transition-colors"
-                    >
-                      {loading ? '加载中...' : '加载更多'}
-                    </button>
-                  </div>
-                ) : null
-              }
               renderItem={(message) => (
                 <List.Item
                   className="hover:bg-[var(--color-bg-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] rounded-lg px-3 cursor-pointer transition-colors border-b border-[var(--color-border)] last:border-b-0"
@@ -235,6 +167,7 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
                     avatar={
                       <Avatar
                         size={36}
+                        src={message.senderAvatarUrl || undefined}
                         className="bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)] flex items-center justify-center text-white font-medium"
                       >
                         {message.senderName.charAt(0).toUpperCase()}
@@ -254,11 +187,11 @@ export function SearchMessages({ open, onClose, onMessageClick }: SearchMessages
                             minute: '2-digit',
                           })}
                         </span>
-                        {!effectiveRoomId && (
-                          <Tooltip title={getRoomName(message.roomId)}>
+                        {!effectiveChannelId && (
+                          <Tooltip title={`频道 ${message.channelId}`}>
                             <span className="text-xs text-[var(--color-primary)] flex items-center gap-1 cursor-pointer">
                               <MessageOutlined />
-                              {getRoomName(message.roomId)}
+                              {`频道 ${message.channelId}`}
                             </span>
                           </Tooltip>
                         )}

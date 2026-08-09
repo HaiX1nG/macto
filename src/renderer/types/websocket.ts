@@ -5,6 +5,9 @@
  * Connection is per-app (not per-room); subscription via join_channel/leave_channel.
  */
 
+import type { ChannelMessage } from '@shared/types/message'
+import type { ServerMember } from '@shared/types/server'
+
 // ==================== Connection Status ====================
 
 export type WebSocketConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -51,7 +54,7 @@ export interface WebRTCSignalPayload {
 
 export interface ChatMessageEvent {
   channelId: number
-  message: import('@shared/types/message').ChannelMessage
+  message: ChannelMessage
 }
 
 export interface MessageDeleteEvent {
@@ -61,7 +64,7 @@ export interface MessageDeleteEvent {
 
 export interface MessageUpdateEvent {
   channelId: number
-  message: import('@shared/types/message').ChannelMessage
+  message: ChannelMessage
 }
 
 export interface ReactionAddEvent {
@@ -125,7 +128,7 @@ export interface WebRTCSignalEvent {
 
 export interface MemberJoinedEvent {
   serverId: number
-  member: import('@shared/types/server').ServerMember
+  member: ServerMember
 }
 
 export interface MemberLeftEvent {

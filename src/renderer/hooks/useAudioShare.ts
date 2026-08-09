@@ -1,10 +1,10 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { App } from 'antd'
 import { useAuthStore } from '../stores/authStore'
-import { useRoomStore } from '../stores/serverStore'
+import { useUIStore } from '../stores/uiStore'
 import { useMediaStore } from '../stores/mediaStore'
 import { wsConnection } from '../services/wsConnection'
-import type { WebRTCSignalRequest } from '@shared/types/api'
+import type { WebRTCSignalRequest } from '@shared/types/voice'
 
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
@@ -16,7 +16,7 @@ const RTC_CONFIG: RTCConfiguration = {
 export function useAudioShare() {
   const { message } = App.useApp()
   const { currentUser } = useAuthStore()
-  const { currentRoomId } = useRoomStore()
+  const currentChannelId = useUIStore((s) => s.currentChannelId)
   const { addRemoteScreen, removeRemoteScreen } = useMediaStore()
 
   const [isAudioSharing, setIsAudioSharing] = useState(false)
@@ -36,14 +36,7 @@ export function useAudioShare() {
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         const ws = wsConnection.getCurrentWs()
-        ws?.send({
-          type: 'webrtc_signal',
-          payload: {
-            type: 'ice-candidate',
-            targetId: fromUserId,
-            payload: JSON.stringify(event.candidate.toJSON()),
-          },
-        })
+        ws?.sendWebRTCSignal('ice-candidate', fromUserId, JSON.stringify(event.candidate.toJSON()))
       }
     }
 
@@ -54,14 +47,7 @@ export function useAudioShare() {
     await pc.setLocalDescription(answer)
 
     const ws = wsConnection.getCurrentWs()
-    ws?.send({
-      type: 'webrtc_signal',
-      payload: {
-        type: 'answer',
-        targetId: fromUserId,
-        payload: JSON.stringify(answer),
-      },
-    })
+    ws?.sendWebRTCSignal('answer', fromUserId, JSON.stringify(answer))
   }, [addRemoteScreen])
 
   const handleAnswer = useCallback(async (fromUserId: number, answerPayload: string) => {
@@ -96,9 +82,9 @@ export function useAudioShare() {
 
   // Register WebSocket listeners on the shared connection
   useEffect(() => {
-    if (!currentRoomId || !currentUser) return
+    if (!currentChannelId || !currentUser) return
 
-    unsubsRef.current.forEach(unsub => unsub())
+    unsubsRef.current.forEach((unsub) => unsub())
     unsubsRef.current = []
 
     const registerHandlers = () => {
@@ -108,16 +94,19 @@ export function useAudioShare() {
         return
       }
 
+      // Audio share now uses screen_share_start/stop events (merged protocol)
       unsubsRef.current.push(
-        ws.on('audio_share_started', (data: unknown) => {
-          const info = data as { userId: number; username: string }
-          message.info(`${info.username} 开始分享音频`)
+        ws.on('screen_share_start', (data: unknown) => {
+          const info = data as { channelId: number; userId: number }
+          if (info.userId !== currentUser?.id) {
+            message.info('有人开始分享音频')
+          }
         })
       )
 
       unsubsRef.current.push(
-        ws.on('audio_share_stopped', (data: unknown) => {
-          const info = data as { userId: number }
+        ws.on('screen_share_stop', (data: unknown) => {
+          const info = data as { channelId: number; userId: number }
           const pc = peerConnectionsRef.current.get(info.userId)
           if (pc) {
             pc.close()
@@ -129,8 +118,8 @@ export function useAudioShare() {
 
       unsubsRef.current.push(
         ws.on('webrtc_signal', (data: unknown) => {
-          const signal = data as { fromUserId: number; fromUsername: string; signal: WebRTCSignalRequest }
-          handleSignal(signal.fromUserId, signal.fromUsername, signal.signal)
+          const signal = data as { fromUserId: number; fromUsername: string; signal: { type: 'offer' | 'answer' | 'ice-candidate'; payload: string } }
+          handleSignal(signal.fromUserId, signal.fromUsername, signal.signal as WebRTCSignalRequest)
         })
       )
     }
@@ -138,15 +127,14 @@ export function useAudioShare() {
     registerHandlers()
 
     return () => {
-      unsubsRef.current.forEach(unsub => unsub())
+      unsubsRef.current.forEach((unsub) => unsub())
       unsubsRef.current = []
     }
-  }, [currentRoomId, currentUser, removeRemoteScreen, message, handleSignal])
+  }, [currentChannelId, currentUser, removeRemoteScreen, message, handleSignal])
 
   // Start audio share using getDisplayMedia to capture system audio.
-  // sourceId is kept for backward compatibility but ignored.
   const startAudioShare = useCallback(async (_sourceId?: string) => {
-    if (!currentRoomId) return
+    if (!currentChannelId) return
 
     try {
       // Use getDisplayMedia with audio:true to capture system audio.
@@ -161,11 +149,11 @@ export function useAudioShare() {
       const videoTracks = stream.getVideoTracks()
 
       // Stop video tracks - we only want audio
-      videoTracks.forEach(track => track.stop())
+      videoTracks.forEach((track) => track.stop())
 
       if (audioTracks.length === 0) {
         message.warning('未捕获到音频轨道，请确保在共享时勾选了"共享音频"选项')
-        stream.getTracks().forEach(track => track.stop())
+        stream.getTracks().forEach((track) => track.stop())
         return
       }
 
@@ -174,11 +162,14 @@ export function useAudioShare() {
       audioStreamRef.current = audioStream
       setIsAudioSharing(true)
 
+      // Use screen_share_start event (audio share merged into screen share protocol)
       const ws = wsConnection.getCurrentWs()
       ws?.send({
-        type: 'audio_share_start',
-        userId: currentUser?.id,
-        username: currentUser?.username,
+        event: 'screen_share_start',
+        data: {
+          channelId: currentChannelId,
+          userId: currentUser?.id,
+        },
       })
 
       message.success('音频分享已开始')
@@ -186,26 +177,29 @@ export function useAudioShare() {
       console.error('Audio share error:', err)
       message.error('开始音频分享失败')
     }
-  }, [currentRoomId, currentUser?.id, currentUser?.username, message])
+  }, [currentChannelId, currentUser?.id, message])
 
   const stopAudioShare = useCallback(async () => {
-    if (!currentRoomId) return
+    if (!currentChannelId) return
 
     try {
       if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop())
+        audioStreamRef.current.getTracks().forEach((track) => track.stop())
         audioStreamRef.current = null
       }
 
-      peerConnectionsRef.current.forEach(pc => pc.close())
+      peerConnectionsRef.current.forEach((pc) => pc.close())
       peerConnectionsRef.current.clear()
 
       setIsAudioSharing(false)
 
       const ws = wsConnection.getCurrentWs()
       ws?.send({
-        type: 'audio_share_stop',
-        userId: currentUser?.id,
+        event: 'screen_share_stop',
+        data: {
+          channelId: currentChannelId,
+          userId: currentUser?.id,
+        },
       })
 
       message.success('音频分享已停止')
@@ -213,16 +207,16 @@ export function useAudioShare() {
       console.error('Stop audio share error:', err)
       message.error('停止音频分享失败')
     }
-  }, [currentRoomId, currentUser?.id, message])
+  }, [currentChannelId, currentUser?.id, message])
 
   useEffect(() => {
     const audioStream = audioStreamRef.current
     const peerConnections = peerConnectionsRef.current
     return () => {
       if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop())
+        audioStream.getTracks().forEach((track) => track.stop())
       }
-      peerConnections.forEach(pc => pc.close())
+      peerConnections.forEach((pc) => pc.close())
     }
   }, [])
 

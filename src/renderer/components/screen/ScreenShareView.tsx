@@ -1,10 +1,23 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Empty } from 'antd'
 import { cn } from '@renderer/utils/cn'
-import type { Participant } from '@shared/types/participant'
-import ScreenPreview from '@renderer/components/screen/ScreenPreview'
-import ScreenControls from '@renderer/components/screen/ScreenControls'
-import ViewerGrid from '@renderer/components/screen/ViewerGrid'
+import type { UserStatus } from '@shared/types/auth'
+import ScreenPreview from './ScreenPreview'
+import ViewerGrid from './ViewerGrid'
+import ScreenControls from './ScreenControls'
+
+/** Local participant interface for screen share display */
+interface Participant {
+  id: string
+  name: string
+  username?: string
+  avatar?: string
+  isOnline: boolean
+  isMuted: boolean
+  isDeafened: boolean
+  isSpeaking: boolean
+  status?: UserStatus
+}
 
 type ViewMode = 'fullscreen' | 'pip' | 'grid'
 

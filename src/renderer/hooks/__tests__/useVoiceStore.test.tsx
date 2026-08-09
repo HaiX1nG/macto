@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useAudioStore } from '../../stores/voiceStore'
+import { useMediaStore } from '../../stores/mediaStore'
 
 // Mock navigator.mediaDevices
 const mockAudioTrack = {
@@ -54,79 +54,71 @@ Object.defineProperty(global.navigator, 'mediaDevices', {
   writable: true,
 })
 
-describe('useAudioStore hooks', () => {
+describe('useMediaStore audio capture', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(mockMediaDevices.getUserMedia as ReturnType<typeof vi.fn>).mockClear()
     ;(mockAudioTrack.stop as ReturnType<typeof vi.fn>).mockClear()
+    ;(mockMediaDevices.enumerateDevices as ReturnType<typeof vi.fn>).mockClear()
     // Reset store state to initial values
-    useAudioStore.setState({
+    useMediaStore.setState({
       isCapturing: false,
-      isMuted: false,
       volume: 100,
-      inputDeviceId: '',
-      outputDeviceId: '',
+      inputDeviceId: null,
+      outputDeviceId: null,
       devices: [],
-      stream: null,
+      voiceStream: null,
+      isSharing: false,
+      localStream: null,
       currentRoomId: null,
-      participants: [],
-      isInVoice: false,
       isLoading: false,
       error: null,
-      isSpeaking: false,
+      remoteScreens: new Map(),
+      peerConnections: new Map(),
+      voiceRemoteStreams: new Map(),
+      controlEnabled: false,
+      currentStreamId: '',
     })
   })
 
-  describe('audio state access', () => {
+  describe('audio device state access', () => {
     it('should get isCapturing state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isCapturing))
-
-      expect(result.current).toBe(false)
-    })
-
-    it('should get isMuted state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isMuted))
-
+      const { result } = renderHook(() => useMediaStore((state) => state.isCapturing))
       expect(result.current).toBe(false)
     })
 
     it('should get volume state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.volume))
-
+      const { result } = renderHook(() => useMediaStore((state) => state.volume))
       expect(result.current).toBe(100)
     })
 
     it('should get inputDeviceId state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.inputDeviceId))
-
-      expect(result.current).toBe('')
+      const { result } = renderHook(() => useMediaStore((state) => state.inputDeviceId))
+      expect(result.current).toBeNull()
     })
 
     it('should get outputDeviceId state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.outputDeviceId))
-
-      expect(result.current).toBe('')
+      const { result } = renderHook(() => useMediaStore((state) => state.outputDeviceId))
+      expect(result.current).toBeNull()
     })
 
     it('should get devices state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.devices))
-
+      const { result } = renderHook(() => useMediaStore((state) => state.devices))
       expect(result.current).toEqual([])
     })
 
-    it('should get stream state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.stream))
-
+    it('should get voiceStream state', () => {
+      const { result } = renderHook(() => useMediaStore((state) => state.voiceStream))
       expect(result.current).toBeNull()
     })
   })
 
-  describe('startCapture action', async () => {
+  describe('startCapture action', () => {
     it('should start audio capture', async () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isCapturing))
+      const { result } = renderHook(() => useMediaStore((state) => state.isCapturing))
 
       await act(async () => {
-        await useAudioStore.getState().startCapture()
+        await useMediaStore.getState().startCapture()
       })
 
       expect(result.current).toBe(true)
@@ -142,28 +134,28 @@ describe('useAudioStore hooks', () => {
     })
 
     it('should update devices after capture starts', async () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.devices))
+      const { result } = renderHook(() => useMediaStore((state) => state.devices))
 
       await act(async () => {
-        await useAudioStore.getState().startCapture()
+        await useMediaStore.getState().startCapture()
       })
 
       expect(result.current.length).toBeGreaterThan(0)
     })
   })
 
-  describe('stopCapture action', async () => {
+  describe('stopCapture action', () => {
     it('should stop audio capture', async () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isCapturing))
+      const { result } = renderHook(() => useMediaStore((state) => state.isCapturing))
 
       // First start
       await act(async () => {
-        await useAudioStore.getState().startCapture()
+        await useMediaStore.getState().startCapture()
       })
 
       // Then stop
       await act(async () => {
-        await useAudioStore.getState().stopCapture()
+        await useMediaStore.getState().stopCapture()
       })
 
       expect(result.current).toBe(false)
@@ -171,47 +163,24 @@ describe('useAudioStore hooks', () => {
     })
   })
 
-  describe('setMute action', () => {
-    it('should mute audio', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isMuted))
-
-      act(() => {
-        useAudioStore.getState().setMute(true)
-      })
-
-      expect(result.current).toBe(true)
-    })
-
-    it('should unmute audio', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isMuted))
-
-      act(() => {
-        useAudioStore.getState().setMute(true)
-        useAudioStore.getState().setMute(false)
-      })
-
-      expect(result.current).toBe(false)
-    })
-  })
-
   describe('setVolume action', () => {
     it('should set volume', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.volume))
+      const { result } = renderHook(() => useMediaStore((state) => state.volume))
 
       act(() => {
-        useAudioStore.getState().setVolume(75)
+        useMediaStore.getState().setVolume(75)
       })
 
       expect(result.current).toBe(75)
     })
 
     it('should update volume state', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.volume))
+      const { result } = renderHook(() => useMediaStore((state) => state.volume))
 
       expect(result.current).toBe(100)
 
       act(() => {
-        useAudioStore.getState().setVolume(50)
+        useMediaStore.getState().setVolume(50)
       })
 
       expect(result.current).toBe(50)
@@ -220,13 +189,13 @@ describe('useAudioStore hooks', () => {
 
   describe('setDevices action', () => {
     it('should set devices', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.devices))
+      const { result } = renderHook(() => useMediaStore((state) => state.devices))
       const testDevices: MediaDeviceInfo[] = [
         { kind: 'audioinput', deviceId: '1', label: 'Device 1', groupId: 'group-1', toJSON: () => ({}) } as MediaDeviceInfo,
       ]
 
       act(() => {
-        useAudioStore.getState().setDevices(testDevices)
+        useMediaStore.getState().setDevices(testDevices)
       })
 
       expect(result.current).toEqual(testDevices)
@@ -235,10 +204,10 @@ describe('useAudioStore hooks', () => {
 
   describe('setInputDevice action', () => {
     it('should set input device', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.inputDeviceId))
+      const { result } = renderHook(() => useMediaStore((state) => state.inputDeviceId))
 
       act(() => {
-        useAudioStore.getState().setInputDevice('device-123')
+        useMediaStore.getState().setInputDevice('device-123')
       })
 
       expect(result.current).toBe('device-123')
@@ -247,10 +216,10 @@ describe('useAudioStore hooks', () => {
 
   describe('setOutputDevice action', () => {
     it('should set output device', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.outputDeviceId))
+      const { result } = renderHook(() => useMediaStore((state) => state.outputDeviceId))
 
       act(() => {
-        useAudioStore.getState().setOutputDevice('device-456')
+        useMediaStore.getState().setOutputDevice('device-456')
       })
 
       expect(result.current).toBe('device-456')
@@ -259,20 +228,20 @@ describe('useAudioStore hooks', () => {
 
   describe('setStream action', () => {
     it('should set stream', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.stream))
+      const { result } = renderHook(() => useMediaStore((state) => state.voiceStream))
 
       act(() => {
-        useAudioStore.getState().setStream(mockStream)
+        useMediaStore.getState().setStream(mockStream)
       })
 
       expect(result.current).toBe(mockStream)
     })
 
     it('should set stream to null', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.stream))
+      const { result } = renderHook(() => useMediaStore((state) => state.voiceStream))
 
       act(() => {
-        useAudioStore.getState().setStream(null)
+        useMediaStore.getState().setStream(null)
       })
 
       expect(result.current).toBeNull()
@@ -281,51 +250,39 @@ describe('useAudioStore hooks', () => {
 
   describe('state subscriptions', () => {
     it('should update when isCapturing changes', async () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isCapturing))
+      const { result } = renderHook(() => useMediaStore((state) => state.isCapturing))
 
       expect(result.current).toBe(false)
 
       await act(async () => {
-        await useAudioStore.getState().startCapture()
-      })
-
-      expect(result.current).toBe(true)
-    })
-
-    it('should update when isMuted changes', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.isMuted))
-
-      expect(result.current).toBe(false)
-
-      act(() => {
-        useAudioStore.getState().setMute(true)
+        await useMediaStore.getState().startCapture()
       })
 
       expect(result.current).toBe(true)
     })
 
     it('should update when volume changes', () => {
-      const { result } = renderHook(() => useAudioStore((state) => state.volume))
+      const { result } = renderHook(() => useMediaStore((state) => state.volume))
 
       expect(result.current).toBe(100)
 
       act(() => {
-        useAudioStore.getState().setVolume(60)
+        useMediaStore.getState().setVolume(60)
       })
 
       expect(result.current).toBe(60)
     })
   })
 
-  describe('error handling', async () => {
+  describe('error handling', () => {
     it('should handle capture failure', async () => {
-      mockMediaDevices.getUserMedia.mockRejectedValue(new Error('Permission denied'))
+      mockMediaDevices.getUserMedia.mockRejectedValueOnce(new Error('Permission denied'))
 
-      const { result } = renderHook(() => useAudioStore((state) => state.isCapturing))
+      const { result } = renderHook(() => useMediaStore((state) => state.isCapturing))
 
       await expect(
         act(async () => {
-          await useAudioStore.getState().startCapture()
+          await useMediaStore.getState().startCapture()
         })
       ).rejects.toThrow('Permission denied')
 

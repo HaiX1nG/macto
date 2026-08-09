@@ -1,10 +1,23 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Empty } from 'antd'
 import { cn } from '@renderer/utils/cn'
-import type { Participant } from '@shared/types/participant'
-import VoiceParticipantList from '@renderer/components/voice/ParticipantList'
-import VoiceControls from '@renderer/components/voice/VoiceControls'
-import AudioWaveform from '@renderer/components/voice/AudioWaveform'
+import type { UserStatus } from '@shared/types/auth'
+import VoiceParticipantList from './ParticipantList'
+import AudioWaveform from './AudioWaveform'
+import VoiceControls from './VoiceControls'
+
+/** Local participant interface for voice session display */
+interface Participant {
+  id: string
+  name: string
+  username?: string
+  avatar?: string
+  isOnline: boolean
+  isMuted: boolean
+  isDeafened: boolean
+  isSpeaking: boolean
+  status?: UserStatus
+}
 
 interface VoiceSessionViewProps {
   /** Session ID */

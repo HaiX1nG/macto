@@ -9,17 +9,19 @@ import {
   SettingOutlined,
 } from '@ant-design/icons'
 import { motion } from 'framer-motion'
-import { useRoomStore, getChannelFromRoom } from '@renderer/stores/serverStore'
+import { useServerStore } from '@renderer/stores/serverStore'
 import { useAuthStore } from '@renderer/stores/authStore'
-import { useAudioStore } from '@renderer/stores/voiceStore'
+import { useMediaStore } from '@renderer/stores/mediaStore'
+import { useVoiceStore } from '@renderer/stores/voiceStore'
+import { useUIStore } from '@renderer/stores/uiStore'
 import { voiceService } from '@renderer/services'
 import { HeaderButton } from '@renderer/components/ui/HeaderButton'
 import { VoiceParticipantCard } from '@renderer/components/voice/VoiceParticipantCard'
 import { NoChannelSelected } from '@renderer/components/ui/EmptyState'
 import { cn } from '@renderer/utils/cn'
 import type { ViewPageProps } from '@renderer/config/viewRegistry'
-import type { Channel } from '@shared/types/kook'
-import type { VoiceSessionResponse } from '@shared/types/api'
+import type { Channel } from '@shared/types/channel'
+import type { VoiceParticipant } from '@shared/types/voice'
 
 /**
  * VoicePage - 语音频道会话页。
@@ -29,32 +31,25 @@ import type { VoiceSessionResponse } from '@shared/types/api'
  */
 export function VoicePage({ params }: ViewPageProps): ReactNode {
   const { message: messageApi } = App.useApp()
-  const { rooms, currentRoomId, currentChannelId } = useRoomStore()
+  const { currentServer } = useServerStore()
+  const { currentChannelId } = useUIStore()
   const { currentUser } = useAuthStore()
-  const {
-    isCapturing,
-    isSpeaking,
-    startCapture,
-    stopCapture,
-    isMuted: storeMuted,
-    setMute: storeSetMute,
-    error: voiceError,
-    clearError,
-  } = useAudioStore()
+  const { isMuted: storeMuted, setMute: storeSetMute, isSpeaking, error: voiceError, clearError } = useVoiceStore()
+  const { isCapturing, startCapture, stopCapture } = useMediaStore()
 
   const [isConnected, setIsConnected] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
   const [volume, setVolume] = useState(100)
-  const [participants, setParticipants] = useState<VoiceSessionResponse[]>([])
+  const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [loading, setLoading] = useState(false)
 
-  const currentRoom = rooms.find((r) => String(r.id) === currentRoomId)
+  const currentRoom = currentServer
   const targetChannelId = params.channelId ?? currentChannelId ?? undefined
 
-  const channels: Channel[] = currentRoomId ? getChannelFromRoom(currentRoomId) : []
+  const channels: Channel[] = currentRoom?.channels ?? []
   const currentChannel = channels.find((c) => c.id === targetChannelId)
 
-  const roomId = currentChannel ? Number(currentChannel.serverId) : 0
+  const roomId = currentChannel ? currentChannel.serverId : 0
 
   useEffect(() => {
     setIsConnected(isCapturing)
@@ -267,7 +262,7 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
                 />
               )}
               {participants
-                .filter((p) => String(p.userId) !== currentUser?.id)
+                .filter((p) => p.userId !== currentUser?.id)
                 .map((p) => (
                   <VoiceParticipantCard key={p.id} name={p.username} speaking={false} muted={false} />
                 ))}

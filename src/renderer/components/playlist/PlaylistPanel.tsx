@@ -24,33 +24,32 @@ export const PlaylistPanel = ({ roomId, className }: PlaylistPanelProps) => {
 
   const {
     playlist,
-    currentItemId,
-    isPlaying,
-    isLoading,
+    playlistLoading,
     fetchPlaylist,
-    play,
-    pause,
-    skip,
+    playPlaylist,
+    pausePlaylist,
+    skipPlaylist,
   } = usePlaylistStore()
+
+  const isPlaying = playlist.some(i => i.status === 2)
+  const currentItem = playlist.find(i => i.status === 2)
 
   const handlePlayPause = async () => {
     if (isPlaying) {
-      await pause(roomId)
+      await pausePlaylist(roomId)
     } else {
-      await play(roomId)
+      await playPlaylist(roomId)
     }
   }
 
   const handleSkip = async () => {
-    await skip(roomId)
+    await skipPlaylist(roomId)
   }
 
   const handleAddSuccess = async () => {
     await fetchPlaylist(roomId)
     setIsAddModalOpen(false)
   }
-
-  const currentItem = playlist.find((item) => item.id === currentItemId)
 
   return (
     <div
@@ -88,7 +87,7 @@ export const PlaylistPanel = ({ roomId, className }: PlaylistPanelProps) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isPlaying && (
+          {playlist.some(i => i.status === 2) && (
             <span className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[var(--color-online)]/10 text-[var(--color-online)] text-xs font-medium">
               <span className="w-1.5 h-1.5 bg-[var(--color-online)] rounded-full animate-pulse" />
               播放中
@@ -96,8 +95,8 @@ export const PlaylistPanel = ({ roomId, className }: PlaylistPanelProps) => {
           )}
           <Button
             variant="ghost"
-            size="sm"
             icon={<PlusOutlined />}
+            className="px-3 py-1.5 text-xs rounded-lg"
             onClick={(e) => {
               e.stopPropagation()
               setIsAddModalOpen(true)
@@ -127,7 +126,7 @@ export const PlaylistPanel = ({ roomId, className }: PlaylistPanelProps) => {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={handlePlayPause}
-                    disabled={isLoading}
+                    disabled={playlistLoading}
                     className={cn(
                       'w-8 h-8 rounded-lg flex items-center justify-center',
                       'text-[var(--color-primary)]',
@@ -144,7 +143,7 @@ export const PlaylistPanel = ({ roomId, className }: PlaylistPanelProps) => {
                   </button>
                   <button
                     onClick={handleSkip}
-                    disabled={isLoading}
+                    disabled={playlistLoading}
                     className={cn(
                       'w-8 h-8 rounded-lg flex items-center justify-center',
                       'text-[var(--color-text-muted)]',
@@ -218,8 +217,7 @@ export const PlaylistPanel = ({ roomId, className }: PlaylistPanelProps) => {
                 </p>
                 <Button
                   variant="primary"
-                  size="sm"
-                  className="mt-4"
+                  className="mt-4 px-3 py-1.5 text-xs rounded-lg"
                   onClick={() => setIsAddModalOpen(true)}
                 >
                   添加第一首歌曲
@@ -232,7 +230,7 @@ export const PlaylistPanel = ({ roomId, className }: PlaylistPanelProps) => {
                   item={item}
                   index={index}
                   roomId={roomId}
-                  isCurrentItem={item.id === currentItemId}
+                  isCurrentItem={item.status === 2}
                 />
               ))
             )}

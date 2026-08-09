@@ -1,8 +1,21 @@
 import { useState, useCallback } from 'react'
 import { Empty } from 'antd'
 import { cn } from '@renderer/utils/cn'
-import type { Participant } from '@shared/types/participant'
+import type { UserStatus } from '@shared/types/auth'
 import ScreenPreview from './ScreenPreview'
+
+/** Local participant interface for viewer grid display */
+interface Participant {
+  id: string
+  name: string
+  username?: string
+  avatar?: string
+  isOnline: boolean
+  isMuted: boolean
+  isDeafened: boolean
+  isSpeaking: boolean
+  status?: UserStatus
+}
 
 interface ScreenView {
   /** Unique identifier for this screen view */

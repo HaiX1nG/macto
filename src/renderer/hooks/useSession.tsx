@@ -1,141 +1,82 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { useRoomStore, type Session } from '@renderer/stores/roomStore'
-import type { SessionParticipant } from '@shared/types'
-import type { CreateRoomRequest, JoinRoomRequest, RoomListRequest, RoomInfoResponse } from '@shared/types/api'
+import { useServerStore } from '@renderer/stores/serverStore'
+import type { Server, ServerDetail, ServerMember } from '@shared/types/server'
+import type { CreateServerRequest, JoinServerRequest } from '@shared/types/server'
+
+/**
+ * SessionContext (legacy compatibility shim)
+ *
+ * The old session/room concept has been replaced by the KOOK-style
+ * server/channel architecture. This context wraps the new serverStore
+ * and uiStore to provide a backward-compatible API for components
+ * that haven't been migrated yet.
+ */
 
 interface SessionContextType {
-  // Room-based state
-  rooms: RoomInfoResponse[]
-  currentRoom: RoomInfoResponse | null
-  currentRoomId: string
-  participants: SessionParticipant[]
+  // Server-based state (replaces old room state)
+  servers: Server[]
+  currentServer: ServerDetail | null
+  currentServerId: number | null
+  members: ServerMember[]
   isLoading: boolean
-  isCreating: boolean
   error: string | null
 
-  // Room actions
-  fetchRooms: (params?: RoomListRequest) => Promise<void>
-  createRoom: (data: CreateRoomRequest) => Promise<RoomInfoResponse>
-  joinRoom: (roomId: number, data?: JoinRoomRequest) => Promise<void>
-  leaveRoom: (roomId: number) => Promise<void>
-  setCurrentRoom: (room: RoomInfoResponse | null) => void
-
-  // Participant actions
-  addParticipant: (participant: SessionParticipant) => void
-  removeParticipant: (participantId: string) => void
-  updateParticipant: (participantId: string, updates: Partial<SessionParticipant>) => void
-
-  // Legacy session-based API (for backward compatibility)
-  sessions: Session[]
-  currentSessionId: string
-  fetchSessions: () => Promise<void>
-  createSession: (name: string, roomType?: number, isPrivate?: boolean, maxParticipants?: number) => Promise<string>
-  joinSession: (sessionId: string, inviteCode?: string) => Promise<void>
-  leaveSession: (sessionId: string) => Promise<void>
+  // Server actions
+  fetchServers: () => Promise<void>
+  fetchServerDetail: (id: number) => Promise<void>
+  createServer: (data: CreateServerRequest) => Promise<ServerDetail>
+  joinServer: (id: number, data: JoinServerRequest) => Promise<void>
+  leaveServer: (id: number) => Promise<void>
+  setCurrentServer: (id: number) => void
+  fetchMembers: (serverId: number) => Promise<void>
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
 
-/**
- * Convert RoomInfoResponse to legacy Session format
- */
-function roomToSession(room: RoomInfoResponse): Session {
-  return {
-    id: String(room.id),
-    name: room.roomName,
-    hostId: String(room.hostUserId),
-    participants: [],
-    createdAt: new Date(room.createdAt).getTime(),
-    isActive: true,
-  }
-}
-
 export const SessionProvider = ({ children }: { children: React.ReactNode }) => {
   const {
-    rooms,
-    currentRoom,
-    currentRoomId,
-    participants,
+    servers,
+    currentServer,
+    currentServerId,
+    members,
     isLoading,
-    isCreating,
     error,
-    fetchRooms,
-    createRoom,
-    joinRoom,
-    leaveRoom,
-    setCurrentRoom,
-    addParticipant,
-    removeParticipant,
-    updateParticipant,
-  } = useRoomStore()
+    fetchServers,
+    fetchServerDetail,
+    createServer,
+    joinServer,
+    leaveServer,
+    setCurrentServer,
+    fetchMembers,
+  } = useServerStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Convert rooms to sessions for backward compatibility
-  const sessions: Session[] = rooms.map(roomToSession)
-  const currentSessionId = currentRoomId
-
-  // Legacy session-based API wrappers
-  const fetchSessions = async () => {
-    await fetchRooms()
-  }
-
-  const createSession = async (name: string, roomType = 2, isPrivate = false, maxParticipants = 10): Promise<string> => {
-    const room = await createRoom({
-      roomName: name,
-      roomType: roomType as 1 | 2,
-      isPrivate,
-      maxParticipants,
-    })
-    return String(room.id)
-  }
-
-  const joinSession = async (sessionId: string, inviteCode?: string): Promise<void> => {
-    await joinRoom(Number(sessionId), inviteCode ? { inviteCode } : undefined)
-  }
-
-  const leaveSession = async (sessionId: string): Promise<void> => {
-    await leaveRoom(Number(sessionId))
-  }
-
   if (!mounted) {
     return <>{children}</>
   }
 
   return (
-    <SessionContext.Provider value={{
-      // Room-based state
-      rooms,
-      currentRoom,
-      currentRoomId,
-      participants,
-      isLoading,
-      isCreating,
-      error,
-
-      // Room actions
-      fetchRooms,
-      createRoom,
-      joinRoom,
-      leaveRoom,
-      setCurrentRoom,
-
-      // Participant actions
-      addParticipant,
-      removeParticipant,
-      updateParticipant,
-
-      // Legacy session-based API
-      sessions,
-      currentSessionId,
-      fetchSessions,
-      createSession,
-      joinSession,
-      leaveSession,
-    }}>
+    <SessionContext.Provider
+      value={{
+        servers,
+        currentServer,
+        currentServerId,
+        members,
+        isLoading,
+        error,
+        fetchServers,
+        fetchServerDetail,
+        createServer,
+        joinServer,
+        leaveServer,
+        setCurrentServer,
+        fetchMembers,
+      }}
+    >
       {children}
     </SessionContext.Provider>
   )

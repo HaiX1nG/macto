@@ -2,20 +2,20 @@ import { useState, useEffect, useCallback } from 'react'
 import { Select, Slider, Switch, Button, Progress, App } from 'antd'
 import { AudioOutlined, AudioMutedOutlined, SoundOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useVoiceStore } from '@renderer/stores/voiceStore'
+import { useMediaStore } from '@renderer/stores/mediaStore'
 
 export const SettingsAudio = () => {
   const { message } = App.useApp()
+  const { isMuted, setMute } = useVoiceStore()
   const {
-    devices,
     inputDeviceId,
     outputDeviceId,
     volume,
-    isMuted,
     setInputDevice,
     setOutputDevice,
     setVolume,
-    setMute,
-  } = useVoiceStore()
+    setDevices,
+  } = useMediaStore()
 
   const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([])
   const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([])
@@ -27,15 +27,16 @@ export const SettingsAudio = () => {
 
   // Load devices on mount
   useEffect(() => {
-    loadDevices()
+    void loadDevices()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devices])
+  }, [])
 
   const loadDevices = async () => {
     try {
       // Request permission first
       await navigator.mediaDevices.getUserMedia({ audio: true })
       const deviceList = await navigator.mediaDevices.enumerateDevices()
+      setDevices(deviceList)
 
       const inputs = deviceList.filter(d => d.kind === 'audioinput')
       const outputs = deviceList.filter(d => d.kind === 'audiooutput')
@@ -190,7 +191,7 @@ export const SettingsAudio = () => {
                     '0%': 'var(--color-primary)',
                     '100%': 'var(--color-success)',
                   }}
-                  trailColor="var(--color-bg-darker)"
+                  railColor="var(--color-bg-darker)"
                   className="flex-1"
                 />
                 <span className="text-xs text-[var(--color-text-muted)] w-8">{micLevel}%</span>

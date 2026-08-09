@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { App } from 'antd'
 import { AudioOutlined, AudioMutedOutlined, SoundOutlined, DesktopOutlined, StopOutlined, CustomerServiceOutlined, SettingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
-import { useRoomStore } from '@renderer/stores/serverStore'
-import { useScreenShare } from '@renderer/hooks/useScreenShare'
-import { useAudioShare } from '@renderer/hooks/useAudioShare'
+import { useUIStore } from '@renderer/stores/uiStore'
+import { useMediaStore } from '@renderer/stores/mediaStore'
+import { useVoiceStore } from '@renderer/stores/voiceStore'
 import { ScreenSharePreview } from '../screen/ScreenSharePreview'
 import { AudioSettings } from '../settings/AudioSettings'
 
@@ -13,66 +13,45 @@ const CONTROL_BUTTON_SIZE = 40
 
 export function UserPanel() {
   const { message: messageApi } = App.useApp()
-  const { currentRoomId } = useRoomStore()
-  const { localStream, isSharing, startScreenShare, stopScreenShare } = useScreenShare()
-  const { isAudioSharing, startAudioShare, stopAudioShare } = useAudioShare()
+  const { currentChannelId } = useUIStore()
+  const { isSharing, localStream, startSharing, stopSharing } = useMediaStore()
+  const { isMuted, setMute } = useVoiceStore()
 
-  const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
   const [screenShareLoading, setScreenShareLoading] = useState(false)
-  const [audioShareLoading, setAudioShareLoading] = useState(false)
   const [showAudioSettings, setShowAudioSettings] = useState(false)
 
   const handleScreenShareClick = () => {
-    if (!currentRoomId) {
-      messageApi.warning('请先选择一个房间')
+    if (!currentChannelId) {
+      messageApi.warning('请先选择一个频道')
       return
     }
 
     if (isSharing) {
-      handleStopScreenShare()
+      void handleStopScreenShare()
     } else {
-      // getDisplayMedia shows the system picker dialog directly
-      handleStartScreenShare()
+      void handleStartScreenShare()
     }
   }
 
   const handleStartScreenShare = async () => {
     setScreenShareLoading(true)
-    await startScreenShare()
-    setScreenShareLoading(false)
+    try {
+      await startSharing(currentChannelId!)
+    } catch (_err) {
+      messageApi.error('屏幕共享失败')
+    } finally {
+      setScreenShareLoading(false)
+    }
   }
 
   const handleStopScreenShare = async () => {
     setScreenShareLoading(true)
-    await stopScreenShare()
-    setScreenShareLoading(false)
-  }
-
-  const handleAudioShareClick = () => {
-    if (!currentRoomId) {
-      messageApi.warning('请先选择一个房间')
-      return
+    try {
+      await stopSharing(currentChannelId!)
+    } finally {
+      setScreenShareLoading(false)
     }
-
-    if (isAudioSharing) {
-      handleStopAudioShare()
-    } else {
-      // getDisplayMedia shows the system picker dialog directly
-      handleStartAudioShare()
-    }
-  }
-
-  const handleStartAudioShare = async () => {
-    setAudioShareLoading(true)
-    await startAudioShare()
-    setAudioShareLoading(false)
-  }
-
-  const handleStopAudioShare = async () => {
-    setAudioShareLoading(true)
-    await stopAudioShare()
-    setAudioShareLoading(false)
   }
 
   return (
@@ -91,18 +70,15 @@ export function UserPanel() {
         />
 
         <ControlButton
-          onClick={handleAudioShareClick}
-          disabled={audioShareLoading}
-          isActive={isAudioSharing}
-          activeColor="primary"
-          title={isAudioSharing ? '停止音频分享' : '开始音频分享'}
-          icon={isAudioSharing ? <StopOutlined /> : <CustomerServiceOutlined />}
+          onClick={() => setShowAudioSettings(true)}
+          title="音频设置"
+          icon={<CustomerServiceOutlined />}
         />
 
         <div className="w-px h-6 bg-[var(--color-border)]" />
 
         <ControlButton
-          onClick={() => setIsMuted(!isMuted)}
+          onClick={() => setMute(!isMuted)}
           isActive={isMuted}
           activeColor="danger"
           title={isMuted ? '取消静音' : '静音'}
@@ -121,7 +97,7 @@ export function UserPanel() {
 
         <ControlButton
           onClick={() => setShowAudioSettings(true)}
-          title="音频设置"
+          title="设置"
           icon={<SettingOutlined />}
         />
       </div>

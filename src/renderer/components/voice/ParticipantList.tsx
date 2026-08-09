@@ -1,6 +1,19 @@
 import { cn } from '@renderer/utils/cn'
 import { getAvatarGradient, getAvatarInitial, isValidAvatarUrl } from '@renderer/utils/avatar'
-import type { Participant } from '@shared/types/participant'
+import type { UserStatus } from '@shared/types/auth'
+
+/** Local participant interface for voice display */
+interface Participant {
+  id: string
+  name: string
+  username?: string
+  avatar?: string
+  isOnline: boolean
+  isMuted: boolean
+  isDeafened: boolean
+  isSpeaking: boolean
+  status?: UserStatus
+}
 
 interface VoiceParticipantListProps {
   participants: Participant[]

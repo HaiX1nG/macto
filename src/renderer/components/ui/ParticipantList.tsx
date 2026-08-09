@@ -2,7 +2,22 @@ import { cn } from '@renderer/utils/cn'
 import { Badge } from './Badge'
 import { getAvatarGradient, getAvatarInitial, isValidAvatarUrl } from '@renderer/utils/avatar'
 import { statusColorsWithShadow, getAudioStatusLabel } from '@renderer/utils/status'
-import type { Participant } from '@shared/types/participant'
+import type { UserStatus } from '@shared/types/auth'
+
+/** Local participant interface for UI display */
+interface Participant {
+  id: string
+  name: string
+  username?: string
+  avatar?: string
+  isOnline: boolean
+  isMuted: boolean
+  isDeafened: boolean
+  isSpeaking: boolean
+  isScreenSharing?: boolean
+  isStreaming?: boolean
+  status?: UserStatus
+}
 
 interface ParticipantListProps {
   participants: Participant[]

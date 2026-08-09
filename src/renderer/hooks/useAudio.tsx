@@ -1,16 +1,28 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { useAudioStore } from '@renderer/stores/voiceStore'
+import { useMediaStore } from '@renderer/stores/mediaStore'
+import { useVoiceStore } from '@renderer/stores/voiceStore'
+
+/**
+ * AudioContext provider (legacy compatibility shim)
+ *
+ * Audio capture and device management have moved to mediaStore.
+ * Voice state (mute/deafen) remains in voiceStore.
+ * This context combines both for components that haven't been migrated.
+ */
 
 interface AudioContextType {
+  // Device & capture state (from mediaStore)
   isCapturing: boolean
-  isMuted: boolean
   volume: number
   devices: MediaDeviceInfo[]
-  startCapture: () => Promise<void>
+  startCapture: (roomId?: number) => Promise<void>
   stopCapture: () => Promise<void>
-  setMute: (muted: boolean) => void
-  setVolume: (volume: number) => void
   setDevices: (devices: MediaDeviceInfo[]) => void
+  setVolume: (volume: number) => void
+
+  // Voice state (from voiceStore)
+  isMuted: boolean
+  setMute: (muted: boolean) => void
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined)
@@ -18,15 +30,15 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined)
 export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
   const {
     isCapturing,
-    isMuted,
     volume,
     devices,
     startCapture,
     stopCapture,
-    setMute,
-    setVolume,
     setDevices,
-  } = useAudioStore()
+    setVolume,
+    setMute: setMediaMute,
+  } = useMediaStore()
+  const { isMuted, setMute: setVoiceMute } = useVoiceStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -37,18 +49,26 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>
   }
 
+  // Combine mediaStore mute (manages audio track) with voiceStore mute (UI state)
+  const setMute = (muted: boolean) => {
+    setMediaMute(muted)
+    setVoiceMute(muted)
+  }
+
   return (
-    <AudioContext.Provider value={{
-      isCapturing,
-      isMuted,
-      volume,
-      devices,
-      startCapture,
-      stopCapture,
-      setMute,
-      setVolume,
-      setDevices,
-    }}>
+    <AudioContext.Provider
+      value={{
+        isCapturing,
+        volume,
+        devices,
+        startCapture,
+        stopCapture,
+        setDevices,
+        setVolume,
+        isMuted,
+        setMute,
+      }}
+    >
       {children}
     </AudioContext.Provider>
   )

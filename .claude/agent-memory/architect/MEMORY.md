@@ -1,1 +1,2 @@
-- [Architecture Design v2.0](project_architecture_v2.md) — Comprehensive architecture redesign covering frontend, Electron, WebRTC, build, testing, and extensibility
+- [Architecture Design v2.0](project_architecture_v2.md) - Comprehensive architecture redesign covering frontend, Electron, WebRTC, build, testing, and extensibility
+- [KOOK Phase 3 Types+Services](kook-phase3-types-services.md) - Types+services rebuilt for server-channel arch; phase 5 now has 61 remaining tsc errors in hooks/components/pages

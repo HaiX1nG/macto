@@ -36,13 +36,12 @@ Object.defineProperty(document, 'documentElement', {
 // Helper to reset store state between tests
 const resetThemeStore = () => {
   localStorageMock.getItem.mockReturnValue(null)
-  const initialState = {
+  useThemeStore.setState({
     theme: 'sakura' as AppTheme,
-  }
-  useThemeStore.setState(initialState)
+  })
 }
 
-describe('useThemeStore hooks', () => {
+describe('useThemeStore (uiStore alias) hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorageMock.getItem.mockClear()
@@ -54,13 +53,11 @@ describe('useThemeStore hooks', () => {
   describe('theme state access', () => {
     it('should get current theme', () => {
       const theme = useThemeStore.getState().theme
-
       expect(theme).toBe('sakura')
     })
 
     it('should subscribe to theme changes', () => {
       const theme = useThemeStore.getState().theme
-
       expect(theme).toBe('sakura')
 
       act(() => {
@@ -161,7 +158,6 @@ describe('useThemeStore hooks', () => {
   describe('state subscriptions', () => {
     it('should update when store changes', () => {
       let theme = useThemeStore.getState().theme
-
       expect(theme).toBe('sakura')
 
       act(() => {
@@ -189,13 +185,11 @@ describe('useThemeStore hooks', () => {
   describe('selector patterns', () => {
     it('should select theme value', () => {
       const { theme } = useThemeStore.getState()
-
       expect(theme).toBe('sakura')
     })
 
     it('should select computed values', () => {
       let isSakura = useThemeStore.getState().theme === 'sakura'
-
       expect(isSakura).toBe(true)
 
       act(() => {
@@ -208,7 +202,6 @@ describe('useThemeStore hooks', () => {
 
     it('should determine if theme is dark (ancient or tech)', () => {
       let isDark = ['ancient', 'tech'].includes(useThemeStore.getState().theme)
-
       expect(isDark).toBe(false) // sakura is not dark
 
       act(() => {
@@ -230,15 +223,12 @@ describe('useThemeStore hooks', () => {
   describe('get state without hook', () => {
     it('should get state directly', () => {
       const state = useThemeStore.getState()
-
       expect(state.theme).toBe('sakura')
     })
 
     it('should call actions directly', () => {
       const { setTheme } = useThemeStore.getState()
-
       setTheme('ancient')
-
       expect(useThemeStore.getState().theme).toBe('ancient')
     })
 
@@ -246,7 +236,6 @@ describe('useThemeStore hooks', () => {
       localStorageMock.getItem.mockReturnValue('tech')
 
       const { initTheme } = useThemeStore.getState()
-
       initTheme()
 
       expect(useThemeStore.getState().theme).toBe('tech')

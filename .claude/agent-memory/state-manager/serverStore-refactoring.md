@@ -1,11 +1,14 @@
 ---
 name: serverStore refactoring
-description: serverStore was refactored to be a compatibility shim over roomStore
-type: project
+description: Phase 4 KOOK redesign - serverStore fully rewritten, roomStore is now a shim
+metadata:
+  type: project
 ---
 
-serverStore and roomStore have been unified. The serverStore is now a thin compatibility layer that exports useRoomStore.
+serverStore has been fully rewritten in phase 4 of the KOOK redesign (2026-08-08).
 
-**Why:** Server and Channel were UI concepts that directly mapped to Room - there was no separate "server" entity in the backend API. Having two stores managing similar data caused confusion and maintenance overhead.
+The old roomStore/serverStore compatibility shim pattern is replaced. serverStore now has full Server/Member/Role CRUD with permission checking. roomStore.ts is a 1-line re-export shim: `export { useServerStore as useRoomStore } from './serverStore'`.
 
-**How to apply:** Import from `@renderer/stores/serverStore` for backward compatibility. It exports useRoomStore and useServerStore (alias). Server/Channel types are still available for UI components. Use getChannelFromRoom(roomId) and getServersFromRooms(rooms) for conversions. currentServerId in components is actually currentRoomId.
+**Why:** KOOK redesign replaces flat room model with server->channel hierarchy. Old serverStore referenced deleted types (`@shared/types/kook`, `@shared/types/api` RoomInfoResponse).
+
+**How to apply:** Import from `@renderer/stores/serverStore` directly. The `hasPermission(perm: bigint)` method checks current user's merged role permissions against the bitmask. Owner always has all permissions. See [[store-service-integration]] for full store architecture.

@@ -3,7 +3,6 @@ import { useMemo, useCallback } from 'react'
 import { useMediaStore } from '@renderer/stores/mediaStore'
 import ScreenShareView from '@renderer/components/screen/ScreenShareView'
 import type { ViewPageProps } from '@renderer/config/viewRegistry'
-import type { Participant } from '@shared/types/participant'
 
 /**
  * ScreenSharePage - 屏幕分享页容器。
@@ -31,7 +30,7 @@ export function ScreenSharePage(_props: ViewPageProps): ReactNode {
         isMuted: false,
         isDeafened: false,
         isSpeaking: false,
-      } satisfies Participant,
+      },
       isPaused: false,
     }))
   }, [remoteScreens])

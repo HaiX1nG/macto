@@ -6,27 +6,41 @@ import { EmptyMessages } from '@renderer/components/ui/EmptyState'
 import { MarkdownRenderer } from '@renderer/components/ui/MarkdownRenderer'
 import { formatRelativeTime, formatTime, formatFullDateTime, formatDateDivider } from '@renderer/utils/timeFormat'
 import { useAuthStore } from '@renderer/stores/authStore'
-import type { Message, Attachment } from '@shared/types/kook'
 import type { MessageWithStatus } from '@renderer/stores/chatStore'
+import type { MessageAttachment } from '@shared/types/message'
+
+/** Local adapter interface for pinned message display */
+interface PinnedMessage {
+  id: number
+  senderName: string
+  content: string
+}
+
+/** Local attachment display type */
+interface Attachment {
+  id: number
+  filename: string
+  url: string
+  size: number
+  type: 'image' | 'video' | 'audio' | 'file'
+}
 
 // Quick reaction emojis
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '😡']
+const QUICK_REACTIONS = ['\u{1F44D}', '\u{2764}\u{FE0F}', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F621}']
 
 interface MessageListProps {
   messages: MessageWithStatus[]
-  onAddReaction?: (messageId: string, emoji: string) => void
+  onAddReaction?: (messageId: number, emoji: string) => void
   onLoadMore?: () => void
   hasMore?: boolean
   isLoading?: boolean
-  onReply?: (message: Message) => void
-  onEdit?: (messageId: string, content: string) => void
-  onDelete?: (messageId: string) => void
-  onPin?: (messageId: string) => void
-  onUnpin?: (messageId: string) => void
-  pinnedMessages?: Message[]
+  onReply?: (message: MessageWithStatus) => void
+  onEdit?: (messageId: number, content: string) => void
+  onDelete?: (messageId: number) => void
+  onPin?: (messageId: number) => void
+  onUnpin?: (messageId: number) => void
+  pinnedMessages?: PinnedMessage[]
   onRetry?: (retryId: string) => void
-  editingMessageId?: number | null
-  deletingMessageId?: number | null
   unreadCount?: number
   firstUnreadMessageId?: number | null
   onScrollToBottom?: () => void
@@ -46,8 +60,6 @@ export function MessageList({
   onUnpin,
   pinnedMessages,
   onRetry,
-  editingMessageId,
-  deletingMessageId,
   unreadCount = 0,
   firstUnreadMessageId,
   onScrollToBottom,
@@ -123,7 +135,7 @@ export function MessageList({
               {pinnedMessages.map(message => (
                 <div key={message.id} className="flex items-start gap-2 p-2 bg-[var(--color-bg-secondary)] rounded">
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-[var(--color-text-normal)]">{message.author.displayName || message.author.name}</span>
+                    <span className="text-xs font-medium text-[var(--color-text-normal)]">{message.senderName}</span>
                     <p className="text-sm text-[var(--color-text-normal)] truncate">{message.content}</p>
                   </div>
                   <button
@@ -174,8 +186,6 @@ export function MessageList({
                 onRetry={onRetry}
                 pinnedMessageIds={pinnedMessages?.map(m => m.id)}
                 isFirstUnread={firstUnreadMessageId === message.id}
-                isEditingMessage={editingMessageId === message.id}
-                isDeletingMessage={deletingMessageId === message.id}
               />
             ))}
           </div>
@@ -333,38 +343,52 @@ function AttachmentView({ attachment }: { attachment: Attachment }) {
   )
 }
 
+/** Convert MessageAttachment[] to local Attachment[] */
+function toAttachments(attachments: MessageAttachment[] | undefined): Attachment[] | undefined {
+  if (!attachments || attachments.length === 0) return undefined
+  return attachments.map(a => ({
+    id: a.id,
+    filename: a.filename,
+    url: a.url,
+    size: a.fileSize,
+    type: a.mimeType.startsWith('image/') ? 'image' :
+          a.mimeType.startsWith('video/') ? 'video' :
+          a.mimeType.startsWith('audio/') ? 'audio' : 'file',
+  }))
+}
+
 interface MessageItemProps {
   message: MessageWithStatus
   isCompact?: boolean
-  onAddReaction?: (messageId: string, emoji: string) => void
-  onReply?: (message: Message) => void
-  onEdit?: (messageId: string, content: string) => void
-  onDelete?: (messageId: string) => void
-  onPin?: (messageId: string) => void
+  onAddReaction?: (messageId: number, emoji: string) => void
+  onReply?: (message: MessageWithStatus) => void
+  onEdit?: (messageId: number, content: string) => void
+  onDelete?: (messageId: number) => void
+  onPin?: (messageId: number) => void
   onRetry?: (retryId: string) => void
-  pinnedMessageIds?: string[]
+  pinnedMessageIds?: number[]
   isFirstUnread?: boolean
-  isEditingMessage?: boolean
-  isDeletingMessage?: boolean
 }
 
-function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, onRetry, pinnedMessageIds, isFirstUnread, isEditingMessage, isDeletingMessage }: MessageItemProps) {
+function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDelete, onPin, onRetry, pinnedMessageIds, isFirstUnread }: MessageItemProps) {
   const { message: messageApi } = App.useApp()
   const { currentUser } = useAuthStore()
   const [showReactions, setShowReactions] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const timestamp = new Date(message.createdAt).getTime()
-  const isPinned = pinnedMessageIds?.includes(String(message.id))
+  const isPinned = pinnedMessageIds?.includes(message.id)
   const isFailed = message.status === 'failed'
   const isSending = message.status === 'sending'
   const isSent = message.status === 'sent'
 
   // Check if this message is from the current user (for bubble alignment)
-  const isOwnMessage = currentUser && String(message.senderUserId) === currentUser.id
+  const isOwnMessage = currentUser && message.senderUserId === currentUser.id
 
   // Focus textarea when editing starts
   useEffect(() => {
@@ -375,7 +399,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   }, [isEditing, message.content])
 
   const handleReaction = (emoji: string) => {
-    onAddReaction?.(String(message.id), emoji)
+    onAddReaction?.(message.id, emoji)
     setShowReactions(false)
   }
 
@@ -385,19 +409,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   }
 
   const handleReply = () => {
-    onReply?.({
-      id: String(message.id),
-      channelId: String(message.roomId),
-      authorId: String(message.senderUserId),
-      author: {
-        id: String(message.senderUserId),
-        name: message.senderName,
-        displayName: message.senderName,
-        status: 'online',
-      },
-      content: message.content,
-      timestamp,
-    })
+    onReply?.(message)
   }
 
   const handleEdit = () => {
@@ -405,9 +417,11 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
     setIsEditing(true)
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editContent.trim() && editContent !== message.content) {
-      onEdit?.(String(message.id), editContent.trim())
+      setIsSaving(true)
+      onEdit?.(message.id, editContent.trim())
+      setIsSaving(false)
     }
     setIsEditing(false)
   }
@@ -420,7 +434,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSaveEdit()
+      void handleSaveEdit()
     } else if (e.key === 'Escape') {
       handleCancelEdit()
     }
@@ -430,13 +444,15 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
     setShowDeleteModal(true)
   }
 
-  const confirmDelete = () => {
-    onDelete?.(String(message.id))
+  const confirmDelete = async () => {
+    setIsDeleting(true)
+    onDelete?.(message.id)
+    setIsDeleting(false)
     setShowDeleteModal(false)
   }
 
   const handlePin = () => {
-    onPin?.(String(message.id))
+    onPin?.(message.id)
     messageApi.success(isPinned ? '消息已取消置顶' : '消息已置顶')
   }
 
@@ -469,6 +485,8 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
     </div>
   )
 
+  const attachments = toAttachments(message.attachments)
+
   return (
     <>
       {/* Unread indicator */}
@@ -496,6 +514,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
           {/* Avatar - left side for others, right side for own */}
           <Avatar
             size={36}
+            src={message.senderAvatarUrl || undefined}
             className={cn(
               "bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)] flex-shrink-0 cursor-pointer hover:opacity-80 self-start",
               isOwnMessage ? "order-2" : "order-1"
@@ -542,16 +561,16 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
                 />
                 <div className="flex items-center gap-2 mt-2">
                   <button
-                    onClick={handleSaveEdit}
-                    disabled={isEditingMessage}
+                    onClick={() => void handleSaveEdit()}
+                    disabled={isSaving}
                     className="px-3 py-1 bg-[var(--color-primary)] text-white text-sm rounded hover:opacity-90 flex items-center gap-1 disabled:opacity-50"
                   >
-                    {isEditingMessage ? <LoadingOutlined className="animate-spin" /> : <CheckOutlined />}
+                    {isSaving ? <LoadingOutlined className="animate-spin" /> : <CheckOutlined />}
                     保存
                   </button>
                   <button
                     onClick={handleCancelEdit}
-                    disabled={isEditingMessage}
+                    disabled={isSaving}
                     className="px-3 py-1 bg-[var(--color-bg-tertiary)] text-[var(--color-text-normal)] text-sm rounded hover:bg-[var(--color-bg-darker)] disabled:opacity-50"
                   >
                     取消
@@ -571,7 +590,7 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
                     isPinned && "ring-2 ring-[var(--color-primary)]"
                   )}
                 >
-                  <MessageContent content={message.content} />
+                  <MessageContent content={message.content} attachments={attachments} />
 
                   {/* Send status indicators */}
                   {isSending && (
@@ -645,10 +664,10 @@ function MessageItem({ message, isCompact, onAddReaction, onReply, onEdit, onDel
         open={showDeleteModal}
         title="删除消息"
         onCancel={() => setShowDeleteModal(false)}
-        onOk={confirmDelete}
+        onOk={() => void confirmDelete()}
         okText="删除"
         cancelText="取消"
-        okButtonProps={{ danger: true, loading: isDeletingMessage }}
+        okButtonProps={{ danger: true, loading: isDeleting }}
         zIndex={2000}
         styles={{ body: { backgroundColor: 'var(--color-bg-secondary)' } }}
       >

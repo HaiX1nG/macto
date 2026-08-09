@@ -1,2 +1,2 @@
-- [serverStore refactoring](serverStore-refactoring.md) - serverStore merged into roomStore as compatibility shim
-- [Store-Service Integration](store-service-integration.md) - authStore/serverStore/chatStore wired to real backend services (Aug 2026)
+- [serverStore refactoring](serverStore-refactoring.md) - Phase 4: serverStore fully rewritten with KOOK server/channel hierarchy
+- [Store-Service Integration](store-service-integration.md) - Phase 4: 11->7 store reorganization, full architecture details

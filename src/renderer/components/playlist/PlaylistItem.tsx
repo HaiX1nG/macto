@@ -6,10 +6,10 @@ import {
   PlayCircleOutlined,
   HolderOutlined,
 } from '@ant-design/icons'
-import type { PlaylistItemResponse } from '@shared/types/api'
+import type { PlaylistItem as PlaylistItemType } from '@shared/types/playlist'
 
 interface PlaylistItemProps {
-  item: PlaylistItemResponse
+  item: PlaylistItemType
   index: number
   roomId: number
   isCurrentItem: boolean
@@ -25,11 +25,11 @@ export const PlaylistItem = ({
   const [isDragOver, setIsDragOver] = useState(false)
   const dragNodeRef = useRef<HTMLDivElement>(null)
 
-  const { removeItem, isLoading } = usePlaylistStore()
+  const { removePlaylistItem, isLoading } = usePlaylistStore()
 
   const handleRemove = async () => {
     try {
-      await removeItem(roomId, item.id)
+      await removePlaylistItem(roomId, item.id)
     } catch (error) {
       console.error('Failed to remove item:', error)
     }

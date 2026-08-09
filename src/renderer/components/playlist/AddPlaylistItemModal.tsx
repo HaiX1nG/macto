@@ -25,7 +25,7 @@ export const AddPlaylistItemModal = ({
   const [duration, setDuration] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const { addItem, isLoading, clearError } = usePlaylistStore()
+  const { addPlaylistItem, isLoading, clearError } = usePlaylistStore()
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -67,7 +67,7 @@ export const AddPlaylistItemModal = ({
 
     try {
       clearError()
-      await addItem(roomId, data)
+      await addPlaylistItem(roomId, data)
       resetForm()
       onSuccess()
     } catch (error) {

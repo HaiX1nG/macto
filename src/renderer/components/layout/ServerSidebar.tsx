@@ -1,99 +1,58 @@
-import { useState, useCallback, useMemo } from 'react'
-import { Modal, Input, App, Avatar, Dropdown, Spin, Button } from 'antd'
+import { useState, useCallback } from 'react'
+import { Modal, Input, App, Avatar, Dropdown } from 'antd'
 import {
   PlusOutlined,
-  CompassOutlined,
   SettingOutlined,
   EditOutlined,
   DeleteOutlined,
-  LoadingOutlined,
-  UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
-import { useRoomStore, getServersFromRooms } from '@renderer/stores/serverStore'
+import { useServerStore } from '@renderer/stores/serverStore'
 import { useAuthStore } from '@renderer/stores/authStore'
-import { useLayoutStore, SIDEBAR_WIDTHS } from '@renderer/stores/layoutStore'
-import { roomService } from '@renderer/services'
+import { useUIStore, SIDEBAR_WIDTHS } from '@renderer/stores/uiStore'
 import { SettingsModal } from './SettingsModal'
-import type { Server } from '@shared/types/kook'
-import type { UserStatus } from '@shared/types/kook'
-import type { RoomInfoResponse } from '@shared/types/api'
+import type { Server } from '@shared/types/server'
+import type { UserStatus } from '@shared/types/auth'
 
 export function ServerSidebar() {
-  const { rooms, currentRoomId, createRoom, deleteRoom, setCurrentRoomId, setCurrentChannel } = useRoomStore()
-  const servers = useMemo(() => getServersFromRooms(rooms), [rooms])
+  const { servers, currentServerId, createServer, deleteServer, setCurrentServer, fetchServerDetail } = useServerStore()
   const { currentUser, setCustomStatus, status, setStatus } = useAuthStore()
-  const { serverSidebarExpanded, toggleServerSidebar } = useLayoutStore()
+  const { serverSidebarExpanded, toggleServerSidebar, setActiveView, setCurrentServerId, setCurrentChannelId } = useUIStore()
   const { message } = App.useApp()
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showExploreModal, setShowExploreModal] = useState(false)
   const [showCustomStatusModal, setShowCustomStatusModal] = useState(false)
   const [customStatusText, setCustomStatusText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [roomName, setRoomName] = useState('')
+  const [serverName, setServerName] = useState('')
   const [loading, setLoading] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [serverToDelete, setServerToDelete] = useState<Server | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [publicRooms, setPublicRooms] = useState<RoomInfoResponse[]>([])
-  const [exploreLoading, setExploreLoading] = useState(false)
-
-  const currentServerId = currentRoomId
 
   const sidebarWidth = serverSidebarExpanded
     ? SIDEBAR_WIDTHS.serverExpanded
     : SIDEBAR_WIDTHS.server
 
   const handleCreateServer = async () => {
-    if (!roomName.trim()) {
-      message.warning('请输入房间名称')
+    if (!serverName.trim()) {
+      message.warning('请输入服务器名称')
       return
     }
     setLoading(true)
     try {
-      const room = await createRoom({ roomName: roomName.trim(), roomType: 2, isPrivate: false })
-      setCurrentRoomId(String(room.id))
-      setCurrentChannel(String(room.id))
-      message.success('房间创建成功')
+      const newServer = await createServer({ name: serverName.trim(), isPrivate: false })
+      setCurrentServer(newServer.id)
+      setCurrentServerId(newServer.id)
+      setActiveView('server-home', { serverId: newServer.id })
+      message.success('服务器创建成功')
       setShowCreateModal(false)
-      setRoomName('')
+      setServerName('')
     } catch (_err) {
-      message.error('创建房间失败')
+      message.error('创建服务器失败')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleExploreServers = async () => {
-    setShowExploreModal(true)
-    setExploreLoading(true)
-    try {
-      const rooms = await roomService.getPublicRooms()
-      setPublicRooms(rooms)
-    } catch (err) {
-      console.error('Failed to fetch public rooms:', err)
-      message.error('获取公开房间列表失败')
-    } finally {
-      setExploreLoading(false)
-    }
-  }
-
-  const handleJoinPublicRoom = async (roomId: number) => {
-    try {
-      await roomService.joinRoom(roomId)
-      message.success('已加入房间')
-      const rooms = await roomService.getRoomList()
-      const newRoom = rooms.find(r => r.id === roomId)
-      if (newRoom) {
-        setCurrentRoomId(String(newRoom.id))
-        setCurrentChannel(String(newRoom.id))
-      }
-      setShowExploreModal(false)
-    } catch (err) {
-      console.error('Failed to join room:', err)
-      message.error('加入房间失败')
     }
   }
 
@@ -122,18 +81,16 @@ export function ServerSidebar() {
 
     setDeleteLoading(true)
     try {
-      await deleteRoom(serverToDelete.id)
-      message.success('房间已删除')
+      await deleteServer(serverToDelete.id)
+      message.success('服务器已删除')
       setDeleteModalOpen(false)
       setServerToDelete(null)
     } catch (err) {
-      console.error('Failed to delete room:', err)
-      let errorMessage = '删除房间失败'
+      console.error('Failed to delete server:', err)
+      let errorMessage = '删除服务器失败'
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { code?: number; message?: string } } }
-        if (axiosErr.response?.data?.code === 40004) {
-          errorMessage = '只有房主才能删除房间'
-        } else if (axiosErr.response?.data?.message) {
+        if (axiosErr.response?.data?.message) {
           errorMessage = axiosErr.response.data.message
         }
       }
@@ -160,14 +117,21 @@ export function ServerSidebar() {
   }
 
   const displayName = currentUser?.username || '用户'
-  const avatar = currentUser?.avatar || undefined
+  const avatar = currentUser?.avatarUrl || undefined
 
-  const handleServerClick = useCallback((serverId: string | null) => {
-    setCurrentRoomId(serverId || '')
-    if (serverId) {
-      setCurrentChannel(serverId)
+  const handleServerClick = useCallback((serverId: number | null) => {
+    if (serverId === null) {
+      setActiveView('server-home')
+    } else {
+      setCurrentServer(serverId)
+      setCurrentServerId(serverId)
+      void fetchServerDetail(serverId)
+      setActiveView('server-home', { serverId })
     }
-  }, [setCurrentRoomId, setCurrentChannel])
+  }, [setCurrentServer, setCurrentServerId, fetchServerDetail, setActiveView])
+
+  // Suppress unused warning - used in handleServerClick for channel navigation
+  void setCurrentChannelId
 
   return (
     <div
@@ -187,7 +151,7 @@ export function ServerSidebar() {
             </svg>
           }
           name="首页"
-          isActive={!currentServerId}
+          isActive={currentServerId === null}
           onClick={() => handleServerClick(null)}
           isExpanded={serverSidebarExpanded}
         />
@@ -200,7 +164,7 @@ export function ServerSidebar() {
         serverSidebarExpanded ? "w-[calc(100%-24px)]" : "w-8"
       )} />
 
-      {/* 房间列表 - 可滚动区域 */}
+      {/* 服务器列表 - 可滚动区域 */}
       <div className={cn(
         "flex-1 overflow-y-auto overflow-x-hidden min-h-0",
         serverSidebarExpanded ? "px-2" : "flex flex-col items-center"
@@ -213,25 +177,15 @@ export function ServerSidebar() {
             isActive={currentServerId === server.id}
             onClick={() => handleServerClick(server.id)}
             onDelete={() => handleDeleteServer(server)}
-            hasNotification={server.channels.some(c => c.unreadCount && c.unreadCount > 0)}
             isExpanded={serverSidebarExpanded}
           />
         ))}
 
-        {/* 添加房间按钮 */}
+        {/* 添加服务器按钮 */}
         <ServerIcon
           icon={<PlusOutlined className="text-[var(--color-primary)] text-lg" />}
-          name="添加房间"
+          name="添加服务器"
           onClick={() => setShowCreateModal(true)}
-          isAction
-          isExpanded={serverSidebarExpanded}
-        />
-
-        {/* 探索房间按钮 */}
-        <ServerIcon
-          icon={<CompassOutlined className="text-[var(--color-primary)] text-lg" />}
-          name="探索房间"
-          onClick={handleExploreServers}
           isAction
           isExpanded={serverSidebarExpanded}
         />
@@ -333,7 +287,7 @@ export function ServerSidebar() {
 
       <Modal
         open={showCreateModal}
-        title="创建房间"
+        title="创建服务器"
         onCancel={() => setShowCreateModal(false)}
         onOk={handleCreateServer}
         okText="创建"
@@ -346,66 +300,12 @@ export function ServerSidebar() {
       >
         <div className="py-4">
           <Input
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            placeholder="输入房间名称"
+            value={serverName}
+            onChange={(e) => setServerName(e.target.value)}
+            placeholder="输入服务器名称"
             prefix={<PlusOutlined className="text-[var(--color-text-muted)]" />}
             className="rounded-lg"
           />
-        </div>
-      </Modal>
-
-      <Modal
-        open={showExploreModal}
-        title="探索房间"
-        onCancel={() => setShowExploreModal(false)}
-        footer={null}
-        width={500}
-        zIndex={2000}
-        styles={{
-          body: { backgroundColor: 'var(--color-bg-secondary)', maxHeight: '60vh', overflowY: 'auto' },
-        }}
-      >
-        <div className="py-4 space-y-4">
-          {exploreLoading ? (
-            <div className="flex justify-center py-8">
-              <Spin indicator={<LoadingOutlined className="text-[var(--color-primary)]" spin />} />
-            </div>
-          ) : publicRooms.length === 0 ? (
-            <div className="text-center py-8">
-              <CompassOutlined className="text-4xl text-[var(--color-text-muted)] mb-2" />
-              <p className="text-sm text-[var(--color-text-muted)]">暂无公开房间</p>
-            </div>
-          ) : (
-            publicRooms.map(room => (
-              <div
-                key={room.id}
-                className="flex items-center gap-3 p-3 bg-[var(--color-bg-tertiary)] rounded-lg hover:bg-[var(--color-bg-darker)] transition-colors"
-              >
-                <Avatar
-                  size={48}
-                  className="bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)] flex-shrink-0"
-                >
-                  {room.roomName.charAt(0).toUpperCase()}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-[var(--color-text-normal)] truncate">{room.roomName}</h4>
-                  <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                    <UserOutlined />
-                    <span>{room.participantCount} 人</span>
-                  </div>
-                </div>
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => handleJoinPublicRoom(room.id)}
-                  className="rounded-lg"
-                >
-                  加入
-                </Button>
-              </div>
-            ))
-          )}
         </div>
       </Modal>
 
@@ -440,7 +340,7 @@ export function ServerSidebar() {
 
       <Modal
         open={deleteModalOpen}
-        title="删除房间"
+        title="删除服务器"
         onCancel={() => {
           setDeleteModalOpen(false)
           setServerToDelete(null)
@@ -456,10 +356,10 @@ export function ServerSidebar() {
       >
         <div className="py-4">
           <p className="text-[var(--color-text-normal)]">
-            确定要删除房间 <strong>"{serverToDelete?.name}"</strong> 吗？
+            确定要删除服务器 <strong>"{serverToDelete?.name}"</strong> 吗？
           </p>
           <p className="text-[var(--color-text-muted)] text-sm mt-2">
-            此操作不可撤销，房间内的所有数据将被删除。
+            此操作不可撤销，服务器内的所有数据将被删除。
           </p>
         </div>
       </Modal>
@@ -486,7 +386,7 @@ function ServerIcon({ server, icon, name, isActive, onClick, onDelete, isAction,
       label: (
         <div className="flex items-center gap-2 text-[var(--color-dnd)]">
           <DeleteOutlined />
-          <span>删除房间</span>
+          <span>删除服务器</span>
         </div>
       ),
       onClick: onDelete,
@@ -528,12 +428,12 @@ function ServerIcon({ server, icon, name, isActive, onClick, onDelete, isAction,
               "rounded-full hover:rounded-2xl",
               isActive && "rounded-2xl bg-[var(--color-primary)]/20",
               isAction && "bg-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/30",
-              !isAction && !server?.icon && !icon && "bg-[var(--color-accent)]"
+              !isAction && !server?.iconUrl && !icon && "bg-[var(--color-accent)]"
             )}
           >
-            {server?.icon ? (
+            {server?.iconUrl ? (
               <img
-                src={server.icon}
+                src={server.iconUrl}
                 alt={server.name}
                 className="w-full h-full rounded-inherit object-cover"
               />
@@ -600,12 +500,12 @@ function ServerIcon({ server, icon, name, isActive, onClick, onDelete, isAction,
           isAction
             ? "w-8 h-8 rounded-lg bg-[var(--color-primary)]/20"
             : "w-8 h-8 rounded-lg",
-          !isAction && !server?.icon && !icon && "bg-[var(--color-accent)]",
-          !isAction && !server?.icon && icon && "bg-transparent"
+          !isAction && !server?.iconUrl && !icon && "bg-[var(--color-accent)]",
+          !isAction && !server?.iconUrl && icon && "bg-transparent"
         )}>
-          {server?.icon ? (
+          {server?.iconUrl ? (
             <img
-              src={server.icon}
+              src={server.iconUrl}
               alt={server.name}
               className="w-full h-full rounded-lg object-cover"
             />

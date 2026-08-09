@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect } from 'react'
-import { useThemeStore, type AppTheme } from '@renderer/stores/themeStore'
+import { useUIStore, type AppTheme } from '@renderer/stores/uiStore'
 
 interface ThemeContextType {
   theme: AppTheme
@@ -9,7 +9,9 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const { theme, setTheme, initTheme } = useThemeStore()
+  const theme = useUIStore((s) => s.theme)
+  const setTheme = useUIStore((s) => s.setTheme)
+  const initTheme = useUIStore((s) => s.initTheme)
 
   // Initialize theme on mount
   useEffect(() => {

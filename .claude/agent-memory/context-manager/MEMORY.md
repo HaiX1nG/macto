@@ -1,0 +1,1 @@
+- [Phase 5/6 Remaining Work](kook-phase5-remaining-work.md) - 61 tsc errors, 6 categories, actionable fix order

@@ -20,7 +20,14 @@
       "Bash(rm -rf ~/.claude/tasks/*)",
       "Bash(rm -rf ~/.claude/teams/*)",
       "Bash(mkdir -p /Users/megumikato/ReactProject/macto/.claude/agents)",
-      "Bash(cp /Users/megumikato/ReactProject/macto/.claude/agents.bak/ui-builder.md /Users/megumikato/ReactProject/macto/.claude/agents/ui-builder.md)"
+      "Bash(cp /Users/megumikato/ReactProject/macto/.claude/agents.bak/ui-builder.md /Users/megumikato/ReactProject/macto/.claude/agents/ui-builder.md)",
+      "Bash(git fetch *)",
+      "Bash(npx tsc *)",
+      "Bash(python *)",
+      "Bash(rg --files /Users/megumikato/ReactProject/macto/.claude/worktrees/agent-a7a98f24fc7c7c424/src/renderer/pages /Users/megumikato/ReactProject/macto/.claude/worktrees/agent-a7a98f24fc7c7c424/src/renderer/components)",
+      "Bash(rg *)",
+      "Bash(git *)",
+      "Bash(awk -F: '{print $1}')"
     ]
   },
   "mcpServers": {
