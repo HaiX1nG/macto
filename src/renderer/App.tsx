@@ -35,7 +35,10 @@ function AppContent() {
 
   // Initialize auth from stored tokens on app start
   useEffect(() => {
-    initAuth()
+    const cleanup = initAuth()
+    return () => {
+      cleanup?.()
+    }
   }, [initAuth])
 
   // Apply theme to document

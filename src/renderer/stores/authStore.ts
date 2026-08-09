@@ -32,7 +32,8 @@ export interface AuthState {
   status: UserStatus
 
   // Actions
-  initAuth: () => Promise<void>
+  // Returns a synchronous cleanup function (removes auth:logout listener)
+  initAuth: () => () => void
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string, email?: string) => Promise<void>
   logout: () => void
@@ -82,15 +83,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   status: 'online',
 
   // Initialize auth from stored tokens (called on app startup)
-  initAuth: async () => {
+  // Returns a synchronous cleanup function that removes the auth:logout listener.
+  // The listener MUST be registered before any async fetchUserInfo call, so that
+  // a token-expired 401 during fetchUserInfo does not miss the event.
+  initAuth: () => {
+    // 1. Register listener FIRST — before any async work
+    const handleAuthLogout = () => {
+      // Directly clear store state instead of calling get().logout(),
+      // which would trigger apiClient.logout() -> dispatch auth:logout -> recursion.
+      set({
+        isAuthenticated: false,
+        currentUser: null,
+        token: null,
+        error: null,
+      })
+    }
+    window.addEventListener('auth:logout', handleAuthLogout)
+
+    // 2. Kick off async fetch (fire-and-forget; the caller does not await it)
     if (apiClient.isAuthenticated()) {
       set({ isAuthenticated: true, token: apiClient.getAccessToken() })
-      try {
-        await get().fetchUserInfo()
-      } catch {
-        // If fetching user info fails (e.g. token expired), the apiClient
-        // interceptor will dispatch auth:logout which resets state via logout()
-      }
+      // Use an IIFE so we don't return a promise from initAuth
+      ;(async () => {
+        try {
+          await get().fetchUserInfo()
+        } catch {
+          // If fetchUserInfo fails (e.g. token expired), the apiClient interceptor
+          // will dispatch auth:logout which is already handled by the listener above.
+          // If the interceptor already cleared the token before dispatching,
+          // the listener will clean store state — no double-dispatch.
+        }
+      })()
+    }
+
+    // 3. Return synchronous cleanup
+    return () => {
+      window.removeEventListener('auth:logout', handleAuthLogout)
     }
   },
 
