@@ -70,9 +70,14 @@ class WebSocketService {
         // Prefer the freshest token from the provider (if any) over the
         // possibly-stale cached token.
         const effectiveToken = token ?? this.tokenProvider?.() ?? this.token
-        const url = effectiveToken
-          ? `${this.options.url}?token=${encodeURIComponent(effectiveToken)}`
-          : this.options.url
+        // If the caller already embedded a token query param in the URL
+        // (e.g. wsConnection.buildUrl), use it as-is to avoid double-token.
+        const urlHasToken = new URL(this.options.url).searchParams.has('token')
+        const url = urlHasToken
+          ? this.options.url
+          : effectiveToken
+            ? `${this.options.url}?token=${encodeURIComponent(effectiveToken)}`
+            : this.options.url
 
         this.ws = new WebSocket(url)
 
