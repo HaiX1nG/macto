@@ -20,7 +20,8 @@ export const messageService = {
     if (Array.isArray(result)) {
       return { list: result, total: result.length }
     }
-    return { list: result.list, total: result.total }
+    // Backend may return `list: null` for empty channels; normalize to `[]`
+    return { list: result.list ?? [], total: result.total }
   },
 
   async sendMessage(
