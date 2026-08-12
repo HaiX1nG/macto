@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { App } from 'antd'
+import { App, Dropdown, Empty, Popover } from 'antd'
 import { useChannelStore } from '@renderer/stores/channelStore'
 import { useChatStore, type MessageWithStatus } from '@renderer/stores/chatStore'
 import { useServerStore } from '@renderer/stores/serverStore'
@@ -18,7 +18,7 @@ import {
 } from '@ant-design/icons'
 import { HeaderButton } from '@renderer/components/ui/HeaderButton'
 import { SkeletonMessageList } from '@renderer/components/ui/Skeleton'
-import { NoChannelSelected } from '@renderer/components/ui/EmptyState'
+import { NoChannelSelected, EmptyNotifications } from '@renderer/components/ui/EmptyState'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageType } from '@shared/types/message'
 import type { ChannelMessage } from '@shared/types/message'
@@ -28,7 +28,7 @@ export function ChatView() {
   const { message: messageApi } = App.useApp()
   const { currentChannel, currentChannelId } = useChannelStore()
   const { members } = useServerStore()
-  const { setActiveView } = useUIStore()
+  const { setActiveView, toggleMemberList } = useUIStore()
   const {
     messages: messagesMap,
     fetchMessages,
@@ -90,6 +90,28 @@ export function ChatView() {
   const pinnedMessages = useMemo(() => {
     return channelMessages.filter(m => m.isPinned)
   }, [channelMessages])
+
+  // 置顶消息面板内容
+  const pinnedPanel = useMemo(() => {
+    if (pinnedMessages.length === 0) {
+      return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无置顶消息" className="m-4" />
+    }
+    return (
+      <div className="flex flex-col gap-1 p-1 max-h-72 overflow-y-auto w-64">
+        {pinnedMessages.map((m) => (
+          <div key={m.id} className="px-3 py-2 rounded-lg hover:bg-[var(--color-bg-tertiary)] flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[var(--color-primary)] truncate">{m.senderName}</span>
+              <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">
+                {new Date(m.createdAt).toLocaleString()}
+              </span>
+            </div>
+            <p className="text-sm text-[var(--color-text-normal)] break-all">{m.content}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }, [pinnedMessages])
 
   useEffect(() => {
     if (currentChannelId) {
@@ -235,9 +257,30 @@ export function ChatView() {
             </>
           )}
           <div className="ml-auto flex items-center gap-2">
-            <HeaderButton icon={<BellOutlined />} label="通知" />
-            <HeaderButton icon={<PushpinOutlined />} label="置顶" />
-            <HeaderButton icon={<UserOutlined />} label="成员" />
+            <Dropdown
+              trigger={['click']}
+              placement="bottomRight"
+              overlayClassName="rounded-xl overflow-hidden"
+              menu={{ items: [] }}
+              dropdownRender={() => <EmptyNotifications />}
+            >
+              <span className="inline-flex">
+                <HeaderButton icon={<BellOutlined />} label="通知" />
+              </span>
+            </Dropdown>
+            <Popover
+              placement="bottomRight"
+              trigger="click"
+              content={pinnedPanel}
+              title={<span className="text-sm font-semibold text-[var(--color-text-normal)]">置顶消息</span>}
+              overlayInnerStyle={{ padding: 0 }}
+              overlayClassName="rounded-xl overflow-hidden"
+            >
+              <span className="inline-flex">
+                <HeaderButton icon={<PushpinOutlined />} label="置顶" />
+              </span>
+            </Popover>
+            <HeaderButton icon={<UserOutlined />} label="成员" onClick={toggleMemberList} />
             <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
             <button
               onClick={() => setSearchOpen(true)}
@@ -246,7 +289,11 @@ export function ChatView() {
               <SearchOutlined />
               <span className="w-20 text-left">搜索</span>
             </button>
-            <HeaderButton icon={<InboxOutlined />} label="收件箱" />
+            <HeaderButton
+              icon={<InboxOutlined />}
+              label="收件箱"
+              onClick={() => setActiveView('friends')}
+            />
           </div>
         </div>
 

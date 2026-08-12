@@ -31,6 +31,11 @@ export interface AuthState {
   error: string | null
   status: UserStatus
 
+  // Live presence cache for arbitrary users (userId -> online?).
+  // Populated on demand by callers that need online status (e.g. MemberList).
+  onlineStatus: Record<number, boolean>
+  lastOnlineFetchAt: number
+
   // Actions
   // Returns a synchronous cleanup function (removes auth:logout listener)
   initAuth: () => () => void
@@ -40,6 +45,7 @@ export interface AuthState {
   clearError: () => void
   fetchUserInfo: () => Promise<void>
   setStatus: (status: UserStatus) => void
+  setOnlineStatus: (userId: number, isOnline: boolean) => void
   setCustomStatus: (status: SetCustomStatusRequest) => Promise<void>
   updateProfile: (data: UpdateProfileRequest) => Promise<void>
   changePassword: (oldPassword: string, newPassword: string) => Promise<void>
@@ -81,6 +87,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   error: null,
   status: 'online',
+  onlineStatus: {},
+  lastOnlineFetchAt: 0,
 
   // Initialize auth from stored tokens (called on app startup)
   // Returns a synchronous cleanup function that removes the auth:logout listener.
@@ -203,6 +211,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // Set status (local only, no API call)
   setStatus: (status: UserStatus) => {
     set({ status })
+  },
+
+  // Cache an individual user's online status (live presence)
+  setOnlineStatus: (userId: number, isOnline: boolean) => {
+    set((state) => ({ onlineStatus: { ...state.onlineStatus, [userId]: isOnline } }))
   },
 
   // Set custom status

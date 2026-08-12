@@ -18,10 +18,10 @@ import { voiceService } from '@renderer/services'
 import { HeaderButton } from '@renderer/components/ui/HeaderButton'
 import { VoiceParticipantCard } from '@renderer/components/voice/VoiceParticipantCard'
 import { NoChannelSelected } from '@renderer/components/ui/EmptyState'
+import { AudioSettings } from '@renderer/components/settings/AudioSettings'
 import { cn } from '@renderer/utils/cn'
 import type { ViewPageProps } from '@renderer/config/viewRegistry'
 import type { Channel } from '@shared/types/channel'
-import type { VoiceParticipant } from '@shared/types/voice'
 
 /**
  * VoicePage - 语音频道会话页。
@@ -34,15 +34,29 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
   const { currentServer } = useServerStore()
   const { currentChannelId } = useUIStore()
   const { currentUser } = useAuthStore()
-  const { isCapturing, startCapture, stopCapture, isMuted: storeMuted, setMute: storeSetMute } = useMediaStore()
-  const { isSpeaking, error: voiceError, clearError } = useVoiceStore()
+  const {
+    isCapturing,
+    startCapture,
+    stopCapture,
+    isMuted: storeMuted,
+    setMute: storeSetMute,
+    volume: storeVolume,
+    setVolume: storeSetVolume,
+  } = useMediaStore()
+  const {
+    isSpeaking,
+    isDeafened: storeDeafened,
+    setDeafen: storeSetDeafen,
+    error: voiceError,
+    clearError,
+    participants,
+  } = useVoiceStore()
+  const toggleMemberList = useUIStore((s) => s.toggleMemberList)
 
-  const [isConnected, setIsConnected] = useState(false)
-  const [isDeafened, setIsDeafened] = useState(false)
-  const [volume, setVolume] = useState(100)
-  const [participants, setParticipants] = useState<VoiceParticipant[]>([])
   const [loading, setLoading] = useState(false)
+  const [audioSettingsOpen, setAudioSettingsOpen] = useState(false)
 
+  const isConnected = isCapturing
   const currentRoom = currentServer
   const targetChannelId = params.channelId ?? currentChannelId ?? undefined
 
@@ -52,29 +66,28 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
   const roomId = currentChannel ? currentChannel.serverId : 0
 
   useEffect(() => {
-    setIsConnected(isCapturing)
-  }, [isCapturing])
-
-  useEffect(() => {
     if (voiceError) {
       messageApi.error(voiceError)
       clearError()
     }
   }, [voiceError, messageApi, clearError])
 
+  // Seed participants on connect. voiceStore.participants is the single source of
+  // truth, kept live by useRoomWebSocket (voice_user_joined / voice_state_update /
+  // voice_user_left). We only fetch once here to populate the store at join time
+  // when no live broadcast has arrived yet.
   useEffect(() => {
-    if (isConnected && roomId) {
-      const fetchParticipants = async () => {
-        try {
-          const result = await voiceService.getVoiceParticipants(roomId)
-          setParticipants(result)
-        } catch (err) {
+    if (isConnected && roomId && useVoiceStore.getState().participants.length === 0) {
+      void voiceService
+        .getVoiceParticipants(roomId)
+        .then((result) => {
+          if (useVoiceStore.getState().participants.length === 0) {
+            useVoiceStore.setState({ participants: result })
+          }
+        })
+        .catch((err) => {
           console.error('Failed to fetch voice participants:', err)
-        }
-      }
-      fetchParticipants()
-      const interval = setInterval(fetchParticipants, 5000)
-      return () => clearInterval(interval)
+        })
     }
   }, [isConnected, roomId])
 
@@ -100,14 +113,16 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
     try {
       // stopCapture handles leaveVoice API call and WebRTC cleanup
       await stopCapture()
-      setIsDeafened(false)
-      setParticipants([])
+      storeSetDeafen(false)
+      if (useVoiceStore.getState().participants.length > 0) {
+        useVoiceStore.setState({ participants: [] })
+      }
       messageApi.success('已离开语音频道')
     } catch (err) {
       console.error('[VoicePage] Failed to leave voice:', err)
       messageApi.warning('已断开本地连接')
     }
-  }, [roomId, stopCapture, messageApi])
+  }, [roomId, stopCapture, messageApi, storeSetDeafen])
 
   const handleSetMute = useCallback(async () => {
     try {
@@ -117,9 +132,18 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
     }
   }, [storeMuted, storeSetMute])
 
-  const handleDeafenToggle = useCallback(() => {
-    setIsDeafened((prev) => !prev)
-  }, [])
+  const handleDeafenToggle = useCallback(async () => {
+    const next = !storeDeafened
+    // Update local store + track mute. Deafen implies muted locally.
+    storeSetDeafen(next)
+    if (roomId) {
+      try {
+        await voiceService.setMute(roomId, { isMuted: next || storeMuted, isDeafened: next })
+      } catch (err) {
+        console.error('Failed to sync deafen state:', err)
+      }
+    }
+  }, [storeDeafened, storeMuted, storeSetDeafen, roomId])
 
   if (!currentRoom || !currentChannel) {
     return (
@@ -178,16 +202,21 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
               />
               <HeaderButton
                 icon={<SoundOutlined />}
-                onClick={handleDeafenToggle}
-                active={isDeafened}
+                onClick={() => void handleDeafenToggle()}
+                active={storeDeafened}
                 label="耳聋"
               />
             </>
           )}
-          <HeaderButton icon={<UserOutlined />} label="用户" />
-          <HeaderButton icon={<SettingOutlined />} label="设置" />
+          <HeaderButton icon={<UserOutlined />} label="用户" onClick={toggleMemberList} />
+          <HeaderButton icon={<SettingOutlined />} label="设置" onClick={() => setAudioSettingsOpen(true)} />
         </div>
       </div>
+
+      <AudioSettings
+        open={audioSettingsOpen}
+        onClose={() => setAudioSettingsOpen(false)}
+      />
 
       <div className="flex-1 flex min-h-0">
         {/* Voice status area */}
@@ -207,6 +236,11 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
                     </Avatar>
                     <span className="text-xs text-[var(--color-text-normal)]">{currentUser.username}</span>
                     {storeMuted && <AudioMutedOutlined className="text-xs text-[var(--color-dnd)]" />}
+                    {storeDeafened && !storeMuted && (
+                      <span className="flex items-center gap-0.5 text-xs text-[var(--color-dnd)]">
+                        <SoundOutlined className="text-xs" /> 耳聋
+                      </span>
+                    )}
                   </div>
                 )}
                 {participants.slice(0, 3).map((p) => (
@@ -257,14 +291,19 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
                 <VoiceParticipantCard
                   name={currentUser.username}
                   speaking={isSpeaking}
-                  muted={storeMuted}
+                  muted={storeMuted || storeDeafened}
                   isCurrentUser
                 />
               )}
               {participants
                 .filter((p) => p.userId !== currentUser?.id)
                 .map((p) => (
-                  <VoiceParticipantCard key={p.id} name={p.username} speaking={false} muted={false} />
+                  <VoiceParticipantCard
+                    key={p.id}
+                    name={p.username}
+                    speaking={p.isSpeaking}
+                    muted={p.isMuted || p.isDeafened}
+                  />
                 ))}
             </div>
 
@@ -272,17 +311,17 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
               <div className="flex items-center gap-2 mb-2">
                 <SoundOutlined className="text-[var(--color-text-muted)] text-sm" />
                 <span className="text-xs text-[var(--color-text-muted)]">输出音量</span>
-                <span className="text-xs text-[var(--color-primary)] ml-auto">{volume}%</span>
+                <span className="text-xs text-[var(--color-primary)] ml-auto">{storeVolume}%</span>
               </div>
               <input
                 type="range"
                 min="0"
                 max="100"
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
+                value={storeVolume}
+                onChange={(e) => storeSetVolume(Number(e.target.value))}
                 className="w-full h-1.5 bg-[var(--color-bg-darker)] rounded-full appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, var(--color-primary) ${volume}%, var(--color-bg-darker) ${volume}%)`,
+                  background: `linear-gradient(to right, var(--color-primary) ${storeVolume}%, var(--color-bg-darker) ${storeVolume}%)`,
                 }}
               />
             </div>

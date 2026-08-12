@@ -84,10 +84,16 @@ export type {
 export type {
   FriendRequestStatus,
   FriendRequest,
-  Friendship,
+  FriendItem,
   PrivateMessage,
   Conversation,
+  SearchResult,
+  UserSearchResult,
   SendFriendRequestPayload,
   HandleFriendRequestPayload,
   SendPrivateMessageRequest,
+  FriendsListResponse,
+  FriendRequestsResponse,
+  PrivateMessagesResponse,
+  ConversationsResponse,
 } from './friend'

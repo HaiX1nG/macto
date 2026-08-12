@@ -98,10 +98,13 @@ function getWebrtcManager(): WebRTCManager | null {
         })
       },
       (remoteUserId: number, _username: string, stream: MediaStream) => {
-        // Remote stream received - play it and add to store
+        // Remote stream received - play it and add to store.
+        // Apply the user's output volume before playback starts.
         const audio = new Audio()
         audio.srcObject = stream
         audio.autoplay = true
+        // Volume is stored as a percentage (0-100) → map to Web Audio 0..1.
+        audio.volume = useMediaStore.getState().volume / 100
         audio.play().catch((err) => {
           console.error('[MediaStore] Failed to play remote audio:', err)
         })

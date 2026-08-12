@@ -5,6 +5,7 @@ import {
   SettingOutlined,
   EditOutlined,
   DeleteOutlined,
+  TeamOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons'
@@ -150,6 +151,25 @@ export function ServerSidebar() {
           name="首页"
           isActive={currentServerId === null}
           onClick={() => handleServerClick(null)}
+          isExpanded={serverSidebarExpanded}
+        />
+      </div>
+
+      {/* 分隔线 */}
+      <div className={cn(
+        "mx-auto my-1 h-[2px] bg-[var(--color-border)] rounded-full flex-shrink-0",
+        "transition-[width] duration-300 ease-out",
+        serverSidebarExpanded ? "w-[calc(100%-24px)]" : "w-8"
+      )} />
+
+      {/* 好友按钮 */}
+      <div className="flex-shrink-0">
+        <ServerIcon
+          icon={<TeamOutlined className="text-lg text-[var(--color-primary)]" />}
+          name="好友"
+          isActive={false}
+          onClick={() => setActiveView('friends')}
+          isAction
           isExpanded={serverSidebarExpanded}
         />
       </div>

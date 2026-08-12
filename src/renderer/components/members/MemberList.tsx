@@ -12,8 +12,12 @@ import { Modal } from '@renderer/components/ui/Modal'
 import type { ServerMember } from '@shared/types/server'
 import type { UserInfoResponse } from '@shared/types/auth'
 
+const ONLINE_POLL_INTERVAL = 60000 // refresh presence every 60s
+
 export function MemberList() {
   const { currentServerId, members, fetchMembers } = useServerStore()
+  const onlineStatus = useAuthStore((s) => s.onlineStatus)
+  const setOnlineStatus = useAuthStore((s) => s.setOnlineStatus)
   const [loading, setLoading] = useState(false)
   const [profileMember, setProfileMember] = useState<ServerMember | null>(null)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
@@ -28,13 +32,14 @@ export function MemberList() {
     try {
       const userInfo = await authService.getUserInfoById(member.userId)
       setProfileData(userInfo)
+      setOnlineStatus(member.userId, userInfo.isOnline)
     } catch (err) {
       console.error('Failed to fetch user profile:', err)
       setProfileData(null)
     } finally {
       setProfileLoading(false)
     }
-  }, [])
+  }, [setOnlineStatus])
 
   useEffect(() => {
     if (!currentServerId) return
@@ -44,6 +49,29 @@ export function MemberList() {
       .catch(err => console.error('Failed to fetch members:', err))
       .finally(() => setLoading(false))
   }, [currentServerId, fetchMembers])
+
+  // Poll live presence for each member via authService.getUserOnlineStatus.
+  // ServerMember has no online field, so we fetch it per-user and cache in
+  // authStore.onlineStatus. Cost: N requests every 60s. Bail if auth not ready.
+  const pollOnlineStatus = useCallback(async () => {
+    if (members.length === 0) return
+    await Promise.all(
+      members.map(async (member) => {
+        try {
+          const res = await authService.getUserOnlineStatus(member.userId)
+          setOnlineStatus(member.userId, res.isOnline)
+        } catch {
+          // individual failures are non-fatal; keep last known status
+        }
+      })
+    )
+  }, [members, setOnlineStatus])
+
+  useEffect(() => {
+    void pollOnlineStatus()
+    const interval = window.setInterval(() => void pollOnlineStatus(), ONLINE_POLL_INTERVAL)
+    return () => window.clearInterval(interval)
+  }, [pollOnlineStatus])
 
   // Group members by role
   const roleGroups = useMemo(() => {
@@ -103,6 +131,7 @@ export function MemberList() {
             key={roleName}
             title={roleName}
             members={groupMembers}
+            onlineStatus={onlineStatus}
             onOpenProfile={handleOpenProfile}
           />
         ))}
@@ -122,10 +151,11 @@ export function MemberList() {
 interface MemberCategoryProps {
   title: string
   members: ServerMember[]
+  onlineStatus: Record<number, boolean>
   onOpenProfile: (member: ServerMember) => void
 }
 
-function MemberCategory({ title, members, onOpenProfile }: MemberCategoryProps) {
+function MemberCategory({ title, members, onlineStatus, onOpenProfile }: MemberCategoryProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
@@ -147,6 +177,7 @@ function MemberCategory({ title, members, onOpenProfile }: MemberCategoryProps) 
             <MemberItem
               key={member.id}
               member={member}
+              isOnline={onlineStatus[member.userId]}
               onOpenProfile={onOpenProfile}
             />
           ))}
@@ -159,9 +190,10 @@ function MemberCategory({ title, members, onOpenProfile }: MemberCategoryProps) 
 interface MemberItemProps {
   member: ServerMember
   onOpenProfile: (member: ServerMember) => void
+  isOnline?: boolean
 }
 
-function MemberItem({ member, onOpenProfile }: MemberItemProps) {
+function MemberItem({ member, onOpenProfile, isOnline }: MemberItemProps) {
   const { currentServerId, kickMember } = useServerStore()
   const { currentUser } = useAuthStore()
   const [kickLoading, setKickLoading] = useState(false)
@@ -256,6 +288,13 @@ function MemberItem({ member, onOpenProfile }: MemberItemProps) {
           >
             {member.username.charAt(0).toUpperCase()}
           </Avatar>
+          {/* Presence dot (online = green, unknown/offline = grey) */}
+          <span
+            className={cn(
+              'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[var(--color-bg-base)]',
+              isOnline ? 'bg-[var(--color-online)]' : 'bg-[var(--color-offline)]'
+            )}
+          />
         </div>
         <div className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-1">
