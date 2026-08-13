@@ -1,6 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useVoiceStore } from '../voiceStore'
 import { useMediaStore } from '../mediaStore'
+import { voiceService } from '../../services/voiceService'
+
+// Mock voiceService so joinVoice/leaveVoice never hit real network calls
+vi.mock('../../services/voiceService', () => ({
+  voiceService: {
+    joinVoice: vi.fn(),
+    leaveVoice: vi.fn(),
+    getVoiceParticipants: vi.fn(),
+  },
+}))
+
+const mockVoiceService = vi.mocked(voiceService)
 
 // Mock navigator.mediaDevices
 const mockAudioTrack = {
@@ -68,6 +80,11 @@ describe('useVoiceStore', () => {
     })
     // Reset media store mute state
     useMediaStore.setState({ isMuted: false })
+
+    // Re-setup voiceService mocks for each test
+    mockVoiceService.joinVoice.mockReset()
+    mockVoiceService.leaveVoice.mockReset()
+    mockVoiceService.getVoiceParticipants.mockReset()
   })
 
   describe('initial state', () => {
@@ -243,6 +260,102 @@ describe('useVoiceStore', () => {
       onParticipantLeft(999, 456)
 
       expect(useVoiceStore.getState().participants).toHaveLength(1)
+    })
+  })
+
+  describe('joinVoice action', () => {
+    it('should join voice channel successfully: call voiceService.joinVoice + mediaStore.startCapture, set isInVoice=true', async () => {
+      const mockParticipants = [
+        {
+          id: 1,
+          channelId: 123,
+          userId: 456,
+          username: 'otheruser',
+          avatarUrl: '',
+          isMuted: false,
+          isDeafened: false,
+          isSpeaking: false,
+          volume: 100,
+          joinedAt: new Date().toISOString(),
+        },
+      ]
+      mockVoiceService.joinVoice.mockResolvedValue(undefined)
+      mockVoiceService.getVoiceParticipants.mockResolvedValue(mockParticipants)
+      const startCaptureSpy = vi
+        .spyOn(useMediaStore.getState(), 'startCapture')
+        .mockResolvedValue(undefined)
+
+      await useVoiceStore.getState().joinVoice(123)
+
+      expect(mockVoiceService.joinVoice).toHaveBeenCalledWith(123)
+      expect(startCaptureSpy).toHaveBeenCalledWith(123)
+      expect(mockVoiceService.getVoiceParticipants).toHaveBeenCalledWith(123)
+      expect(useVoiceStore.getState().isInVoice).toBe(true)
+      expect(useVoiceStore.getState().currentVoiceChannelId).toBe(123)
+      expect(useVoiceStore.getState().participants).toEqual(mockParticipants)
+    })
+
+    it('should set currentVoiceChannelId even if startCapture fails (so leaveVoice can resolve it)', async () => {
+      mockVoiceService.joinVoice.mockResolvedValue(undefined)
+      const startCaptureSpy = vi
+        .spyOn(useMediaStore.getState(), 'startCapture')
+        .mockRejectedValue(new Error('mic denied'))
+
+      await expect(useVoiceStore.getState().joinVoice(123)).rejects.toThrow('mic denied')
+
+      expect(startCaptureSpy).toHaveBeenCalledWith(123)
+      expect(useVoiceStore.getState().currentVoiceChannelId).toBe(123)
+      expect(useVoiceStore.getState().isInVoice).toBe(false)
+      expect(useVoiceStore.getState().error).not.toBeNull()
+    })
+
+    it('should not set isInVoice when voiceService.joinVoice fails', async () => {
+      mockVoiceService.joinVoice.mockRejectedValue(new Error('join failed'))
+
+      await expect(useVoiceStore.getState().joinVoice(123)).rejects.toThrow('join failed')
+
+      expect(useVoiceStore.getState().isInVoice).toBe(false)
+      expect(useVoiceStore.getState().currentVoiceChannelId).toBeNull()
+      expect(useVoiceStore.getState().error).not.toBeNull()
+    })
+  })
+
+  describe('leaveVoice action', () => {
+    it('should leave voice channel successfully: call mediaStore.stopCapture, reset state', async () => {
+      useVoiceStore.setState({ currentVoiceChannelId: 123, isInVoice: true })
+      const stopCaptureSpy = vi
+        .spyOn(useMediaStore.getState(), 'stopCapture')
+        .mockResolvedValue(undefined)
+
+      await useVoiceStore.getState().leaveVoice()
+
+      expect(stopCaptureSpy).toHaveBeenCalled()
+      expect(useVoiceStore.getState().currentVoiceChannelId).toBeNull()
+      expect(useVoiceStore.getState().isInVoice).toBe(false)
+      expect(useVoiceStore.getState().participants).toEqual([])
+    })
+
+    it('should do nothing when not in a voice channel', async () => {
+      useVoiceStore.setState({ currentVoiceChannelId: null })
+      const stopCaptureSpy = vi
+        .spyOn(useMediaStore.getState(), 'stopCapture')
+        .mockResolvedValue(undefined)
+
+      await useVoiceStore.getState().leaveVoice()
+
+      expect(stopCaptureSpy).not.toHaveBeenCalled()
+    })
+
+    it('should set error when stopCapture fails', async () => {
+      useVoiceStore.setState({ currentVoiceChannelId: 123 })
+      const stopCaptureSpy = vi
+        .spyOn(useMediaStore.getState(), 'stopCapture')
+        .mockRejectedValue(new Error('stop failed'))
+
+      await expect(useVoiceStore.getState().leaveVoice()).rejects.toThrow('stop failed')
+
+      expect(stopCaptureSpy).toHaveBeenCalled()
+      expect(useVoiceStore.getState().error).not.toBeNull()
     })
   })
 
