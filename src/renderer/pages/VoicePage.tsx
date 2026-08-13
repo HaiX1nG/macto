@@ -36,8 +36,6 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
   const { currentUser } = useAuthStore()
   const {
     isCapturing,
-    startCapture,
-    stopCapture,
     isMuted: storeMuted,
     setMute: storeSetMute,
     volume: storeVolume,
@@ -50,13 +48,18 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
     error: voiceError,
     clearError,
     participants,
+    isInVoice,
+    joinVoice,
+    leaveVoice,
   } = useVoiceStore()
   const toggleMemberList = useUIStore((s) => s.toggleMemberList)
 
   const [loading, setLoading] = useState(false)
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false)
 
-  const isConnected = isCapturing
+  // Connected when we have a live capture AND voice store confirms we are in
+  // voice. Both flip together via voiceStore.joinVoice/leaveVoice.
+  const isConnected = isCapturing && isInVoice
   const currentRoom = currentServer
   const targetChannelId = params.channelId ?? currentChannelId ?? undefined
 
@@ -98,31 +101,30 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
     }
     setLoading(true)
     try {
-      await voiceService.joinVoice(roomId)
-      await startCapture(roomId)
+      // Single unified path: voiceStore.joinVoice calls voiceService.joinVoice
+      // then mediaStore.startCapture (getUserMedia → WebRTC offer).
+      await joinVoice(roomId)
       messageApi.success('已加入语音频道')
     } catch (err) {
       console.error('[VoicePage] Failed to join voice:', err)
     } finally {
       setLoading(false)
     }
-  }, [roomId, startCapture, messageApi])
+  }, [roomId, joinVoice, messageApi])
 
   const handleLeaveVoice = useCallback(async () => {
     if (!roomId) return
     try {
-      // stopCapture handles leaveVoice API call and WebRTC cleanup
-      await stopCapture()
+      // voiceStore.leaveVoice calls mediaStore.stopCapture which tears down
+      // WebRTC peers and calls voiceService.leaveVoice once.
+      await leaveVoice()
       storeSetDeafen(false)
-      if (useVoiceStore.getState().participants.length > 0) {
-        useVoiceStore.setState({ participants: [] })
-      }
       messageApi.success('已离开语音频道')
     } catch (err) {
       console.error('[VoicePage] Failed to leave voice:', err)
       messageApi.warning('已断开本地连接')
     }
-  }, [roomId, stopCapture, messageApi, storeSetDeafen])
+  }, [roomId, leaveVoice, messageApi, storeSetDeafen])
 
   const handleSetMute = useCallback(async () => {
     try {

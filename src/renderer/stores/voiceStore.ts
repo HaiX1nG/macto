@@ -44,16 +44,21 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     set({ error: null })
     try {
       await voiceService.joinVoice(channelId)
+      // Record the channel id before capture so leaveVoice can resolve it even
+      // if capture below fails mid-way.
+      set({ currentVoiceChannelId: channelId })
+      // Start real WebRTC audio capture: getUserMedia → setLocalStream →
+      // fetch participants → startVoiceChat (offer to each other user).
+      // See mediaStore.startCapture.
+      await useMediaStore.getState().startCapture(channelId)
       // Fetch current participants
       const participants = await voiceService.getVoiceParticipants(channelId)
       set({
-        currentVoiceChannelId: channelId,
         participants,
         isInVoice: true,
         isDeafened: false,
         isSpeaking: false,
       })
-      // Note: WebRTC peer establishment is handled by mediaStore
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : '加入语音频道失败',
@@ -69,7 +74,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
 
     set({ error: null })
     try {
-      await voiceService.leaveVoice(currentVoiceChannelId)
+      // stopCapture stops the mic, tears down WebRTC peers and notifies the
+      // backend via voiceService.leaveVoice (single leave call).
+      await useMediaStore.getState().stopCapture()
       set({
         currentVoiceChannelId: null,
         participants: [],
@@ -77,7 +84,6 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         isDeafened: false,
         isSpeaking: false,
       })
-      // Note: WebRTC teardown is handled by mediaStore
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : '离开语音频道失败',
