@@ -217,8 +217,8 @@ function MemberItem({ member, onOpenProfile, isOnline }: MemberItemProps) {
     try {
       await kickMember(currentServerId, member.userId)
       message.success(`已将 ${member.nickname || member.username} 移出服务器`)
-    } catch (_err) {
-      message.info('踢出功能开发中，后端 API 尚未实现')
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '踢出成员失败')
     } finally {
       setKickLoading(false)
     }

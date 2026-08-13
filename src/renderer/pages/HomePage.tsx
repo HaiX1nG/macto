@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useMemo, memo } from 'react'
+import { useState, useMemo, memo, useCallback } from 'react'
 import {
   AudioOutlined,
   MessageOutlined,
@@ -8,9 +8,12 @@ import {
   LinkOutlined,
   EnterOutlined,
 } from '@ant-design/icons'
+import { App } from 'antd'
 import { NoChannelSelected } from '@renderer/components/ui/EmptyState'
+import { Modal } from '@renderer/components/ui/Modal'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
+import { useChannelStore } from '@renderer/stores/channelStore'
 import { useUIStore } from '@renderer/stores/uiStore'
 import { ChannelType } from '@shared/types/channel'
 import type { ChannelType as ChannelTypeValue } from '@shared/types/channel'
@@ -23,10 +26,19 @@ import type { ViewPageProps } from '@renderer/config/viewRegistry'
  * 服务器信息、统计、快捷操作与频道入口列表。
  */
 export function HomePage(_props: ViewPageProps): ReactNode {
+  const { message: messageApi } = App.useApp()
   const currentServer = useServerStore((s) => s.currentServer)
   const members = useServerStore((s) => s.members)
   const setActiveView = useUIStore((s) => s.setActiveView)
   const setCurrentChannelId = useUIStore((s) => s.setCurrentChannelId)
+  const createChannel = useChannelStore((s) => s.createChannel)
+
+  // 创建频道 Modal 状态
+  const [channelModalOpen, setChannelModalOpen] = useState(false)
+  const [channelName, setChannelName] = useState('')
+  const [channelType, setChannelType] = useState<ChannelTypeValue>(ChannelType.Text)
+  const [channelParentId, setChannelParentId] = useState<number | undefined>(undefined)
+  const [channelSaving, setChannelSaving] = useState(false)
 
   // 统计与频道分组（均为派生值，memo 化）
   const { textChannels, voiceChannels } = useMemo(() => {
@@ -38,6 +50,42 @@ export function HomePage(_props: ViewPageProps): ReactNode {
   }, [currentServer])
 
   const memberCount = currentServer?.memberCount ?? members.length
+
+  // 分类频道（用于创建频道时的分类归属下拉，可选）
+  const categoryChannels = useMemo(
+    () => (currentServer?.channels ?? []).filter((c) => c.type === ChannelType.Category),
+    [currentServer]
+  )
+
+  const openChannelModal = useCallback(() => {
+    setChannelName('')
+    setChannelType(ChannelType.Text)
+    setChannelParentId(undefined)
+    setChannelModalOpen(true)
+  }, [])
+
+  const handleSaveChannel = useCallback(async () => {
+    if (!currentServer) return
+    if (!channelName.trim()) {
+      messageApi.error('请输入频道名称')
+      return
+    }
+    setChannelSaving(true)
+    try {
+      await createChannel(currentServer.id, {
+        name: channelName.trim(),
+        type: channelType,
+        topic: '',
+        parentId: channelParentId,
+      })
+      messageApi.success('频道创建成功')
+      setChannelModalOpen(false)
+    } catch (err) {
+      messageApi.error(err instanceof Error ? err.message : '创建频道失败')
+    } finally {
+      setChannelSaving(false)
+    }
+  }, [currentServer, channelName, channelType, channelParentId, createChannel, messageApi])
 
   if (!currentServer) {
     return (
@@ -94,7 +142,7 @@ export function HomePage(_props: ViewPageProps): ReactNode {
               icon={<PlusOutlined />}
               title="创建频道"
               description="新建文字或语音频道"
-              disabled
+              onClick={openChannelModal}
             />
             <QuickActionCard
               icon={<LinkOutlined />}
@@ -137,6 +185,96 @@ export function HomePage(_props: ViewPageProps): ReactNode {
           )}
         </section>
       </div>
+
+      {/* 创建频道 Modal */}
+      <Modal
+        isOpen={channelModalOpen}
+        onClose={() => setChannelModalOpen(false)}
+        title="创建频道"
+        size="md"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2">
+            <button
+              onClick={() => setChannelModalOpen(false)}
+              className="px-4 py-2 rounded-lg font-medium text-sm bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-darker)] text-[var(--color-text-normal)] transition-colors duration-150"
+            >
+              取消
+            </button>
+            <button
+              onClick={() => void handleSaveChannel()}
+              disabled={channelSaving || !channelName.trim()}
+              className={cn(
+                'px-4 py-2 rounded-lg font-medium text-sm bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-white',
+                'transition-colors duration-150',
+                (channelSaving || !channelName.trim()) && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              {channelSaving ? '创建中...' : '创建'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">频道名称</label>
+            <input
+              type="text"
+              value={channelName}
+              maxLength={100}
+              onChange={(e) => setChannelName(e.target.value)}
+              placeholder="频道名称"
+              className="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-sm text-[var(--color-text-normal)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">频道类型</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="channel-type"
+                  checked={channelType === ChannelType.Text}
+                  onChange={() => setChannelType(ChannelType.Text)}
+                  className="accent-[var(--color-primary)]"
+                />
+                <MessageOutlined className="text-sm text-[var(--color-text-muted)]" />
+                <span className="text-sm text-[var(--color-text-normal)]">文字频道</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="channel-type"
+                  checked={channelType === ChannelType.Voice}
+                  onChange={() => setChannelType(ChannelType.Voice)}
+                  className="accent-[var(--color-primary)]"
+                />
+                <AudioOutlined className="text-sm text-[var(--color-text-muted)]" />
+                <span className="text-sm text-[var(--color-text-normal)]">语音频道</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">
+              分类归属<span className="ml-1">（可选）</span>
+            </label>
+            <select
+              value={channelParentId ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                setChannelParentId(v === '' ? undefined : Number(v))
+              }}
+              className="w-full px-3 py-2 rounded-lg bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-sm text-[var(--color-text-normal)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
+            >
+              <option value="">不放入分类（顶层）</option>
+              {categoryChannels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

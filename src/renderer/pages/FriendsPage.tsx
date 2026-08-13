@@ -142,6 +142,17 @@ export function FriendsPage(_props: ViewPageProps): ReactNode {
     }
   }, [activeChatUserId, loadMessages])
 
+  // 轻量轮询（前端降级方案）：后端无 private_message WS 事件，接收方新消息不会实时推送。
+  // 选中会话期间每 8s 拉一次最新消息，保证收发双端消息列表最终一致。轮询只替换消息列表，
+  // 不触碰 draft 输入态；activeChatUserId 变化或卸载时清理，避免泄漏。
+  useEffect(() => {
+    if (activeChatUserId === null) return
+    const timer = window.setInterval(() => {
+      void loadMessages(activeChatUserId)
+    }, 8000)
+    return () => window.clearInterval(timer)
+  }, [activeChatUserId, loadMessages])
+
   const handleSelectConversation = useCallback(
     (userId: number) => {
       setActiveChatUserId((prev) => {
