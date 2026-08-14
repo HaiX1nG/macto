@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { App, Dropdown, Empty, Popover } from 'antd'
+import { App, Empty, Popover } from 'antd'
 import { useChannelStore } from '@renderer/stores/channelStore'
 import { useChatStore, type MessageWithStatus } from '@renderer/stores/chatStore'
 import { useServerStore } from '@renderer/stores/serverStore'
@@ -8,8 +8,8 @@ import { useAuthStore } from '@renderer/stores/authStore'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { SearchMessages } from './SearchMessages'
+import { NotificationDropdown } from './NotificationDropdown'
 import {
-  BellOutlined,
   PushpinOutlined,
   NumberOutlined,
   UserOutlined,
@@ -18,7 +18,7 @@ import {
 } from '@ant-design/icons'
 import { HeaderButton } from '@renderer/components/ui/HeaderButton'
 import { SkeletonMessageList } from '@renderer/components/ui/Skeleton'
-import { NoChannelSelected, EmptyNotifications } from '@renderer/components/ui/EmptyState'
+import { NoChannelSelected } from '@renderer/components/ui/EmptyState'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageType } from '@shared/types/message'
 import type { ChannelMessage } from '@shared/types/message'
@@ -257,17 +257,7 @@ export function ChatView() {
             </>
           )}
           <div className="ml-auto flex items-center gap-2">
-            <Dropdown
-              trigger={['click']}
-              placement="bottomRight"
-              overlayClassName="rounded-xl overflow-hidden"
-              menu={{ items: [] }}
-              dropdownRender={() => <EmptyNotifications />}
-            >
-              <span className="inline-flex">
-                <HeaderButton icon={<BellOutlined />} label="通知" />
-              </span>
-            </Dropdown>
+            <NotificationDropdown />
             <Popover
               placement="bottomRight"
               trigger="click"
