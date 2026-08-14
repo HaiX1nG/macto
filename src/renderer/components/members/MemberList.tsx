@@ -82,7 +82,7 @@ export function MemberList() {
     members.forEach(member => {
       if (member.isOwner) {
         ownerMembers.push(member)
-      } else if (member.roles.length > 0) {
+      } else if ((member.roles?.length ?? 0) > 0) {
         const roleName = member.roles[0].name
         if (!groups[roleName]) groups[roleName] = []
         groups[roleName].push(member)
@@ -306,7 +306,7 @@ function MemberItem({ member, onOpenProfile, isOnline }: MemberItemProps) {
                 <CrownOutlined className="text-xs text-[var(--color-idle)]" />
               </Tooltip>
             )}
-            {member.roles.some(r => r.name === 'admin' || r.name === '管理员') && !member.isOwner && (
+            {(member.roles ?? []).some(r => r.name === 'admin' || r.name === '管理员') && !member.isOwner && (
               <Tooltip title="管理员">
                 <CrownOutlined className="text-xs text-[var(--color-primary)]" />
               </Tooltip>
@@ -383,7 +383,7 @@ function UserProfileModal({ open, onClose, member, profileData, loading }: UserP
             <div className="p-3 rounded-lg bg-[var(--color-bg-tertiary)]">
               <p className="text-xs text-[var(--color-text-muted)] mb-1">角色</p>
               <p className="text-sm text-[var(--color-text-normal)]">
-                {member.roles.length > 0 ? member.roles.map(r => r.name).join(', ') : '普通成员'}
+                {(member.roles?.length ?? 0) > 0 ? member.roles.map(r => r.name).join(', ') : '普通成员'}
               </p>
             </div>
             {email && (

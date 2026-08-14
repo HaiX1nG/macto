@@ -66,7 +66,9 @@ export function VoicePage({ params }: ViewPageProps): ReactNode {
   const channels: Channel[] = currentRoom?.channels ?? []
   const currentChannel = channels.find((c) => c.id === targetChannelId)
 
-  const roomId = currentChannel ? currentChannel.serverId : 0
+  // The WebRTC voice channel is identified by channel id (channels/:cid/voice/*),
+  // NOT by server id. Using serverId here makes joinVoice hit /channels/{serverId} 400.
+  const roomId = currentChannel ? currentChannel.id : 0
 
   useEffect(() => {
     if (voiceError) {
