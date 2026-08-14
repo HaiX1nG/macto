@@ -92,13 +92,29 @@ function getWebrtcManager(): WebRTCManager | null {
       async (signal: WebRTCSignalRequest) => {
         const ws = wsConnection.getCurrentWs()
         if (!ws) return
+        // Event envelope goes in `event` + `data`, matching WebSocketService.send
+        // and the backend EventWebRTCSignal handler. (Previously sent { type, payload }
+        // as the top-level object → had no `event` field → backend never saw the signal.)
         ws.send({
-          type: 'webrtc_signal',
-          payload: signal,
+          event: 'webrtc_signal',
+          data: {
+            type: signal.type,
+            targetId: signal.targetId,
+            payload: signal.payload,
+          },
         })
       },
-      (remoteUserId: number, _username: string, stream: MediaStream) => {
-        // Remote stream received - play it and add to store.
+      (remoteUserId: number, username: string, stream: MediaStream) => {
+        // Remote stream received - route by track kind.
+        // A stream carrying video is a screen share → remoteScreens.
+        // A pure-audio stream is voice chat → voiceRemoteStreams.
+        const hasVideo = stream.getVideoTracks().length > 0
+        if (hasVideo) {
+          useMediaStore.getState().addRemoteScreen(remoteUserId, username, stream)
+          return
+        }
+
+        // Pure-audio (voice) remote stream - play it and add to store.
         // Apply the user's output volume before playback starts.
         const audio = new Audio()
         audio.srcObject = stream
@@ -108,11 +124,12 @@ function getWebrtcManager(): WebRTCManager | null {
         audio.play().catch((err) => {
           console.error('[MediaStore] Failed to play remote audio:', err)
         })
-        useMediaStore.getState().addVoiceRemoteStream(remoteUserId, _username, stream)
+        useMediaStore.getState().addVoiceRemoteStream(remoteUserId, username, stream)
       },
       (userId: number) => {
-        // Peer disconnected
+        // Peer disconnected - clear from both remote voice and remote screens.
         useMediaStore.getState().removeVoiceRemoteStream(userId)
+        useMediaStore.getState().removeRemoteScreen(userId)
       }
     )
   }
@@ -159,7 +176,11 @@ export const useMediaStore = create<MediaState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: {
+          width: { max: 1920 },
+          height: { max: 1080 },
+          frameRate: { max: 30 },
+        },
         audio: true,
       })
       set({
@@ -168,6 +189,46 @@ export const useMediaStore = create<MediaState>((set, get) => ({
         currentStreamId: `stream-${Date.now()}`,
         currentRoomId: roomId,
         isLoading: false,
+      })
+
+      const manager = getWebrtcManager()
+      if (!manager) {
+        set({ isLoading: false, error: 'WebRTC 初始化失败' })
+        return
+      }
+
+      // 1. Fetch voice participants, excluding self → offer targets
+      const currentUserId = useAuthStore.getState().currentUser?.id
+      let targetUserIds: number[] = []
+      try {
+        const participants = await voiceService.getVoiceParticipants(roomId)
+        targetUserIds = participants
+          .filter((p) => p.userId !== currentUserId)
+          .map((p) => p.userId)
+      } catch (err) {
+        console.warn('[MediaStore] Failed to fetch participants for screen share:', err)
+      }
+
+      // 2. Send WebRTC offer to each participant
+      if (targetUserIds.length > 0) {
+        await manager.startScreenShare(stream, targetUserIds)
+      }
+
+      // 3. Notify backend screen share session is active
+      try {
+        await voiceService.startScreenShare(roomId)
+      } catch (err) {
+        console.warn('[MediaStore] Failed to notify backend screen share:', err)
+      }
+
+      // 4. Broadcast screen_share_start to all channel members via WS
+      const ws = wsConnection.getCurrentWs()
+      ws?.send({
+        event: 'screen_share_start',
+        data: {
+          channelId: roomId,
+          userId: currentUserId,
+        },
       })
     } catch (err) {
       set({
@@ -180,6 +241,32 @@ export const useMediaStore = create<MediaState>((set, get) => ({
 
   stopSharing: async (_roomId: number) => {
     const { localStream } = get()
+
+    // 1. Close WebRTC peer connections for the screen share
+    try {
+      getWebrtcManager()?.stopScreenShare()
+    } catch (err) {
+      console.warn('[MediaStore] Failed to stop WebRTC screen share:', err)
+    }
+
+    // 2. Notify backend screen share session ended
+    try {
+      await voiceService.stopScreenShare(_roomId)
+    } catch (err) {
+      console.warn('[MediaStore] Failed to notify backend screen share stop:', err)
+    }
+
+    // 3. Broadcast screen_share_stop to all channel members via WS
+    const currentUserId = useAuthStore.getState().currentUser?.id
+    const ws = wsConnection.getCurrentWs()
+    ws?.send({
+      event: 'screen_share_stop',
+      data: {
+        channelId: _roomId,
+        userId: currentUserId,
+      },
+    })
+
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop())
     }
@@ -403,7 +490,8 @@ export const useMediaStore = create<MediaState>((set, get) => ({
     const manager = getWebrtcManager()
     if (!manager) return
 
-    // Ensure the manager has the local stream set when handling offers
+    // Ensure the manager has the local stream set when handling offers,
+    // so the responder echoes back its own audio in a bidirectional call.
     const { voiceStream } = get()
     if (voiceStream && !manager.getLocalStream()) {
       manager.setLocalStream(voiceStream)

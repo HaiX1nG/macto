@@ -1,5 +1,26 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useMediaStore } from '../mediaStore'
+import { voiceService } from '../../services/voiceService'
+import { useAuthStore, type User } from '../authStore'
+import type { ScreenShareSession, VoiceParticipant } from '@shared/types/voice'
+
+// Mock voiceService so getVoiceParticipants / startScreenShare / stopScreenShare
+// never hit real network calls during screen-share tests.
+// mediaStore resolves voiceService via the `../services` barrel (default export),
+// so the mock must also expose a `default` that mirrors the named methods.
+vi.mock('../../services/voiceService', () => {
+  const voiceServiceMock = {
+    getVoiceParticipants: vi.fn(),
+    startScreenShare: vi.fn(),
+    stopScreenShare: vi.fn(),
+  }
+  return {
+    voiceService: voiceServiceMock,
+    default: voiceServiceMock,
+  }
+})
+
+const mockVoiceService = vi.mocked(voiceService)
 
 // Helper to reset store state between tests
 const resetMediaStore = () => {
@@ -89,6 +110,19 @@ describe('useMediaStore', () => {
     mockVideoTrack.stop = vi.fn()
     mockAudioTrack.stop = vi.fn()
     mockAudioTrack.enabled = true
+
+    // Reset voice service mocks; default participants to empty (single-user flows).
+    mockVoiceService.getVoiceParticipants.mockResolvedValue([])
+    const session: ScreenShareSession = {
+      id: 1,
+      channelId: 123,
+      userId: 999,
+      username: 'testuser',
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+    }
+    mockVoiceService.startScreenShare.mockResolvedValue(session)
+    mockVoiceService.stopScreenShare.mockResolvedValue(undefined)
   })
 
   describe('initial state', () => {
@@ -164,6 +198,101 @@ describe('useMediaStore', () => {
       const { stopSharing } = useMediaStore.getState()
 
       await expect(stopSharing(123)).resolves.not.toThrow()
+    })
+
+    it('should notify backend and broadcast stop over WS when stopping', async () => {
+      const { startSharing, stopSharing } = useMediaStore.getState()
+      await startSharing(123)
+      mockVoiceService.stopScreenShare.mockClear()
+      await stopSharing(123)
+
+      expect(mockVoiceService.stopScreenShare).toHaveBeenCalledWith(123)
+    })
+  })
+
+  describe('screen share WebRTC integration', () => {
+    const mockUser: User = {
+      id: 999,
+      username: 'self',
+      email: '',
+      avatarUrl: '',
+      bannerUrl: '',
+      bio: '',
+      customStatus: '',
+      status: 'online',
+      createdAt: '',
+    }
+
+    beforeEach(() => {
+      useAuthStore.setState({ currentUser: mockUser })
+    })
+
+    afterEach(() => {
+      useAuthStore.setState({ currentUser: null })
+    })
+
+    it('should notify backend startScreenShare on startSharing', async () => {
+      useAuthStore.setState({ currentUser: mockUser })
+      mockVoiceService.getVoiceParticipants.mockResolvedValue([])
+      mockVoiceService.startScreenShare.mockClear()
+
+      await useMediaStore.getState().startSharing(123)
+
+      expect(mockVoiceService.startScreenShare).toHaveBeenCalledWith(123)
+    })
+
+    it('should fetch voice participants excluding self', async () => {
+      useAuthStore.setState({ currentUser: mockUser })
+      mockVoiceService.getVoiceParticipants.mockClear()
+      mockVoiceService.startScreenShare.mockClear()
+
+      const peer: VoiceParticipant = {
+        id: 1,
+        channelId: 123,
+        userId: 10,
+        username: 'peer',
+        avatarUrl: '',
+        isMuted: false,
+        isDeafened: false,
+        isSpeaking: false,
+        volume: 100,
+        joinedAt: 'now',
+      }
+      // Two participants: peer kept, self excluded.
+      mockVoiceService.getVoiceParticipants.mockResolvedValue([
+        { ...peer, userId: peer.userId },
+        { ...peer, userId: mockUser.id, username: 'self' },
+      ])
+      mockVoiceService.startScreenShare.mockClear()
+
+      // With a peer present, WebRTCManager.startScreenShare fires. It needs a
+      // working globals.RTCPeerConnection (jsdom lacks it) → shim it minimally.
+      const originalRTCPeerConnection = global.RTCPeerConnection
+      global.RTCPeerConnection = class {
+        addTrack = vi.fn()
+        getSenders = () => []
+        onicecandidate: ((e: { candidate: unknown }) => void) | null = null
+        async createOffer() {
+          return { type: 'offer', sdp: 'mock' } as RTCSessionDescriptionInit
+        }
+        async setLocalDescription() {}
+        async setRemoteDescription() {}
+        async createAnswer() {
+          return { type: 'answer', sdp: 'mock' } as RTCSessionDescriptionInit
+        }
+        async addIceCandidate() {}
+        close() {}
+      } as unknown as typeof RTCPeerConnection
+
+      try {
+        await useMediaStore.getState().startSharing(123)
+
+        expect(mockVoiceService.getVoiceParticipants).toHaveBeenCalledWith(123)
+        expect(mockVoiceService.startScreenShare).toHaveBeenCalledWith(123)
+      } finally {
+        global.RTCPeerConnection = originalRTCPeerConnection
+        mockVoiceService.getVoiceParticipants.mockResolvedValue([])
+      }
     })
   })
 

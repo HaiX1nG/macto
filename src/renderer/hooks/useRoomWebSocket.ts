@@ -201,15 +201,14 @@ export function useRoomWebSocket() {
   )
 
   const handleWebRTCSignal = useCallback((data: WebRTCSignalEvent) => {
-    // Route to mediaStore's WebRTC manager for voice chat
+    // Route to mediaStore's WebRTC manager for both voice and screen share.
+    // The manager's onRemoteStream callback splits by video-track presence:
+    // video → remoteScreens (screen share), pure audio → voiceRemoteStreams.
     const mediaState = useMediaStore.getState()
-    const voiceState = useVoiceStore.getState()
-    if (voiceState.isInVoice) {
-      mediaState.handleVoiceSignal(data.fromUserId, data.fromUsername, {
-        type: data.signal.type,
-        payload: data.signal.payload,
-      })
-    }
+    mediaState.handleVoiceSignal(data.fromUserId, data.fromUsername, {
+      type: data.signal.type,
+      payload: data.signal.payload,
+    })
   }, [])
 
   const handleMemberJoined = useCallback(
