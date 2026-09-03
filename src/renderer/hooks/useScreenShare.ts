@@ -36,7 +36,7 @@ export function useScreenShare() {
         const ws = wsConnection.getCurrentWs()
         if (!ws) return
         try {
-          ws.sendWebRTCSignal(signal.type, signal.targetId ?? 0, signal.payload)
+          ws.sendWebRTCSignal(signal.type, signal.targetId ?? 0, signal.payload, 'screen')
         } catch (err) {
           console.error('Failed to send WebRTC signal:', err)
         }
@@ -47,7 +47,8 @@ export function useScreenShare() {
       },
       (userId: number) => {
         removeRemoteScreen(userId)
-      }
+      },
+      'screen'
     )
 
     webrtcManagerRef.current = manager
@@ -69,19 +70,6 @@ export function useScreenShare() {
         setTimeout(registerHandlers, 500)
         return
       }
-
-      // Listen for WebRTC signals (screen share uses its own WebRTCManager instance)
-      unsubsRef.current.push(
-        ws.on('webrtc_signal', (data: unknown) => {
-          const signal = data as { fromUserId: number; fromUsername: string; signal: { type: 'offer' | 'answer' | 'ice-candidate'; payload: string } }
-          // Only handle signals that this manager knows about (its own peer connections)
-          webrtcManagerRef.current?.handleSignal(
-            signal.fromUserId,
-            signal.fromUsername,
-            signal.signal as WebRTCSignalRequest
-          )
-        })
-      )
 
       // Listen for screen share started event (new protocol: screen_share_start)
       unsubsRef.current.push(

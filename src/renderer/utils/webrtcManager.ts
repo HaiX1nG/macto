@@ -1,4 +1,4 @@
-import type { WebRTCSignalRequest } from '@shared/types/api'
+import type { WebRTCSignalRequest, WebRTCMediaType } from '@shared/types/voice'
 
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
@@ -17,16 +17,44 @@ export class WebRTCManager {
   private onSignal: SignalCallback
   private onRemoteStream: StreamCallback
   private onDisconnected: DisconnectedCallback
+  private mediaType: WebRTCMediaType | undefined
+  private pendingIceCandidates: Map<number, RTCIceCandidateInit[]> = new Map()
 
   constructor(
     _currentUserId: number,
     onSignal: SignalCallback,
     onRemoteStream: StreamCallback,
-    onDisconnected: DisconnectedCallback
+    onDisconnected: DisconnectedCallback,
+    mediaType?: WebRTCMediaType
   ) {
     this.onSignal = onSignal
     this.onRemoteStream = onRemoteStream
     this.onDisconnected = onDisconnected
+    this.mediaType = mediaType
+  }
+
+  private sendSignal(signal: WebRTCSignalRequest): void {
+    this.onSignal(this.mediaType ? { ...signal, mediaType: this.mediaType } : signal)
+  }
+
+  private queueIceCandidate(userId: number, candidate: RTCIceCandidateInit): void {
+    const pending = this.pendingIceCandidates.get(userId) ?? []
+    pending.push(candidate)
+    this.pendingIceCandidates.set(userId, pending)
+  }
+
+  private async flushIceCandidates(userId: number, pc: RTCPeerConnection): Promise<void> {
+    const pending = this.pendingIceCandidates.get(userId)
+    if (!pending || pending.length === 0) return
+    this.pendingIceCandidates.delete(userId)
+
+    for (const candidate of pending) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate))
+      } catch (error) {
+        console.warn('[WebRTC] Failed to add queued ICE candidate:', error)
+      }
+    }
   }
 
   /**
@@ -52,6 +80,7 @@ export class WebRTCManager {
       pc.close()
     })
     this.peerConnections.clear()
+    this.pendingIceCandidates.clear()
   }
 
   /**
@@ -96,6 +125,7 @@ export class WebRTCManager {
     })
     this.peerConnections.clear()
     this.localStream = null
+    this.pendingIceCandidates.clear()
   }
 
   /**
@@ -116,7 +146,7 @@ export class WebRTCManager {
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        this.onSignal({
+        this.sendSignal({
           type: 'ice-candidate',
           targetId: targetUserId,
           payload: JSON.stringify(event.candidate.toJSON()),
@@ -132,7 +162,7 @@ export class WebRTCManager {
     await pc.setLocalDescription(offer)
 
     // Send offer to target
-    this.onSignal({
+    this.sendSignal({
       type: 'offer',
       targetId: targetUserId,
       payload: JSON.stringify(offer),
@@ -157,7 +187,7 @@ export class WebRTCManager {
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        this.onSignal({
+        this.sendSignal({
           type: 'ice-candidate',
           targetId: targetUserId,
           payload: JSON.stringify(event.candidate.toJSON()),
@@ -186,7 +216,7 @@ export class WebRTCManager {
     await pc.setLocalDescription(offer)
 
     // Send offer to target
-    this.onSignal({
+    this.sendSignal({
       type: 'offer',
       targetId: targetUserId,
       payload: JSON.stringify(offer),
@@ -228,7 +258,7 @@ export class WebRTCManager {
       // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          this.onSignal({
+          this.sendSignal({
             type: 'ice-candidate',
             targetId: fromUserId,
             payload: JSON.stringify(event.candidate.toJSON()),
@@ -243,9 +273,9 @@ export class WebRTCManager {
         }
       }
 
-      // If we have a local stream (e.g., we are also in voice chat), add our tracks
-      // so the other side receives our audio too
-      if (this.localStream) {
+      // Voice managers add their local audio when answering an incoming offer.
+      // Screen managers must remain video-only even when voice is active elsewhere.
+      if (this.mediaType !== 'screen' && this.localStream) {
         this.localStream.getAudioTracks().forEach(track => {
           pc!.addTrack(track, this.localStream!)
         })
@@ -255,13 +285,14 @@ export class WebRTCManager {
     // Set remote description (offer)
     const offer = JSON.parse(offerPayload) as RTCSessionDescriptionInit
     await pc.setRemoteDescription(new RTCSessionDescription(offer))
+    await this.flushIceCandidates(fromUserId, pc)
 
     // Create and set answer
     const answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
 
     // Send answer back
-    this.onSignal({
+    this.sendSignal({
       type: 'answer',
       targetId: fromUserId,
       payload: JSON.stringify(answer),
@@ -277,16 +308,20 @@ export class WebRTCManager {
 
     const answer = JSON.parse(answerPayload) as RTCSessionDescriptionInit
     await pc.setRemoteDescription(new RTCSessionDescription(answer))
+    await this.flushIceCandidates(fromUserId, pc)
   }
 
   /**
    * Handle ICE candidate from remote user.
    */
   private async handleIceCandidate(fromUserId: number, candidatePayload: string): Promise<void> {
-    const pc = this.peerConnections.get(fromUserId)
-    if (!pc) return
-
     const candidate = JSON.parse(candidatePayload) as RTCIceCandidateInit
+    const pc = this.peerConnections.get(fromUserId)
+    if (!pc || pc.remoteDescription === null) {
+      this.queueIceCandidate(fromUserId, candidate)
+      return
+    }
+
     await pc.addIceCandidate(new RTCIceCandidate(candidate))
   }
 
@@ -299,6 +334,7 @@ export class WebRTCManager {
       pc.close()
       this.peerConnections.delete(userId)
     }
+    this.pendingIceCandidates.delete(userId)
   }
 
   /**
@@ -309,6 +345,7 @@ export class WebRTCManager {
     this.localStream = null
     this.peerConnections.forEach(pc => pc.close())
     this.peerConnections.clear()
+    this.pendingIceCandidates.clear()
   }
 
   /**

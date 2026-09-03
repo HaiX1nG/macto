@@ -22,6 +22,7 @@ export interface ChatState {
   typingUsers: Map<number, Set<number>>
   isLoading: boolean
   hasMore: Map<number, boolean>
+  nextPage: Map<number, number>
   error: string | null
 
   // Message actions
@@ -56,40 +57,66 @@ function toMessageWithStatus(msg: ChannelMessage, status: MessageSendStatus = 's
   return { ...msg, status }
 }
 
+function dedupeMessages(messages: MessageWithStatus[]): MessageWithStatus[] {
+  const seenIds = new Set<number>()
+  return messages.filter((message) => {
+    if (seenIds.has(message.id)) return false
+    seenIds.add(message.id)
+    return true
+  })
+}
+
+function mergeFetchedMessages(
+  existingMessages: MessageWithStatus[],
+  fetchedMessages: MessageWithStatus[],
+  prependOlder: boolean
+): MessageWithStatus[] {
+  const existing = dedupeMessages(existingMessages)
+  const fetched = dedupeMessages(fetchedMessages)
+  const fetchedById = new Map(fetched.map((message) => [message.id, message]))
+
+  if (!prependOlder) {
+    const fetchedIds = new Set(fetched.map((message) => message.id))
+    const retainedMessages = existing.filter((message) => !fetchedIds.has(message.id))
+    return [...fetched, ...retainedMessages]
+  }
+
+  const existingIds = new Set(existing.map((message) => message.id))
+  const olderMessages = fetched.filter((message) => !existingIds.has(message.id))
+  const mergedExisting = existing.map((message) => fetchedById.get(message.id) ?? message)
+  return [...olderMessages, ...mergedExisting]
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   // Initial state
   messages: new Map(),
   typingUsers: new Map(),
   isLoading: false,
   hasMore: new Map(),
+  nextPage: new Map(),
   error: null,
 
   // Fetch messages (with cursor pagination)
   fetchMessages: async (channelId: number, before?: number) => {
     set({ isLoading: true, error: null })
     try {
-      const params: MessageListParams = { pageSize: 50 }
-      if (before !== undefined) {
-        params.before = before
-      }
+      const page = before === undefined ? 1 : (get().nextPage.get(channelId) ?? 2)
+      const params: MessageListParams = { page, pageSize: 50 }
       const result = await messageService.getMessages(channelId, params)
       const newMessages = result.list.map((msg) => toMessageWithStatus(msg, 'sent'))
+      const orderedNewMessages = [...newMessages].reverse()
 
       set((state) => {
         const messagesMap = new Map(state.messages)
-        if (before !== undefined) {
-          // Prepend older messages
-          const existing = messagesMap.get(channelId) || []
-          messagesMap.set(channelId, [...newMessages, ...existing])
-        } else {
-          // Initial load
-          messagesMap.set(channelId, newMessages)
-        }
+        const existing = messagesMap.get(channelId) || []
+        messagesMap.set(channelId, mergeFetchedMessages(existing, orderedNewMessages, before !== undefined))
 
         const hasMoreMap = new Map(state.hasMore)
         hasMoreMap.set(channelId, newMessages.length >= 50)
+        const nextPageMap = new Map(state.nextPage)
+        nextPageMap.set(channelId, page + 1)
 
-        return { messages: messagesMap, isLoading: false, hasMore: hasMoreMap }
+        return { messages: messagesMap, isLoading: false, hasMore: hasMoreMap, nextPage: nextPageMap }
       })
     } catch (err) {
       set({
@@ -306,7 +333,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       hasMoreMap.delete(channelId)
       const typingMap = new Map(state.typingUsers)
       typingMap.delete(channelId)
-      return { messages: messagesMap, hasMore: hasMoreMap, typingUsers: typingMap }
+      const nextPageMap = new Map(state.nextPage)
+      nextPageMap.delete(channelId)
+      return { messages: messagesMap, hasMore: hasMoreMap, typingUsers: typingMap, nextPage: nextPageMap }
     })
   },
 
