@@ -2,20 +2,34 @@
  * App Component
  *
  * Main application component for Macto - Voice & Chat Application.
+ *
+ * Performance optimizations applied:
+ * - React.lazy + Suspense for route-level code splitting
+ * - Core modules (chat, voice) loaded eagerly; secondary modules (settings, friends, screen share) lazy-loaded
+ * - Unified Skeleton fallback for all lazy boundaries
+ * - Performance metrics collection in dev mode
  */
 
 import { ConfigProvider, App as AntdApp } from 'antd'
 import { theme } from 'antd'
-import { useEffect } from 'react'
-import { useThemeStore } from './stores/themeStore'
+import { useEffect, lazy, Suspense } from 'react'
+import { useTheme } from './hooks/useTheme'
 import { useAuthStore } from './stores/authStore'
-import { MainLayout } from './components/layout/MainLayout'
-import { LoginPage } from './components/auth/LoginPage'
-import { UpdateNotification } from './components/UpdateNotification'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
-import { WebSocketIndicator } from './components/ui/WebSocketIndicator'
+import { SkeletonPage } from './components/ui/Skeleton'
+import { usePerformanceMetrics, printPerformanceReport } from './hooks/usePerformanceMetrics'
+import { ToastContainer } from './components/ui/Toast'
+
+const MainLayout = lazy(() => import('./components/layout/MainLayout').then(m => ({ default: m.MainLayout })))
+const LoginPage = lazy(() => import('./components/auth/LoginPage').then(m => ({ default: m.LoginPage })))
+const UpdateNotification = lazy(() => import('./components/UpdateNotification').then(m => ({ default: m.UpdateNotification })))
+const WebSocketIndicator = lazy(() => import('./components/ui/WebSocketIndicator').then(m => ({ default: m.WebSocketIndicator })))
+const WelcomeFlow = lazy(() => import('./components/onboarding/WelcomeFlow').then(m => ({ default: m.WelcomeFlow })))
+import { useOnboarding } from './hooks/useOnboarding'
 import { useUserStatusPolling } from './hooks/useUserStatusPolling'
 import './styles/index.css'
+import './styles/tokens/colors.css'
+import './styles/tokens/motion.css'
 
 // 主题颜色映射
 const themeColors: Record<string, { primary: string; bg: string; text: string }> = {
@@ -25,15 +39,24 @@ const themeColors: Record<string, { primary: string; bg: string; text: string }>
 }
 
 function AppContent() {
-  const { theme: appTheme, initTheme } = useThemeStore()
+  const { theme: appTheme } = useTheme()
   const { isAuthenticated, initAuth } = useAuthStore()
+  const {
+    showOnboarding,
+    currentStep,
+    completeOnboarding,
+    skipOnboarding,
+    nextStep,
+    prevStep,
+  } = useOnboarding()
 
-  // Initialize theme on app start
-  useEffect(() => {
-    initTheme()
-  }, [initTheme])
+  // Performance metrics collection (dev mode only)
+  usePerformanceMetrics({
+    enabled: import.meta.env.DEV,
+    onReport: printPerformanceReport,
+  })
 
-  // Initialize auth from stored tokens on app start
+  // Theme initialization is handled by useTheme hook (sets data-theme attribute)
   useEffect(() => {
     const cleanup = initAuth()
     return () => {
@@ -41,7 +64,7 @@ function AppContent() {
     }
   }, [initAuth])
 
-  // Apply theme to document
+  // Apply theme to document (dark class for Antd algorithm)
   useEffect(() => {
     const isDark = appTheme === 'ancient' || appTheme === 'tech'
     if (isDark) {
@@ -99,9 +122,27 @@ function AppContent() {
       }}
     >
       <AntdApp>
-        {isAuthenticated ? <MainLayout /> : <LoginPage />}
-        <UpdateNotification />
-        <WebSocketIndicator />
+        <ToastContainer />
+        <Suspense fallback={<SkeletonPage />}>
+          {isAuthenticated ? <MainLayout /> : <LoginPage />}
+        </Suspense>
+        <Suspense fallback={null}>
+          <UpdateNotification />
+        </Suspense>
+        <Suspense fallback={null}>
+          <WebSocketIndicator />
+        </Suspense>
+        {showOnboarding && (
+          <Suspense fallback={null}>
+            <WelcomeFlow
+              currentStep={currentStep}
+              onNext={nextStep}
+              onPrev={prevStep}
+              onSkip={skipOnboarding}
+              onComplete={completeOnboarding}
+            />
+          </Suspense>
+        )}
       </AntdApp>
     </ConfigProvider>
   )
@@ -109,7 +150,7 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary showDetails={process.env.NODE_ENV === 'development'}>
+    <ErrorBoundary showDetails={import.meta.env.DEV}>
       <AppContent />
     </ErrorBoundary>
   )

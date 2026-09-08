@@ -5,6 +5,8 @@ import { createRequire } from 'node:module'
 import { IPCManager } from './ipc/index'
 import { appUpdater } from './updater'
 import { notificationManager } from './notifications'
+import { appMenu } from './menu'
+import { logger } from './logger'
 
 const require = createRequire(import.meta.url)
 
@@ -258,15 +260,24 @@ app.on('window-all-closed', () => {
 })
 
 app.whenReady().then(async () => {
+  // Initialize logger
+  logger.info('App starting', { version: app.getVersion(), platform: process.platform })
+
+  // Set native menu
+  appMenu.create()
+
   if (isDebug) {
     installExtensions().catch(console.error)
   }
 
   win = createWindow()
   if (!win) {
+    logger.error('Failed to create main window')
     app.quit()
     process.exit(1)
   }
+
+  logger.info('Main window created')
 
   // Initialize IPC Manager for handling IPC calls
   new IPCManager(win)
@@ -279,6 +290,8 @@ app.whenReady().then(async () => {
   notificationManager.setDebug(isDebug)
 
   createTray()
+
+  logger.info('App ready')
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

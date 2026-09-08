@@ -10,9 +10,14 @@
     "preview": "electron-vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "node src/renderer/e2e/runner.cjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,scss,json}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,scss,json}\"",
+    "dist": "electron-vite build && node scripts/copy-assets.js && electron-builder",
+    "dist:mac": "electron-vite build && node scripts/copy-assets.js && electron-builder --mac",
+    "dist:win": "electron-vite build && node scripts/copy-assets.js && electron-builder --win",
+    "dist:linux": "electron-vite build && node scripts/copy-assets.js && electron-builder --linux"
   },
   "keywords": [],
   "author": "",
@@ -47,7 +52,9 @@
     "vite": "^5.4.21",
     "vite-plugin-static-copy": "^4.1.0",
     "vitest": "^2.1.9",
-    "ws": "^8.21.3"
+    "ws": "^8.21.3",
+    "electron-builder": "^26.0.0",
+    "electron-log": "^5.2.0"
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.2",
@@ -66,5 +73,77 @@
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.3"
+  },
+  "build": {
+    "appId": "com.macto.app",
+    "productName": "Macto",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/main/assets",
+        "to": "assets"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.social-networking",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "resources/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.ico",
+      "signingHashAlgorithms": [
+        "sha256"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "resources/icon.png",
+      "category": "Network"
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "dmg": {
+      "sign": false,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }
