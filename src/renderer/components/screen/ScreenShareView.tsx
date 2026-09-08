@@ -33,8 +33,12 @@ interface ScreenShareViewProps {
   }>
   /** Current view mode */
   viewMode?: ViewMode
-  /** Callback to toggle pause */
-  onPauseToggle: () => void
+  /** Whether currently sharing */
+  isSharing?: boolean
+  /** Whether has remote screens */
+  hasRemoteScreens?: boolean
+  /** Callback to start sharing */
+  onStart?: () => void
   /** Callback to stop sharing */
   onStop: () => void
   /** Callback for settings */
@@ -61,7 +65,6 @@ export default function ScreenShareView({
   localStream,
   remoteScreens,
   viewMode = 'fullscreen',
-  onPauseToggle,
   onStop,
   onSettings,
   isPaused,
@@ -261,7 +264,6 @@ export default function ScreenShareView({
       {localStream && (
         <ScreenControls
           isPaused={isPaused}
-          onPauseToggle={onPauseToggle}
           onStop={onStop}
           onSettings={onSettings}
           onFullscreenToggle={onFullscreenToggle}

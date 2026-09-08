@@ -5,6 +5,9 @@ import { useChatStore } from '../stores/chatStore'
 import { useVoiceStore } from '../stores/voiceStore'
 import { useMediaStore } from '../stores/mediaStore'
 import { useUIStore } from '../stores/uiStore'
+import { ConnectionState } from '@shared/types/voice'
+import { useFriendStore } from '../stores/friendStore'
+import { useNotificationStore } from '../stores/notificationStore'
 import { wsConnection } from '../services/wsConnection'
 import type {
   ChatMessageEvent,
@@ -15,20 +18,84 @@ import type {
   VoiceUserJoinedEvent,
   VoiceUserLeftEvent,
   VoiceStateUpdateEvent,
+  ParticipantUpdateEvent,
   ScreenShareStartEvent,
   ScreenShareStopEvent,
   WebRTCSignalEvent,
   MemberJoinedEvent,
   MemberLeftEvent,
   TypingPayload,
+  MessageResponse,
+  FriendOnlineEvent,
+  FriendRequestPushEvent,
+  FriendRequestHandledEvent,
+  FriendRelationChangeEvent,
+  PrivateMessagePushEvent,
 } from '../types/websocket'
 import type { VoiceParticipant } from '@shared/types/voice'
 import type { ServerMember } from '@shared/types/server'
+import type { ChannelMessage, MessageType } from '@shared/types/message'
+import type { FriendRequest, PrivateMessage } from '@shared/types/friend'
+
+function mapWebSocketMessage(message: MessageResponse): ChannelMessage {
+  return {
+    id: message.id,
+    channelId: message.channelId,
+    senderUserId: message.senderUserId,
+    senderName: message.senderName,
+    senderAvatarUrl: message.senderAvatar ?? '',
+    type: message.type as MessageType,
+    content: message.content,
+    replyToId: message.replyToId ?? null,
+    replyTo: null,
+    editedAt: message.editedAt ?? null,
+    isPinned: message.isPinned,
+    reactions: (message.reactions ?? []).map((reaction) => ({
+      emoji: reaction.emoji,
+      count: reaction.count,
+      users: reaction.userIds ?? [],
+    })),
+    attachments: (message.attachments ?? []).map((attachment) => ({
+      id: attachment.id,
+      messageId: message.id,
+      filename: attachment.filename,
+      url: attachment.url,
+      fileSize: attachment.fileSize,
+      mimeType: attachment.mimeType,
+      createdAt: '',
+    })),
+    createdAt: message.createdAt,
+  }
+}
+
+function isMessageResponse(value: unknown): value is MessageResponse {
+  if (typeof value !== 'object' || value === null) return false
+  const message = value as Partial<MessageResponse>
+  const hasReactions = Array.isArray(message.reactions) || message.reactions === null
+  const hasAttachments = Array.isArray(message.attachments) || message.attachments === null
+  return (
+    typeof message.id === 'number' &&
+    typeof message.channelId === 'number' &&
+    typeof message.senderUserId === 'number' &&
+    typeof message.senderName === 'string' &&
+    (typeof message.senderAvatar === 'string' || message.senderAvatar === null) &&
+    typeof message.type === 'number' &&
+    typeof message.content === 'string' &&
+    typeof message.isPinned === 'boolean' &&
+    hasReactions &&
+    hasAttachments &&
+    typeof message.createdAt === 'string'
+  )
+}
+
+function isCanonicalChatMessageEvent(value: unknown): value is ChatMessageEvent {
+  if (typeof value !== 'object' || value === null) return false
+  const event = value as Partial<ChatMessageEvent>
+  return typeof event.channelId === 'number' && isMessageResponse(event.message)
+}
 
 /**
  * useRoomWebSocket
- *
- * KOOK-style WebSocket event router. Connects via wsConnection.connectWithToken
  * (single per-app connection, not bound to room_id). Channel subscription is
  * managed via join_channel/leave_channel events when currentChannelId changes.
  *
@@ -42,6 +109,7 @@ import type { ServerMember } from '@shared/types/server'
  *   voice_user_joined  -> voiceStore.onParticipantJoined
  *   voice_user_left    -> voiceStore.onParticipantLeft
  *   voice_state_update -> voiceStore participant update (mute/deafen/speaking)
+ *   participant_update -> voiceStore full participant list replacement
  *   screen_share_start -> mediaStore (UI notification)
  *   screen_share_stop  -> mediaStore (cleanup remote screen)
  *   webrtc_signal      -> mediaStore.handleVoiceSignal
@@ -50,12 +118,11 @@ import type { ServerMember } from '@shared/types/server'
  */
 export function useRoomWebSocket() {
   const { isAuthenticated, currentUser } = useAuthStore()
-  const { currentServerId, fetchMembers } = useServerStore()
+  const { fetchMembers } = useServerStore()
   const currentChannelId = useUIStore((s) => s.currentChannelId)
   const setConnectionStatus = useUIStore((s) => s.setConnectionStatus)
 
   const currentChannelIdRef = useRef<number | null>(currentChannelId)
-  const previousChannelIdRef = useRef<number | null>(null)
 
   useEffect(() => {
     currentChannelIdRef.current = currentChannelId
@@ -101,13 +168,15 @@ export function useRoomWebSocket() {
   // ── Event handlers ───────────────────────────────────────
 
   const handleChatMessage = useCallback(
-    (data: ChatMessageEvent) => {
-      useChatStore.getState().onMessageReceived(data.channelId, data.message)
+    (data: unknown) => {
+      if (!isCanonicalChatMessageEvent(data)) return
+      const message = mapWebSocketMessage(data.message)
+      useChatStore.getState().onMessageReceived(data.channelId, message)
       showNewMessageNotification(
         data.channelId,
-        data.message.senderUserId,
-        data.message.senderName,
-        data.message.content
+        message.senderUserId,
+        message.senderName,
+        message.content
       )
     },
     [showNewMessageNotification]
@@ -134,20 +203,27 @@ export function useRoomWebSocket() {
 
   const handleVoiceUserJoined = useCallback(
     (data: VoiceUserJoinedEvent) => {
-      // Convert WS event user data to VoiceParticipant
+      // The backend broadcasts { channelId, user: { id, userId, username, ... } }.
+      // Older deployments wrapped those fields in an additional `data` object or
+      // sent them flat. Normalize all supported shapes before the store receives
+      // the complete participant record.
+      const payload = data.data ?? data
+      const user = payload.user ?? data.user
+      const channelId = payload.channelId ?? data.channelId ?? 0
+      const userId = payload.userId ?? user?.userId ?? user?.id ?? 0
       const participant: VoiceParticipant = {
-        id: data.user.id,
-        channelId: data.channelId,
-        userId: data.user.userId,
-        username: data.user.username,
-        avatarUrl: data.user.avatarUrl,
-        isMuted: data.user.isMuted,
-        isDeafened: data.user.isDeafened,
-        isSpeaking: data.user.isSpeaking,
-        volume: data.user.volume,
-        joinedAt: data.user.joinedAt,
+        id: user?.id ?? userId,
+        channelId,
+        userId,
+        username: payload.username ?? user?.username ?? '',
+        avatarUrl: payload.avatarUrl ?? user?.avatarUrl ?? '',
+        isMuted: payload.isMuted ?? user?.isMuted ?? false,
+        isDeafened: payload.isDeafened ?? user?.isDeafened ?? false,
+        isSpeaking: payload.isSpeaking ?? user?.isSpeaking ?? false,
+        volume: payload.volume ?? user?.volume ?? 100,
+        joinedAt: payload.joinedAt ?? user?.joinedAt ?? '',
       }
-      useVoiceStore.getState().onParticipantJoined(data.channelId, participant)
+      useVoiceStore.getState().onParticipantJoined(channelId, participant)
     },
     []
   )
@@ -162,7 +238,7 @@ export function useRoomWebSocket() {
       if (voiceState.currentVoiceChannelId !== data.channelId) return
 
       // Update the participant's state in the voice store
-      if (data.isMuted !== undefined || data.isDeafened !== undefined || data.isSpeaking !== undefined) {
+      if (data.isMuted !== undefined || data.isDeafened !== undefined || data.isSpeaking !== undefined || data.volume !== undefined) {
         // We need to update participants array directly
         const updatedParticipants = voiceState.participants.map((p) => {
           if (p.userId !== data.userId) return p
@@ -171,6 +247,7 @@ export function useRoomWebSocket() {
             isMuted: data.isMuted ?? p.isMuted,
             isDeafened: data.isDeafened ?? p.isDeafened,
             isSpeaking: data.isSpeaking ?? p.isSpeaking,
+            volume: data.volume ?? p.volume,
           }
         })
         useVoiceStore.setState({ participants: updatedParticipants })
@@ -181,13 +258,37 @@ export function useRoomWebSocket() {
 
   const handleScreenShareStart = useCallback(
     (data: ScreenShareStartEvent) => {
-      // If someone else started screen sharing, we may need to set up a WebRTC connection
-      // The mediaStore/WebRTCManager handles this via webrtc_signal events
+      // If someone else started screen sharing, the webrtc_signal events will
+      // set up the WebRTC connection. Log the event for UI awareness.
       if (data.userId !== currentUser?.id) {
-        console.warn('[WS] Screen share started by user:', data.userId)
+        console.warn('[WS] Screen share started by user:', data.userId, data.username ?? '')
       }
     },
     [currentUser]
+  )
+
+  const handleParticipantUpdate = useCallback(
+    (data: ParticipantUpdateEvent) => {
+      // Backend sends a full participant list replacement for the channel.
+      // Replace voiceStore.participants for matching channelId.
+      const voiceState = useVoiceStore.getState()
+      if (voiceState.currentVoiceChannelId !== data.channelId) return
+
+      const updatedParticipants: VoiceParticipant[] = data.participants.map((p) => ({
+        id: p.id,
+        channelId: p.channelId,
+        userId: p.userId,
+        username: p.username,
+        avatarUrl: p.avatarUrl ?? '',
+        isMuted: p.isMuted ?? false,
+        isDeafened: p.isDeafened ?? false,
+        isSpeaking: p.isSpeaking ?? false,
+        volume: p.volume ?? 100,
+        joinedAt: p.joinedAt ?? '',
+      }))
+      useVoiceStore.setState({ participants: updatedParticipants })
+    },
+    []
   )
 
   const handleScreenShareStop = useCallback(
@@ -195,19 +296,73 @@ export function useRoomWebSocket() {
       // Remove remote screen from mediaStore
       if (data.userId !== currentUser?.id) {
         useMediaStore.getState().removeRemoteScreen(data.userId)
+        useMediaStore.getState().closeScreenConnection?.(data.userId)
       }
     },
     [currentUser]
   )
 
   const handleWebRTCSignal = useCallback((data: WebRTCSignalEvent) => {
-    // Route to mediaStore's WebRTC manager for both voice and screen share.
-    // The manager's onRemoteStream callback splits by video-track presence:
-    // video → remoteScreens (screen share), pure audio → voiceRemoteStreams.
     const mediaState = useMediaStore.getState()
-    mediaState.handleVoiceSignal(data.fromUserId, data.fromUsername, {
+    const mediaType = data.mediaType ?? data.signal.mediaType
+
+    // New signals carry an explicit media type. This is the only reliable way
+    // to route a first screen offer when the sender also has a voice peer.
+    if (mediaType === 'screen') {
+      void mediaState.handleScreenSignal(data.fromUserId, data.fromUsername, {
+        type: data.signal.type,
+        payload: data.signal.payload,
+        mediaType: 'screen',
+      })
+      return
+    }
+    if (mediaType === 'voice') {
+      void mediaState.handleVoiceSignal(data.fromUserId, data.fromUsername, {
+        type: data.signal.type,
+        payload: data.signal.payload,
+        mediaType: 'voice',
+      })
+      return
+    }
+
+    // Legacy senders omitted mediaType. An offer has enough information in its
+    // SDP to distinguish screen video from voice audio. For answer/ICE, use
+    // existing screen ownership only; otherwise keep the conservative voice
+    // fallback so an existing voice peer is never hijacked by screen routing.
+    let isLegacyScreenOffer = false
+    let isLegacyVoiceOffer = false
+    let isLegacyOfferMediaUnknown = false
+    if (data.signal.type === 'offer') {
+      try {
+        const offer = JSON.parse(data.signal.payload) as { sdp?: unknown }
+        if (typeof offer.sdp === 'string') {
+          isLegacyScreenOffer = /(?:^|\r?\n)m=video(?:\s|$)/.test(offer.sdp)
+          isLegacyVoiceOffer = !isLegacyScreenOffer && /(?:^|\r?\n)m=audio(?:\s|$)/.test(offer.sdp)
+          isLegacyOfferMediaUnknown = !isLegacyScreenOffer && !isLegacyVoiceOffer
+        } else {
+          isLegacyOfferMediaUnknown = true
+        }
+      } catch {
+        isLegacyOfferMediaUnknown = true
+      }
+    }
+
+    if (
+      isLegacyScreenOffer ||
+      (!isLegacyVoiceOffer && (data.signal.type !== 'offer' || isLegacyOfferMediaUnknown) && mediaState.screenManagerOwnsPeer(data.fromUserId))
+    ) {
+      void mediaState.handleScreenSignal(data.fromUserId, data.fromUsername, {
+        type: data.signal.type,
+        payload: data.signal.payload,
+        mediaType: 'screen',
+      })
+      return
+    }
+
+    void mediaState.handleVoiceSignal(data.fromUserId, data.fromUsername, {
       type: data.signal.type,
       payload: data.signal.payload,
+      mediaType: 'voice',
     })
   }, [])
 
@@ -234,19 +389,129 @@ export function useRoomWebSocket() {
     []
   )
 
+  // ── Friend event handlers ────────────────────────────────
+
+  const handleFriendOnline = useCallback(
+    (data: FriendOnlineEvent) => {
+      const friendState = useFriendStore.getState()
+      if (data.isOnline) {
+        friendState.onFriendOnline(data.userId)
+      } else {
+        friendState.onFriendOffline(data.userId)
+      }
+    },
+    []
+  )
+
+  const handleFriendRequestPush = useCallback(
+    (data: FriendRequestPushEvent) => {
+      const friendState = useFriendStore.getState()
+      const request: FriendRequest = {
+        id: data.id,
+        senderId: data.senderId,
+        senderName: data.senderName,
+        receiverId: useAuthStore.getState().currentUser?.id ?? 0,
+        receiverName: '',
+        status: 0,
+        message: data.message,
+        createdAt: data.createdAt,
+      }
+      friendState.onFriendRequestReceived(request)
+      // Trigger notification aggregation so the new request appears immediately
+      useNotificationStore.getState().loadNotifications()
+    },
+    []
+  )
+
+  const handleFriendRequestHandled = useCallback(
+    (data: FriendRequestHandledEvent) => {
+      const friendState = useFriendStore.getState()
+      friendState.onFriendRequestHandled(data.requestId, data.accepted)
+      // Refresh friends list if accepted
+      if (data.accepted) {
+        friendState.fetchFriends()
+      }
+    },
+    []
+  )
+
+  const handleFriendRelationChange = useCallback(
+    (data: FriendRelationChangeEvent) => {
+      const friendState = useFriendStore.getState()
+      if (data.change === 'deleted') {
+        friendState.onFriendDeleted(data.friendId)
+      } else if (data.change === 'added') {
+        // New friend added via another device — refresh the list
+        friendState.fetchFriends()
+      }
+    },
+    []
+  )
+
+  const handlePrivateMessagePush = useCallback(
+    (data: PrivateMessagePushEvent) => {
+      const friendState = useFriendStore.getState()
+      const currentUser = useAuthStore.getState().currentUser
+      const message: PrivateMessage = {
+        id: data.id,
+        senderId: data.senderId,
+        senderName: data.senderName,
+        receiverId: data.receiverId,
+        content: data.content,
+        isRead: data.isRead,
+        createdAt: data.createdAt,
+      }
+      // Determine the other user's ID
+      const otherUserId =
+        data.senderId === currentUser?.id ? data.receiverId : data.senderId
+
+      // Append to messages if chat with this user is active
+      if (friendState.activeChatUserId === otherUserId) {
+        friendState.onPrivateMessageReceived(message)
+        // Update conversation lastMessage
+        const conversations = friendState.conversations.map((c) =>
+          c.userId === otherUserId
+            ? { ...c, lastMessage: data.content, lastMessageAt: data.createdAt }
+            : c,
+        )
+        useFriendStore.setState({ conversations })
+      } else {
+        // Not the active chat — update conversation preview and increment unread
+        const conversations = friendState.conversations.map((c) =>
+          c.userId === otherUserId
+            ? {
+                ...c,
+                lastMessage: data.content,
+                lastMessageAt: data.createdAt,
+                unreadCount: c.unreadCount + 1,
+              }
+            : c,
+        )
+        useFriendStore.setState({ conversations })
+      }
+    },
+    []
+  )
+
   // ── Main effect: connect WS and register event handlers ──
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser) {
       wsConnection.disconnect()
-      setConnectionStatus('disconnected', { status: 'disconnected' })
+      setConnectionStatus(ConnectionState.Disconnected, { status: ConnectionState.Disconnected })
       return
     }
 
     const token = localStorage.getItem('accessToken')
-    if (!token) return
+    if (!token) {
+      wsConnection.disconnect()
+      setConnectionStatus(ConnectionState.Disconnected, { status: ConnectionState.Disconnected })
+      return
+    }
 
-    // Connect via token-only (KOOK style, no room_id in URL)
+    // Connect via token-only (KOOK style, no room_id in URL). Record the
+    // desired channel before connecting so a fresh singleton joins it on open.
+    wsConnection.setDesiredChannel(currentChannelIdRef.current)
     const ws = wsConnection.connectWithToken(token)
     // Register a token provider so reconnects read the freshest token from
     // localStorage instead of a stale cached one.
@@ -257,7 +522,7 @@ export function useRoomWebSocket() {
     // Chat events
     unsubs.push(
       ws.on('chat_message', (d: unknown) => {
-        handleChatMessage(d as ChatMessageEvent)
+        handleChatMessage(d)
       })
     )
     unsubs.push(
@@ -330,6 +595,11 @@ export function useRoomWebSocket() {
         handleVoiceStateUpdate(d as VoiceStateUpdateEvent)
       })
     )
+    unsubs.push(
+      ws.on('participant_update', (d: unknown) => {
+        handleParticipantUpdate(d as ParticipantUpdateEvent)
+      })
+    )
 
     // Screen share events
     unsubs.push(
@@ -362,20 +632,40 @@ export function useRoomWebSocket() {
       })
     )
 
-    // Connection status polling (the singleton manages its own reconnect,
-    // but we poll to update the store for UI display)
+    // Friend events
+    unsubs.push(
+      ws.on('friend_online', (d: unknown) => {
+        handleFriendOnline(d as FriendOnlineEvent)
+      })
+    )
+    unsubs.push(
+      ws.on('friend_request_push', (d: unknown) => {
+        handleFriendRequestPush(d as FriendRequestPushEvent)
+      })
+    )
+    unsubs.push(
+      ws.on('friend_request_handled', (d: unknown) => {
+        handleFriendRequestHandled(d as FriendRequestHandledEvent)
+      })
+    )
+    unsubs.push(
+      ws.on('friend_relation_change', (d: unknown) => {
+        handleFriendRelationChange(d as FriendRelationChangeEvent)
+      })
+    )
+    unsubs.push(
+      ws.on('private_message_push', (d: unknown) => {
+        handlePrivateMessagePush(d as PrivateMessagePushEvent)
+      })
+    )
+
+    // Connection status polling updates the store for UI display. The
+    // singleton owns reconnect recovery and channel replay.
     const statusInterval = setInterval(() => {
       const status = ws.getConnectionStatus()
-      setConnectionStatus(status, { status })
-
-      if (status === 'connected' && currentChannelIdRef.current && previousChannelIdRef.current !== currentChannelIdRef.current) {
-        // Channel changed - subscribe to new channel, unsubscribe from old
-        if (previousChannelIdRef.current) {
-          ws.leaveChannel(previousChannelIdRef.current)
-        }
-        ws.joinChannel(currentChannelIdRef.current)
-        previousChannelIdRef.current = currentChannelIdRef.current
-      }
+      // Map WebSocketConnectionStatus to ConnectionState
+      const mapped = status === 'error' ? ConnectionState.Failed : status as ConnectionState
+      setConnectionStatus(mapped, { status: mapped })
     }, 1000)
 
     return () => {
@@ -387,42 +677,31 @@ export function useRoomWebSocket() {
   }, [
     isAuthenticated,
     currentUser,
-    currentServerId,
     setConnectionStatus,
     handleChatMessage,
     handleTyping,
     handleVoiceUserJoined,
     handleVoiceUserLeft,
     handleVoiceStateUpdate,
+    handleParticipantUpdate,
     handleScreenShareStart,
     handleScreenShareStop,
     handleWebRTCSignal,
     handleMemberJoined,
     handleMemberLeft,
+    handleFriendOnline,
+    handleFriendRequestPush,
+    handleFriendRequestHandled,
+    handleFriendRelationChange,
+    handlePrivateMessagePush,
   ])
 
   // ── Channel subscription effect ──────────────────────────
-  // When currentChannelId changes, send join_channel/leave_channel
+  // Record desired intent even when no connected socket exists. The singleton
+  // sends the transition immediately when open and replays it on reconnect.
   useEffect(() => {
     if (!isAuthenticated) return
-
-    const ws = wsConnection.getCurrentWs()
-    if (!ws) return
-
-    const prevId = previousChannelIdRef.current
-    const newId = currentChannelId
-
-    // Leave previous channel
-    if (prevId !== null && prevId !== newId) {
-      ws.leaveChannel(prevId)
-    }
-
-    // Join new channel
-    if (newId !== null && prevId !== newId) {
-      ws.joinChannel(newId)
-    }
-
-    previousChannelIdRef.current = newId
+    wsConnection.setDesiredChannel(currentChannelId)
   }, [currentChannelId, isAuthenticated])
 
   // ── Typing sender ────────────────────────────────────────

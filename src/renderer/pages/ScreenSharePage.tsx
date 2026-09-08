@@ -8,13 +8,14 @@ import type { ViewPageProps } from '@renderer/config/viewRegistry'
  * ScreenSharePage - 屏幕分享页容器。
  *
  * 连接 mediaStore，读取 localStream/remoteScreens/isSharing 状态，
- * 调用 stopSharing action，将状态和回调作为 props 传给 ScreenShareView 展示组件。
+ * 调用 startSharing/stopSharing actions，将状态和回调作为 props 传给 ScreenShareView 展示组件。
  */
 export function ScreenSharePage(_props: ViewPageProps): ReactNode {
   const localStream = useMediaStore((s) => s.localStream)
   const remoteScreens = useMediaStore((s) => s.remoteScreens)
   const isSharing = useMediaStore((s) => s.isSharing)
   const currentRoomId = useMediaStore((s) => s.currentRoomId)
+  const startSharing = useMediaStore((s) => s.startSharing)
   const stopSharing = useMediaStore((s) => s.stopSharing)
 
   // Map mediaStore remoteScreens (Map<number, RemoteScreen>) to ScreenShareView's array format
@@ -35,23 +36,26 @@ export function ScreenSharePage(_props: ViewPageProps): ReactNode {
     }))
   }, [remoteScreens])
 
+  const handleStart = useCallback(() => {
+    if (currentRoomId !== null) {
+      void startSharing(currentRoomId)
+    }
+  }, [currentRoomId, startSharing])
+
   const handleStop = useCallback(() => {
     if (currentRoomId !== null) {
       void stopSharing(currentRoomId)
     }
   }, [currentRoomId, stopSharing])
 
-  // mediaStore 暂无 pause 概念，暂停按钮为占位 no-op
-  const handlePauseToggle = useCallback(() => {
-    // TODO: 接入 mediaStore 的 pause/resume action（Phase 2）
-  }, [])
-
   return (
     <ScreenShareView
       localStream={localStream}
       remoteScreens={remoteScreensArray}
+      isSharing={isSharing}
+      hasRemoteScreens={remoteScreensArray.length > 0}
       isPaused={!isSharing}
-      onPauseToggle={handlePauseToggle}
+      onStart={handleStart}
       onStop={handleStop}
     />
   )

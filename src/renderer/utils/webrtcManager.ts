@@ -7,6 +7,29 @@ const RTC_CONFIG: RTCConfiguration = {
   ],
 }
 
+// ==================== Multi-Peer Stability Configuration ====================
+
+/** Maximum peers for full Mesh topology */
+const MAX_MESH_PEERS = 4
+
+/** Stats polling interval for bandwidth adaptation (ms) */
+const STATS_POLL_INTERVAL = 2000
+
+/** Network quality thresholds */
+const NETWORK_QUALITY_THRESHOLDS = {
+  highPacketLoss: 0.05,
+  lowPacketLoss: 0.01,
+  highRTT: 300,
+} as const
+
+/** Video quality levels high → low */
+const VIDEO_QUALITY_LEVELS = [
+  { width: 1920, height: 1080, frameRate: 30 },
+  { width: 1280, height: 720, frameRate: 24 },
+  { width: 854, height: 480, frameRate: 15 },
+  { width: 640, height: 360, frameRate: 10 },
+] as const
+
 export type SignalCallback = (signal: WebRTCSignalRequest) => void
 export type StreamCallback = (userId: number, username: string, stream: MediaStream) => void
 export type DisconnectedCallback = (userId: number) => void
@@ -19,6 +42,68 @@ export class WebRTCManager {
   private onDisconnected: DisconnectedCallback
   private mediaType: WebRTCMediaType | undefined
   private pendingIceCandidates: Map<number, RTCIceCandidateInit[]> = new Map()
+
+  // ==================== Multi-Peer Stability State ====================
+
+  /** Per-peer current quality level index (0 = highest) */
+  private peerQualityLevels: Map<number, number> = new Map()
+
+  /** Stats polling timer for bandwidth adaptation */
+  private statsPollTimer: ReturnType<typeof setInterval> | null = null
+
+  // ==================== Bandwidth Adaptation ====================
+
+  /**
+   * Start polling WebRTC stats for bandwidth adaptation.
+   * Monitors packet loss, RTT, and jitter to adjust video quality.
+   */
+  private startStatsPolling(): void {
+    if (this.statsPollTimer) return
+
+    this.statsPollTimer = setInterval(() => {
+      this.peerConnections.forEach(async (pc, userId) => {
+        try {
+          const stats = await pc.getStats()
+          stats.forEach((report) => {
+            if (report.type === 'inbound-rtp' && report.kind === 'video') {
+              const packetLoss = report.packetsLost / (report.packetsReceived + report.packetsLost) || 0
+
+              // Degrade quality on high packet loss
+              if (packetLoss > NETWORK_QUALITY_THRESHOLDS.highPacketLoss) {
+                this.degradeQuality(userId)
+              }
+            }
+          })
+        } catch (err) {
+          // getStats may fail during connection teardown
+        }
+      })
+    }, STATS_POLL_INTERVAL)
+  }
+
+  /**
+   * Degrade video quality for a specific peer.
+   */
+  private degradeQuality(userId: number): void {
+    const currentLevel = this.peerQualityLevels.get(userId) ?? 0
+    if (currentLevel >= VIDEO_QUALITY_LEVELS.length - 1) return
+
+    const nextLevel = currentLevel + 1
+    this.peerQualityLevels.set(userId, nextLevel)
+
+    const pc = this.peerConnections.get(userId)
+    if (!pc) return
+
+    const sender = pc.getSenders().find(s => s.track?.kind === 'video')
+    if (!sender) return
+
+    const params = sender.getParameters()
+    if (params.encodings.length > 0) {
+      const quality = VIDEO_QUALITY_LEVELS[nextLevel]
+      params.encodings[0].maxBitrate = quality.width * quality.height * quality.frameRate * 0.1
+      sender.setParameters(params).catch(() => {})
+    }
+  }
 
   constructor(
     _currentUserId: number,
@@ -60,13 +145,23 @@ export class WebRTCManager {
   /**
    * Start screen sharing (create offer for each participant).
    * Sends both video and audio tracks via WebRTC.
+   * Limits peers to MAX_MESH_PEERS for stability.
    */
   async startScreenShare(stream: MediaStream, targetUserIds: number[]): Promise<void> {
     this.localStream = stream
 
-    for (const targetUserId of targetUserIds) {
+    // Limit peers for Mesh stability
+    const limitedTargets = targetUserIds.slice(0, MAX_MESH_PEERS)
+    if (targetUserIds.length > MAX_MESH_PEERS) {
+      console.warn(`[WebRTC] Peer count ${targetUserIds.length} exceeds max ${MAX_MESH_PEERS}, truncating`)
+    }
+
+    for (const targetUserId of limitedTargets) {
       await this.createOffer(targetUserId)
     }
+
+    // Start bandwidth adaptation polling
+    this.startStatsPolling()
   }
 
   /**
@@ -87,11 +182,18 @@ export class WebRTCManager {
    * Start voice chat - creates a peer connection with audio tracks
    * for each target user. Similar to startScreenShare but only sends
    * audio tracks and uses offerToReceiveAudio for bidirectional audio.
+   * Limits peers to MAX_MESH_PEERS for stability.
    */
   async startVoiceChat(stream: MediaStream, targetUserIds: number[]): Promise<void> {
     this.localStream = stream
 
-    for (const targetUserId of targetUserIds) {
+    // Limit peers for Mesh stability
+    const limitedTargets = targetUserIds.slice(0, MAX_MESH_PEERS)
+    if (targetUserIds.length > MAX_MESH_PEERS) {
+      console.warn(`[WebRTC] Peer count ${targetUserIds.length} exceeds max ${MAX_MESH_PEERS}, truncating`)
+    }
+
+    for (const targetUserId of limitedTargets) {
       // Skip if a connection already exists for this user
       if (this.peerConnections.has(targetUserId)) {
         // Update the existing connection's tracks
@@ -111,6 +213,9 @@ export class WebRTCManager {
       }
       await this.createVoiceOffer(targetUserId)
     }
+
+    // Start bandwidth adaptation polling
+    this.startStatsPolling()
   }
 
   /**

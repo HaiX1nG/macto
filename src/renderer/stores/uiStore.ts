@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { devtools } from 'zustand/middleware'
 import type { ViewId, ViewParams } from '@shared/types/view'
-import type { WebSocketConnectionStatus, ConnectionStatePayload } from '../types/websocket'
+import { ConnectionState, type ConnectionFailureCode, type ConnectionStatePayload } from '@shared/types/voice'
 
 // ==================== Layout Constants ====================
 
@@ -48,6 +48,7 @@ export interface UIState {
   activeViewParams: ViewParams
   currentServerId: number | null
   currentChannelId: number | null
+  contextGeneration: number
 
   // Layout
   serverSidebarExpanded: boolean
@@ -62,18 +63,21 @@ export interface UIState {
   // Settings
   settings: AppSettings
 
-  // WebSocket connection status
-  wsConnectionStatus: WebSocketConnectionStatus
+  // WebSocket connection status (extended lifecycle state machine)
+  wsConnectionStatus: ConnectionState
   wsReconnectAttempt: number
   wsMaxReconnectAttempts: number
   wsLastConnectedAt: number | null
   wsLastDisconnectedAt: number | null
+  wsFailureCode: ConnectionFailureCode | null
+  wsFailureMessage: string | null
 
   // ==================== Navigation Actions ====================
   setActiveView: (viewId: ViewId, params?: ViewParams) => void
   clearActiveView: () => void
   setCurrentServerId: (id: number | null) => void
   setCurrentChannelId: (id: number | null) => void
+  bumpContextGeneration: () => number
 
   // ==================== Layout Actions ====================
   toggleServerSidebar: () => void
@@ -98,7 +102,7 @@ export interface UIState {
   setShowNotification: (enabled: boolean) => void
 
   // ==================== WebSocket Status Actions ====================
-  setConnectionStatus: (status: WebSocketConnectionStatus, payload?: ConnectionStatePayload) => void
+  setConnectionStatus: (status: ConnectionState, payload?: ConnectionStatePayload) => void
   resetConnectionStatus: () => void
 
   // ==================== Computed Helpers ====================
@@ -130,6 +134,7 @@ export const useUIStore = create<UIState>()(
         activeViewParams: DEFAULT_PARAMS,
         currentServerId: null,
         currentChannelId: null,
+        contextGeneration: 0,
 
         // Layout
         serverSidebarExpanded: false,
@@ -151,11 +156,13 @@ export const useUIStore = create<UIState>()(
         },
 
         // WebSocket
-        wsConnectionStatus: 'disconnected',
+        wsConnectionStatus: ConnectionState.Disconnected,
         wsReconnectAttempt: 0,
         wsMaxReconnectAttempts: 10,
         wsLastConnectedAt: null,
         wsLastDisconnectedAt: null,
+        wsFailureCode: null,
+        wsFailureMessage: null,
 
         // ==================== Navigation Actions ====================
 
@@ -165,9 +172,41 @@ export const useUIStore = create<UIState>()(
         clearActiveView: () =>
           set({ activeViewId: DEFAULT_VIEW, activeViewParams: DEFAULT_PARAMS }),
 
-        setCurrentServerId: (id) => set({ currentServerId: id }),
+        setCurrentServerId: (id) =>
+          set((state) => {
+            if (state.currentServerId === id) {
+              return state
+            }
 
-        setCurrentChannelId: (id) => set({ currentChannelId: id }),
+            return {
+              currentServerId: id,
+              currentChannelId: null,
+              activeViewId: DEFAULT_VIEW,
+              activeViewParams: {},
+              contextGeneration: state.contextGeneration + 1,
+            }
+          }),
+
+        setCurrentChannelId: (id) =>
+          set((state) => {
+            if (state.currentChannelId === id) {
+              return state
+            }
+
+            return {
+              currentChannelId: id,
+              contextGeneration: state.contextGeneration + 1,
+            }
+          }),
+
+        bumpContextGeneration: () => {
+          let nextGeneration = 0
+          set((state) => {
+            nextGeneration = state.contextGeneration + 1
+            return { contextGeneration: nextGeneration }
+          })
+          return nextGeneration
+        },
 
         // ==================== Layout Actions ====================
 
@@ -273,19 +312,23 @@ export const useUIStore = create<UIState>()(
           const now = Date.now()
           set((state) => ({
             wsConnectionStatus: status,
-            wsReconnectAttempt: payload?.reconnectAttempt ?? (status === 'reconnecting' ? state.wsReconnectAttempt + 1 : 0),
+            wsReconnectAttempt: payload?.reconnectAttempt ?? (status === ConnectionState.Reconnecting ? state.wsReconnectAttempt + 1 : 0),
             wsMaxReconnectAttempts: payload?.maxReconnectAttempts ?? state.wsMaxReconnectAttempts,
-            wsLastConnectedAt: status === 'connected' ? now : state.wsLastConnectedAt,
-            wsLastDisconnectedAt: status === 'disconnected' || status === 'error' ? now : state.wsLastDisconnectedAt,
+            wsLastConnectedAt: status === ConnectionState.Connected ? now : state.wsLastConnectedAt,
+            wsLastDisconnectedAt: status === ConnectionState.Disconnected || status === ConnectionState.Failed ? now : state.wsLastDisconnectedAt,
+            wsFailureCode: payload?.failureCode ?? null,
+            wsFailureMessage: payload?.failureMessage ?? null,
           }))
         },
 
         resetConnectionStatus: () =>
           set({
-            wsConnectionStatus: 'disconnected',
+            wsConnectionStatus: ConnectionState.Disconnected,
             wsReconnectAttempt: 0,
             wsLastConnectedAt: null,
             wsLastDisconnectedAt: null,
+            wsFailureCode: null,
+            wsFailureMessage: null,
           }),
 
         // ==================== Computed Helpers ====================

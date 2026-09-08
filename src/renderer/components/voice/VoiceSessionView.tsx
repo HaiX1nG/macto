@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { Empty } from 'antd'
 import { cn } from '@renderer/utils/cn'
 import type { UserStatus } from '@shared/types/auth'
+import { useUIStore } from '@renderer/stores/uiStore'
+import { ConnectionState, getConnectionStateText, getConnectionFailureMessage } from '@shared/types/voice'
 import VoiceParticipantList from './ParticipantList'
 import AudioWaveform from './AudioWaveform'
 import VoiceControls from './VoiceControls'
@@ -59,7 +61,6 @@ interface VoiceSessionViewProps {
  * Moved from src/renderer/components/pages/VoiceSessionPage.tsx.
  */
 export default function VoiceSessionView({
-  sessionId,
   sessionName,
   participants,
   isMuted,
@@ -76,6 +77,11 @@ export default function VoiceSessionView({
 }: VoiceSessionViewProps) {
   const [showWaveform, setShowWaveform] = useState(true)
   const [audioData, setAudioData] = useState<number[]>([])
+
+  // Connection lifecycle state for status display
+  const wsConnectionStatus = useUIStore((s) => s.wsConnectionStatus)
+  const wsFailureCode = useUIStore((s) => s.wsFailureCode)
+  const wsReconnectAttempt = useUIStore((s) => s.wsReconnectAttempt)
 
   // Simulate audio data for demonstration when no analyser is provided
   useEffect(() => {
@@ -115,8 +121,14 @@ export default function VoiceSessionView({
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              'w-3 h-3 rounded-full bg-[var(--color-online)]',
-              'animate-pulse shadow-lg shadow-[var(--color-online)]/30'
+              'w-3 h-3 rounded-full',
+              wsConnectionStatus === ConnectionState.Connected && 'bg-[var(--color-online)]',
+              wsConnectionStatus === ConnectionState.Connecting && 'bg-yellow-500 animate-pulse',
+              wsConnectionStatus === ConnectionState.ConnectingSlow && 'bg-orange-500 animate-pulse',
+              wsConnectionStatus === ConnectionState.Reconnecting && 'bg-blue-500 animate-pulse',
+              wsConnectionStatus === ConnectionState.Failed && 'bg-red-500',
+              wsConnectionStatus === ConnectionState.Disconnected && 'bg-gray-500',
+              'shadow-lg shadow-[var(--color-online)]/30'
             )}
           />
           <div>
@@ -124,7 +136,9 @@ export default function VoiceSessionView({
               {sessionName || '语音会话'}
             </h1>
             <p className="text-xs text-[var(--color-text-muted)]">
-              {participants.length} 位参与者 · ID: {sessionId}
+              {wsFailureCode
+                ? getConnectionFailureMessage(wsFailureCode, wsReconnectAttempt)
+                : getConnectionStateText(wsConnectionStatus, wsReconnectAttempt)}
             </p>
           </div>
         </div>
