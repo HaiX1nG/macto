@@ -3,93 +3,94 @@ import { kookTheme } from './theme'
 
 const { defaultAlgorithm, darkAlgorithm } = theme
 
+const components = kookTheme.components ?? {}
+
 export const kookAntdTheme = {
   ...kookTheme,
   algorithm: defaultAlgorithm,
   components: {
-    ...kookTheme.components,
     Button: {
-      ...kookTheme.components.Button,
+      ...components.Button,
       algorithm: true,
     },
     Input: {
-      ...kookTheme.components.Input,
+      ...components.Input,
       algorithm: true,
     },
     Modal: {
-      ...kookTheme.components.Modal,
+      ...components.Modal,
       algorithm: true,
     },
     Card: {
-      ...kookTheme.components.Card,
+      ...components.Card,
       algorithm: true,
     },
     Dropdown: {
-      ...kookTheme.components.Dropdown,
+      ...components.Dropdown,
       algorithm: true,
     },
     Menu: {
-      ...kookTheme.components.Menu,
+      ...components.Menu,
       algorithm: true,
     },
     Select: {
-      ...kookTheme.components.Select,
+      ...components.Select,
       algorithm: true,
     },
     Checkbox: {
-      ...kookTheme.components.Checkbox,
+      ...components.Checkbox,
       algorithm: true,
     },
     Radio: {
-      ...kookTheme.components.Radio,
+      ...components.Radio,
       algorithm: true,
     },
     Switch: {
-      ...kookTheme.components.Switch,
+      ...components.Switch,
       algorithm: true,
     },
     Slider: {
-      ...kookTheme.components.Slider,
+      ...components.Slider,
       algorithm: true,
     },
     Table: {
-      ...kookTheme.components.Table,
+      ...components.Table,
       algorithm: true,
     },
     Tag: {
-      ...kookTheme.components.Tag,
+      ...components.Tag,
       algorithm: true,
     },
     Tooltip: {
-      ...kookTheme.components.Tooltip,
+      ...components.Tooltip,
       algorithm: true,
     },
     Avatar: {
-      ...kookTheme.components.Avatar,
+      ...components.Avatar,
       algorithm: true,
     },
     Progress: {
-      ...kookTheme.components.Progress,
+      ...components.Progress,
       algorithm: true,
     },
     Tabs: {
-      ...kookTheme.components.Tabs,
+      ...components.Tabs,
       algorithm: true,
     },
     Drawer: {
-      ...kookTheme.components.Drawer,
+      ...components.Drawer,
       algorithm: true,
     },
     Popover: {
-      ...kookTheme.components.Popover,
+      ...components.Popover,
       algorithm: true,
     },
     Message: {
-      ...kookTheme.components.Message,
+      ...components.Message,
       algorithm: true,
     },
     Notification: {
-      ...kookTheme.components.Notification,
+      ...components.Notification,
       algorithm: true,
     },
   },
@@ -111,89 +112,88 @@ export const kookDarkTheme = {
     colorBorderSecondary: 'rgba(255, 255, 255, 0.1)',
   },
   components: {
-    ...kookTheme.components,
     Button: {
-      ...kookTheme.components.Button,
+      ...components.Button,
       algorithm: true,
     },
     Input: {
-      ...kookTheme.components.Input,
+      ...components.Input,
       algorithm: true,
     },
     Modal: {
-      ...kookTheme.components.Modal,
+      ...components.Modal,
       algorithm: true,
     },
     Card: {
-      ...kookTheme.components.Card,
+      ...components.Card,
       algorithm: true,
     },
     Dropdown: {
-      ...kookTheme.components.Dropdown,
+      ...components.Dropdown,
       algorithm: true,
     },
     Menu: {
-      ...kookTheme.components.Menu,
+      ...components.Menu,
       algorithm: true,
     },
     Select: {
-      ...kookTheme.components.Select,
+      ...components.Select,
       algorithm: true,
     },
     Checkbox: {
-      ...kookTheme.components.Checkbox,
+      ...components.Checkbox,
       algorithm: true,
     },
     Radio: {
-      ...kookTheme.components.Radio,
+      ...components.Radio,
       algorithm: true,
     },
     Switch: {
-      ...kookTheme.components.Switch,
+      ...components.Switch,
       algorithm: true,
     },
     Slider: {
-      ...kookTheme.components.Slider,
+      ...components.Slider,
       algorithm: true,
     },
     Table: {
-      ...kookTheme.components.Table,
+      ...components.Table,
       algorithm: true,
     },
     Tag: {
-      ...kookTheme.components.Tag,
+      ...components.Tag,
       algorithm: true,
     },
     Tooltip: {
-      ...kookTheme.components.Tooltip,
+      ...components.Tooltip,
       algorithm: true,
     },
     Avatar: {
-      ...kookTheme.components.Avatar,
+      ...components.Avatar,
       algorithm: true,
     },
     Progress: {
-      ...kookTheme.components.Progress,
+      ...components.Progress,
       algorithm: true,
     },
     Tabs: {
-      ...kookTheme.components.Tabs,
+      ...components.Tabs,
       algorithm: true,
     },
     Drawer: {
-      ...kookTheme.components.Drawer,
+      ...components.Drawer,
       algorithm: true,
     },
     Popover: {
-      ...kookTheme.components.Popover,
+      ...components.Popover,
       algorithm: true,
     },
     Message: {
-      ...kookTheme.components.Message,
+      ...components.Message,
       algorithm: true,
     },
     Notification: {
-      ...kookTheme.components.Notification,
+      ...components.Notification,
       algorithm: true,
     },
   },

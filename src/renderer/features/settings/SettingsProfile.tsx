@@ -1,13 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Avatar, Button, Input, Upload, Modal, App } from 'antd'
 import { UserOutlined, CameraOutlined, MailOutlined, LockOutlined, LogoutOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { useAuthStore } from '@renderer/stores/authStore'
+import { authService } from '@renderer/services'
 import { cn } from '@renderer/utils/cn'
 import type { UploadProps } from 'antd'
 
 export const SettingsProfile = () => {
-  const { currentUser, updateProfile, changePassword, logout, isLoading } = useAuthStore()
+  const { currentUser, updateProfile, changePassword, logout, isLoading, fetchUserInfo } = useAuthStore()
   const { message } = App.useApp()
+
+  // 组件加载时获取最新用户信息
+  useEffect(() => {
+    fetchUserInfo()
+  }, [fetchUserInfo])
 
   // Avatar state
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '')
@@ -36,10 +42,10 @@ export const SettingsProfile = () => {
       return
     }
     try {
-      await updateProfile({ avatarUrl })
+      await updateProfile({ avatarUrl: avatarUrl })
       message.success('头像更新成功')
       setIsEditingAvatar(false)
-    } catch (err) {
+    } catch (_err) {
       message.error('头像更新失败')
     }
   }
@@ -57,7 +63,7 @@ export const SettingsProfile = () => {
       await updateProfile({ username })
       message.success('用户名更新成功')
       setIsEditingUsername(false)
-    } catch (err) {
+    } catch (_err) {
       message.error('用户名更新失败')
     }
   }
@@ -79,7 +85,7 @@ export const SettingsProfile = () => {
       await updateProfile({ email })
       message.success('邮箱更新成功')
       setIsEditingEmail(false)
-    } catch (err) {
+    } catch (_err) {
       message.error('邮箱更新失败')
     }
   }
@@ -98,13 +104,13 @@ export const SettingsProfile = () => {
       return
     }
     try {
-      await changePassword({ oldPassword, newPassword })
+      await changePassword(oldPassword, newPassword)
       message.success('密码修改成功')
       setShowPasswordModal(false)
       setOldPassword('')
       setNewPassword('')
       setConfirmPassword('')
-    } catch (err) {
+    } catch (_err) {
       message.error('密码修改失败')
     }
   }
@@ -112,6 +118,17 @@ export const SettingsProfile = () => {
   const handleLogout = () => {
     logout()
     message.success('已退出登录')
+  }
+
+  const handleDeleteAccount = async () => {
+    try {
+      await authService.deleteAccount()
+      message.success('账户已删除')
+      setShowDeleteModal(false)
+      logout()
+    } catch (_err) {
+      message.error('删除账户失败')
+    }
   }
 
   const uploadProps: UploadProps = {
@@ -129,15 +146,15 @@ export const SettingsProfile = () => {
         return false
       }
       const reader = new FileReader()
-      reader.onload = () => {
+      reader.onload = async () => {
         const dataUrl = reader.result as string
         setAvatarUrl(dataUrl)
-        // Auto save on upload
-        updateProfile({ avatarUrl: dataUrl }).then(() => {
+        try {
+          await updateProfile({ avatarUrl: dataUrl })
           message.success('头像更新成功')
-        }).catch(() => {
+        } catch (_err) {
           message.error('头像更新失败')
-        })
+        }
       }
       reader.readAsDataURL(file)
       return false
@@ -145,14 +162,14 @@ export const SettingsProfile = () => {
   }
 
   return (
-    <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 scrollbar-thin">
-      {/* Avatar Section */}
-      <div className="flex flex-col items-center py-6 border-b border-[var(--color-border)]">
+    <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 scrollbar-thin px-2 sm:px-0">
+      {/* Avatar Section - Glassmorphism Card */}
+      <div className="flex flex-col items-center py-6 sm:py-8 border-b border-[var(--color-border)] backdrop-blur-sm bg-[var(--color-bg-secondary)]/50 rounded-xl sm:rounded-2xl mx-0 sm:mx-4">
         <div className="relative group">
           <Avatar
             size={80}
             src={currentUser?.avatarUrl || undefined}
-            className="bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white text-2xl font-bold shadow-lg"
+            className="bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white text-2xl font-bold shadow-lg ring-2 ring-white/10"
           >
             {currentUser?.username?.charAt(0)?.toUpperCase() || 'U'}
           </Avatar>
@@ -217,10 +234,10 @@ export const SettingsProfile = () => {
         </Button>
       )}
 
-      {/* User Info */}
-      <div className="space-y-2">
+      {/* User Info - Responsive Grid */}
+      <div className="space-y-2 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
         {/* Username */}
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--color-bg-tertiary)]">
+        <div className="flex items-center gap-3 p-3 sm:p-4 rounded-xl bg-[var(--color-bg-tertiary)] backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
           <UserOutlined className="text-[var(--color-text-muted)]" />
           <div className="flex-1 min-w-0">
             <p className="text-xs text-[var(--color-text-muted)]">用户名</p>
@@ -279,7 +296,7 @@ export const SettingsProfile = () => {
           <LockOutlined className="text-[var(--color-text-muted)]" />
           <div className="flex-1 min-w-0">
             <p className="text-xs text-[var(--color-text-muted)]">用户 ID</p>
-            <p className="font-medium text-[var(--color-text-normal)]">{currentUser?.userId || '-'}</p>
+            <p className="font-medium text-[var(--color-text-normal)]">{currentUser?.id || '-'}</p>
           </div>
         </div>
       </div>
@@ -369,10 +386,9 @@ export const SettingsProfile = () => {
             确认修改
           </Button>,
         ]}
+        zIndex={2000}
         styles={{
-          content: { borderRadius: '12px', backgroundColor: 'var(--color-bg-secondary)' },
-          header: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
-          body: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
         }}
       >
         <div className="space-y-3 py-4">
@@ -412,17 +428,13 @@ export const SettingsProfile = () => {
           <Button key="cancel" onClick={() => setShowDeleteModal(false)} className="rounded-lg">
             取消
           </Button>,
-          <Button key="delete" type="primary" danger onClick={() => {
-            message.info('账户删除功能暂未实现')
-            setShowDeleteModal(false)
-          }} className="rounded-lg">
+          <Button key="delete" type="primary" danger onClick={handleDeleteAccount} loading={isLoading} className="rounded-lg">
             确认删除
           </Button>,
         ]}
+        zIndex={2000}
         styles={{
-          content: { borderRadius: '12px', backgroundColor: 'var(--color-bg-secondary)' },
-          header: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
-          body: { backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-normal)' },
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
         }}
       >
         <div className="py-4">

@@ -4,14 +4,27 @@
  * The settings view for user preferences and application configuration.
  */
 
-import React from 'react'
-import { Button, Typography, Switch, Slider, Select, Card, Tabs } from 'antd'
-import { AudioOutlined, VideoCameraOutlined, BellOutlined, InfoCircleOutlined, SaveOutlined, ReloadOutlined, SettingOutlined, DesktopOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
+import { Button, Typography, Switch, Slider, Select, Card } from 'antd'
+import {
+  AudioOutlined,
+  VideoCameraOutlined,
+  BellOutlined,
+  InfoCircleOutlined,
+  SaveOutlined,
+  ReloadOutlined,
+  SettingOutlined,
+  DesktopOutlined,
+  MoonOutlined,
+  SunOutlined,
+  KeyOutlined,
+} from '@ant-design/icons'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@renderer/utils/cn'
 import { useThemeStore, type AppTheme } from '@renderer/stores/themeStore'
+import { ShortcutsSettings } from '@renderer/components/settings/ShortcutsSettings'
 
 const { Title, Text } = Typography
-const { TabPane } = Tabs
 const { Option } = Select
 
 interface AudioSettings {
@@ -39,6 +52,25 @@ interface SettingsViewProps {
   onNotificationsToggle?: (enabled: boolean) => void
 }
 
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] }
+  }
+}
+
+// Theme options with preview
 const themeOptions: Array<{
   value: AppTheme
   label: string
@@ -83,6 +115,23 @@ const themeOptions: Array<{
   },
 ]
 
+// Settings sections definition
+interface SectionDef {
+  key: string
+  icon: React.ReactNode
+  title: string
+  label: string
+}
+
+const sections: SectionDef[] = [
+  { key: 'appearance', icon: <DesktopOutlined />, title: '外观', label: '外观' },
+  { key: 'audio', icon: <AudioOutlined />, title: '音频', label: '音频' },
+  { key: 'video', icon: <VideoCameraOutlined />, title: '视频', label: '视频' },
+  { key: 'notifications', icon: <BellOutlined />, title: '通知', label: '通知' },
+  { key: 'shortcuts', icon: <KeyOutlined />, title: '快捷键', label: '快捷键' },
+  { key: 'about', icon: <InfoCircleOutlined />, title: '关于', label: '关于' },
+]
+
 export const SettingsView: React.FC<SettingsViewProps> = ({
   audioSettings = {
     microphone: 'default',
@@ -104,21 +153,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onNotificationsToggle,
 }) => {
   const { theme, setTheme } = useThemeStore()
+  const [activeSection, setActiveSection] = useState('appearance')
 
   return (
-    <div className="flex h-screen bg-[var(--color-bg-secondary)] transition-colors duration-300">
+    <div className="flex h-full bg-[var(--color-bg-secondary)] transition-colors duration-300">
       {/* Sidebar */}
-      <div className={cn(
-        'w-64 bg-[var(--color-bg-tertiary)]',
-        'border-r border-[var(--color-border)]',
-        'flex flex-col transition-colors duration-300'
-      )}>
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className={cn(
+          'w-64 bg-[var(--color-bg-base)]',
+          'border-r border-[var(--color-border)]',
+          'flex flex-col transition-colors duration-300'
+        )}
+      >
         {/* Header */}
         <div className="p-6 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-3">
             <div className={cn(
               'w-10 h-10 rounded-xl',
-              'bg-gradient-to-br from-[var(--color-primary)] to-purple-600',
+              'bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]',
               'flex items-center justify-center',
               'text-white font-bold shadow-lg'
             )}>
@@ -131,269 +186,403 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex-1 overflow-y-auto py-4">
-          <Tabs
-            defaultActiveKey="appearance"
-            tabPosition="left"
-            className="settings-tabs h-full"
-            styles={{
-              inkBar: { backgroundColor: 'var(--color-primary)', width: 3 },
-              tabBar: { width: '100%' },
-            }}
-          >
-            <TabPane
-              tab={
-                <span className="flex items-center gap-3 px-4 py-3">
-                  <DesktopOutlined className="text-lg" />
-                  <span className="font-medium">外观</span>
-                </span>
-              }
-              key="appearance"
-            />
-            <TabPane
-              tab={
-                <span className="flex items-center gap-3 px-4 py-3">
-                  <AudioOutlined className="text-lg" />
-                  <span className="font-medium">音频</span>
-                </span>
-              }
-              key="audio"
-            />
-            <TabPane
-              tab={
-                <span className="flex items-center gap-3 px-4 py-3">
-                  <VideoCameraOutlined className="text-lg" />
-                  <span className="font-medium">视频</span>
-                </span>
-              }
-              key="video"
-            />
-            <TabPane
-              tab={
-                <span className="flex items-center gap-3 px-4 py-3">
-                  <BellOutlined className="text-lg" />
-                  <span className="font-medium">通知</span>
-                </span>
-              }
-              key="notifications"
-            />
-            <TabPane
-              tab={
-                <span className="flex items-center gap-3 px-4 py-3">
-                  <InfoCircleOutlined className="text-lg" />
-                  <span className="font-medium">关于</span>
-                </span>
-              }
-              key="about"
-            />
-          </Tabs>
-        </div>
-      </div>
+        {/* Section Navigation */}
+        <nav className="flex-1 overflow-y-auto py-2">
+          {sections.map((section) => (
+            <button
+              key={section.key}
+              onClick={() => setActiveSection(section.key)}
+              className={cn(
+                'w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-200',
+                'hover:bg-[var(--color-bg-tertiary)]',
+                activeSection === section.key
+                  ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-l-2 border-[var(--color-primary)]'
+                  : 'text-[var(--color-text-muted)] border-l-2 border-transparent'
+              )}
+            >
+              <span className={cn(
+                'text-lg',
+                activeSection === section.key ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
+              )}>
+                {section.icon}
+              </span>
+              <span className="font-medium">{section.label}</span>
+            </button>
+          ))}
+        </nav>
+      </motion.div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="max-w-4xl mx-auto"
+        >
           {/* Header */}
-          <div className="mb-10">
+          <div className="mb-8">
             <h1 className="text-3xl font-bold text-[var(--color-text-normal)]">设置</h1>
             <Text className="text-lg text-[var(--color-text-muted)]">管理您的偏好和配置</Text>
           </div>
 
-          {/* Theme Section */}
-          <SettingsSection
-            icon={<DesktopOutlined />}
-            title="主题"
-            description="选择您喜欢的界面风格"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {themeOptions.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTheme(t.value)}
-                  className={cn(
-                    'p-5 rounded-2xl border-2 cursor-pointer',
-                    'transition-all duration-200',
-                    'hover:scale-[1.02] active:scale-[0.98]',
-                    theme === t.value
-                      ? 'border-[var(--color-primary)] bg-[var(--color-bg-darker)] shadow-lg'
-                      : 'border-[var(--color-border)] hover:border-[var(--color-primary)]'
-                  )}
-                >
-                  <div className="mb-4">{t.preview}</div>
-                  <h3 className="font-bold text-[var(--color-text-normal)] mb-1">{t.label}</h3>
-                  <p className="text-sm text-[var(--color-text-muted)]">{t.description}</p>
-                  {theme === t.value && (
-                    <div className="mt-3 text-sm text-[var(--color-primary)] font-medium">
-                      ✓ 已选择
+          {/* Appearance Section */}
+          <AnimatePresence mode="wait">
+            {activeSection === 'appearance' && (
+              <motion.div
+                key="appearance"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<DesktopOutlined />}
+                    title="主题"
+                    description="选择您喜欢的界面风格"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {themeOptions.map((t) => (
+                        <motion.button
+                          key={t.value}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setTheme(t.value)}
+                          className={cn(
+                            'p-5 rounded-xl border-2 cursor-pointer text-left',
+                            'transition-all duration-200',
+                            'hover:shadow-lg',
+                            theme === t.value
+                              ? 'border-[var(--color-primary)] bg-[var(--color-bg-darker)] shadow-lg'
+                              : 'border-[var(--color-border)] hover:border-[var(--color-primary)]'
+                          )}
+                        >
+                          <div className="mb-4">{t.preview}</div>
+                          <h3 className="font-bold text-[var(--color-text-normal)] mb-1">{t.label}</h3>
+                          <p className="text-sm text-[var(--color-text-muted)]">{t.description}</p>
+                          {theme === t.value && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="mt-3 text-sm text-[var(--color-primary)] font-medium"
+                            >
+                              已选择
+                            </motion.div>
+                          )}
+                        </motion.button>
+                      ))}
                     </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </SettingsSection>
+                  </SettingsSection>
+                </motion.div>
 
-          {/* Audio Section */}
-          <SettingsSection
-            icon={<AudioOutlined />}
-            title="音频"
-          >
-            <div className="space-y-6">
-              <div>
-                <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
-                  输入设备
-                </Text>
-                <Select
-                  value={audioSettings.microphone}
-                  onChange={(value) => onAudioSettingsChange?.({ microphone: value })}
-                  className="w-full"
-                >
-                  <Option value="default">默认麦克风</Option>
-                  <Option value="external">外部麦克风</Option>
-                </Select>
-              </div>
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<MoonOutlined />}
+                    title="深色模式"
+                    description="自动跟随系统或手动切换"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-bg-tertiary)]">
+                        <SunOutlined className="text-[var(--color-text-muted)]" />
+                        <Switch defaultChecked={false} />
+                        <MoonOutlined className="text-[var(--color-text-muted)]" />
+                      </div>
+                      <Text className="text-sm text-[var(--color-text-muted)]">
+                        跟随系统设置
+                      </Text>
+                    </div>
+                  </SettingsSection>
+                </motion.div>
+              </motion.div>
+            )}
 
-              <div>
-                <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
-                  输出设备
-                </Text>
-                <Select
-                  value={audioSettings.speakers}
-                  onChange={(value) => onAudioSettingsChange?.({ speakers: value })}
-                  className="w-full"
-                >
-                  <Option value="default">默认扬声器</Option>
-                  <Option value="external">外部扬声器</Option>
-                </Select>
-              </div>
+            {/* Audio Section */}
+            {activeSection === 'audio' && (
+              <motion.div
+                key="audio"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<AudioOutlined />}
+                    title="音频"
+                  >
+                    <div className="space-y-6">
+                      <div>
+                        <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
+                          输入设备
+                        </Text>
+                        <Select
+                          value={audioSettings.microphone}
+                          onChange={(value) => onAudioSettingsChange?.({ microphone: value })}
+                          className="w-full"
+                        >
+                          <Option value="default">默认麦克风</Option>
+                          <Option value="external">外部麦克风</Option>
+                        </Select>
+                      </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <Text className="font-semibold text-[var(--color-text-normal)]">输入音量</Text>
-                  <Text className="font-bold text-[var(--color-primary)]">{audioSettings.inputVolume}%</Text>
-                </div>
-                <Slider
-                  value={audioSettings.inputVolume}
-                  onChange={(value) => onAudioSettingsChange?.({ inputVolume: value })}
-                  min={0}
-                  max={100}
-                  className="w-full"
-                />
-              </div>
+                      <div>
+                        <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
+                          输出设备
+                        </Text>
+                        <Select
+                          value={audioSettings.speakers}
+                          onChange={(value) => onAudioSettingsChange?.({ speakers: value })}
+                          className="w-full"
+                        >
+                          <Option value="default">默认扬声器</Option>
+                          <Option value="external">外部扬声器</Option>
+                        </Select>
+                      </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <Text className="font-semibold text-[var(--color-text-normal)]">输出音量</Text>
-                  <Text className="font-bold text-[var(--color-primary)]">{audioSettings.outputVolume}%</Text>
-                </div>
-                <Slider
-                  value={audioSettings.outputVolume}
-                  onChange={(value) => onAudioSettingsChange?.({ outputVolume: value })}
-                  min={0}
-                  max={100}
-                  className="w-full"
-                />
-              </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <Text className="font-semibold text-[var(--color-text-normal)]">输入音量</Text>
+                          <Text className="font-bold text-[var(--color-primary)]">{audioSettings.inputVolume}%</Text>
+                        </div>
+                        <Slider
+                          value={audioSettings.inputVolume}
+                          onChange={(value) => onAudioSettingsChange?.({ inputVolume: value })}
+                          min={0}
+                          max={100}
+                          className="w-full"
+                        />
+                      </div>
 
-              <SettingsToggle
-                title="噪声抑制"
-                description="自动减少背景噪声"
-                checked={audioSettings.noiseSuppression}
-                onChange={(checked) => onAudioSettingsChange?.({ noiseSuppression: checked })}
-              />
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <Text className="font-semibold text-[var(--color-text-normal)]">输出音量</Text>
+                          <Text className="font-bold text-[var(--color-primary)]">{audioSettings.outputVolume}%</Text>
+                        </div>
+                        <Slider
+                          value={audioSettings.outputVolume}
+                          onChange={(value) => onAudioSettingsChange?.({ outputVolume: value })}
+                          min={0}
+                          max={100}
+                          className="w-full"
+                        />
+                      </div>
 
-              <SettingsToggle
-                title="回声消除"
-                description="减少回声和混响"
-                checked={audioSettings.echoCancellation}
-                onChange={(checked) => onAudioSettingsChange?.({ echoCancellation: checked })}
-              />
-            </div>
-          </SettingsSection>
+                      <SettingsToggle
+                        title="噪声抑制"
+                        description="自动减少背景噪声"
+                        checked={audioSettings.noiseSuppression}
+                        onChange={(checked) => onAudioSettingsChange?.({ noiseSuppression: checked })}
+                      />
 
-          {/* Video Section */}
-          <SettingsSection
-            icon={<VideoCameraOutlined />}
-            title="视频"
-          >
-            <div className="space-y-6">
-              <div>
-                <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
-                  摄像头
-                </Text>
-                <Select
-                  value={videoSettings.camera}
-                  onChange={(value) => onVideoSettingsChange?.({ camera: value })}
-                  className="w-full"
-                >
-                  <Option value="default">默认摄像头</Option>
-                  <Option value="external">外部摄像头</Option>
-                </Select>
-              </div>
+                      <SettingsToggle
+                        title="回声消除"
+                        description="减少回声和混响"
+                        checked={audioSettings.echoCancellation}
+                        onChange={(checked) => onAudioSettingsChange?.({ echoCancellation: checked })}
+                      />
+                    </div>
+                  </SettingsSection>
+                </motion.div>
+              </motion.div>
+            )}
 
-              <div>
-                <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
-                  画质
-                </Text>
-                <Select
-                  value={videoSettings.quality}
-                  onChange={(value) => onVideoSettingsChange?.({ quality: value as 'low' | 'medium' | 'high' })}
-                  className="w-full"
-                >
-                  <Option value="low">低 (节省带宽)</Option>
-                  <Option value="medium">中 (推荐)</Option>
-                  <Option value="high">高 (最佳画质)</Option>
-                </Select>
-              </div>
+            {/* Video Section */}
+            {activeSection === 'video' && (
+              <motion.div
+                key="video"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<VideoCameraOutlined />}
+                    title="视频"
+                  >
+                    <div className="space-y-6">
+                      <div>
+                        <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
+                          摄像头
+                        </Text>
+                        <Select
+                          value={videoSettings.camera}
+                          onChange={(value) => onVideoSettingsChange?.({ camera: value })}
+                          className="w-full"
+                        >
+                          <Option value="default">默认摄像头</Option>
+                          <Option value="external">外部摄像头</Option>
+                        </Select>
+                      </div>
 
-              <div>
-                <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
-                  分辨率
-                </Text>
-                <Select
-                  value={videoSettings.resolution}
-                  onChange={(value) => onVideoSettingsChange?.({ resolution: value as '480p' | '720p' | '1080p' })}
-                  className="w-full"
-                >
-                  <Option value="480p">480p (854x480)</Option>
-                  <Option value="720p">720p (1280x720)</Option>
-                  <Option value="1080p">1080p (1920x1080)</Option>
-                </Select>
-              </div>
+                      <div>
+                        <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
+                          画质
+                        </Text>
+                        <Select
+                          value={videoSettings.quality}
+                          onChange={(value) => onVideoSettingsChange?.({ quality: value as 'low' | 'medium' | 'high' })}
+                          className="w-full"
+                        >
+                          <Option value="low">低 (节省带宽)</Option>
+                          <Option value="medium">中 (推荐)</Option>
+                          <Option value="high">高 (最佳画质)</Option>
+                        </Select>
+                      </div>
 
-              <div>
-                <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
-                  帧率 (FPS)
-                </Text>
-                <Select
-                  value={videoSettings.frameRate}
-                  onChange={(value) => onVideoSettingsChange?.({ frameRate: value })}
-                  className="w-full"
-                >
-                  <Option value={15}>15 FPS</Option>
-                  <Option value={30}>30 FPS</Option>
-                  <Option value={60}>60 FPS</Option>
-                </Select>
-              </div>
-            </div>
-          </SettingsSection>
+                      <div>
+                        <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
+                          分辨率
+                        </Text>
+                        <Select
+                          value={videoSettings.resolution}
+                          onChange={(value) => onVideoSettingsChange?.({ resolution: value as '480p' | '720p' | '1080p' })}
+                          className="w-full"
+                        >
+                          <Option value="480p">480p (854x480)</Option>
+                          <Option value="720p">720p (1280x720)</Option>
+                          <Option value="1080p">1080p (1920x1080)</Option>
+                        </Select>
+                      </div>
 
-          {/* Notifications Section */}
-          <SettingsSection
-            icon={<BellOutlined />}
-            title="通知"
-          >
-            <SettingsToggle
-              title="启用通知"
-              description="接收新消息和活动提醒"
-              checked={notificationsEnabled}
-              onChange={onNotificationsToggle}
-              large
-            />
-          </SettingsSection>
+                      <div>
+                        <Text className="block mb-3 font-semibold text-[var(--color-text-normal)]">
+                          帧率 (FPS)
+                        </Text>
+                        <Select
+                          value={videoSettings.frameRate}
+                          onChange={(value) => onVideoSettingsChange?.({ frameRate: value })}
+                          className="w-full"
+                        >
+                          <Option value={15}>15 FPS</Option>
+                          <Option value={30}>30 FPS</Option>
+                          <Option value={60}>60 FPS</Option>
+                        </Select>
+                      </div>
+                    </div>
+                  </SettingsSection>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Notifications Section */}
+            {activeSection === 'notifications' && (
+              <motion.div
+                key="notifications"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<BellOutlined />}
+                    title="通知"
+                  >
+                    <SettingsToggle
+                      title="启用通知"
+                      description="接收新消息和活动提醒"
+                      checked={notificationsEnabled}
+                      onChange={onNotificationsToggle}
+                      large
+                    />
+                    <div className="mt-4 space-y-3">
+                      <SettingsToggle
+                        title="声音提醒"
+                        description="收到新消息时播放提示音"
+                        checked={true}
+                        onChange={() => {}}
+                      />
+                      <SettingsToggle
+                        title="桌面通知"
+                        description="在桌面显示通知弹窗"
+                        checked={true}
+                        onChange={() => {}}
+                      />
+                      <SettingsToggle
+                        title="邮件通知"
+                        description="离线时发送邮件提醒"
+                        checked={false}
+                        onChange={() => {}}
+                      />
+                    </div>
+                  </SettingsSection>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Shortcuts Section */}
+            {activeSection === 'shortcuts' && (
+              <motion.div
+                key="shortcuts"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<KeyOutlined />}
+                    title="快捷键"
+                    description="自定义您的键盘快捷键设置"
+                  >
+                    <ShortcutsSettings open={true} />
+                  </SettingsSection>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* About Section */}
+            {activeSection === 'about' && (
+              <motion.div
+                key="about"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+              >
+                <motion.div variants={itemVariants}>
+                  <SettingsSection
+                    icon={<InfoCircleOutlined />}
+                    title="关于"
+                  >
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          'w-16 h-16 rounded-2xl',
+                          'bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]',
+                          'flex items-center justify-center',
+                          'shadow-lg shadow-[var(--color-primary)]/30'
+                        )}>
+                          <span className="text-white font-bold text-2xl">M</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-[var(--color-text-normal)]">Macto</h3>
+                          <p className="text-sm text-[var(--color-text-muted)]">语音与屏幕共享应用</p>
+                          <p className="text-xs text-[var(--color-text-muted)] mt-1">版本 0.1.0</p>
+                        </div>
+                      </div>
+                      <div className="pt-4 border-t border-[var(--color-border)]">
+                        <Text className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                          Macto 是一款跨平台实时语音和屏幕共享应用程序，
+                          旨在提供高质量的语音通话和流畅的屏幕共享体验。
+                        </Text>
+                      </div>
+                    </div>
+                  </SettingsSection>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Save Button */}
-          <div className="flex justify-end gap-4 pt-8 border-t border-[var(--color-border)] mt-8">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex justify-end gap-4 pt-6 border-t border-[var(--color-border)] mt-6"
+          >
             <Button
               size="large"
               icon={<ReloadOutlined />}
@@ -406,12 +595,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="primary"
               size="large"
               icon={<SaveOutlined />}
-              className="px-10 rounded-xl font-semibold"
+              className="px-8 rounded-xl font-semibold"
             >
               保存设置
             </Button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   )
@@ -433,12 +622,12 @@ const SettingsSection = ({ icon, title, description, children }: SettingsSection
         'border border-[var(--color-border)]',
         'hover:shadow-lg transition-shadow'
       )}
-      styles={{ body: { padding: '28px' } }}
+      styles={{ body: { padding: '24px' } }}
     >
       <div className="flex items-center gap-4 mb-6">
         <div className={cn(
-          'w-12 h-12 rounded-xl flex items-center justify-center',
-          'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+          'w-10 h-10 rounded-xl flex items-center justify-center',
+          'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
         )}>
           {icon}
         </div>
@@ -487,7 +676,8 @@ const SettingsToggle = ({ title, description, checked, onChange, large = false }
     <Switch
       checked={checked}
       onChange={onChange}
-      size={large ? 'large' : 'default'}
     />
   </div>
 )
+
+export default SettingsView

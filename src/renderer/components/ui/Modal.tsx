@@ -1,17 +1,30 @@
 import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@renderer/utils/cn'
+import { backdropVariants, modalVariants } from '@renderer/utils/animations'
+
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
+type ModalVariant = 'default' | 'glass'
 
 interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title: string
   description?: string
-  children: ReactNode
+  children?: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
-  variant?: 'default' | 'glass'
+  size?: ModalSize
+  variant?: ModalVariant
   showCloseButton?: boolean
   closeOnOverlayClick?: boolean
+  /**
+   * Use framer-motion for enter/exit animations.
+   * When false (default), uses CSS animations for simpler, more performant transitions.
+   * When true, uses framer-motion for smoother exit animations and future gesture support.
+   * @default false
+   */
+  useMotion?: boolean
 }
 
 export const Modal = ({
@@ -25,10 +38,27 @@ export const Modal = ({
   variant = 'default',
   showCloseButton = true,
   closeOnOverlayClick = true,
+  useMotion = false,
 }: ModalProps) => {
-  if (!isOpen) return null
+  // State for CSS animation exit handling
+  const [visible, setVisible] = useState(false)
+  const [animatingOut, setAnimatingOut] = useState(false)
 
-  const sizes = {
+  useEffect(() => {
+    if (isOpen) {
+      setVisible(true)
+      setAnimatingOut(false)
+    } else if (visible) {
+      setAnimatingOut(true)
+      const timer = setTimeout(() => {
+        setVisible(false)
+        setAnimatingOut(false)
+      }, 200)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen, visible])
+
+  const sizes: Record<ModalSize, string> = {
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
@@ -36,80 +66,134 @@ export const Modal = ({
     full: 'max-w-[90vw]',
   }
 
-  const variants = {
+  const variants: Record<ModalVariant, string> = {
     default: cn(
-      'bg-white dark:bg-[var(--color-bg-tertiary-dark)]',
-      'border border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]'
+      'bg-[var(--color-bg-secondary)]',
+      'border border-[var(--color-border)]'
     ),
     glass: cn(
-      'bg-[var(--color-glass-light)] dark:bg-[var(--color-glass-dark)]',
-      'backdrop-blur-[var(--blur-xl)]',
-      'border border-[var(--color-glass-border-light)] dark:border-[var(--color-glass-border-dark)]'
+      'bg-[var(--color-bg-secondary)]/80',
+      'backdrop-blur-xl',
+      'border border-[var(--color-border)]'
     ),
   }
 
-  return (
-    <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 dark:bg-black/70 backdrop-blur-sm transition-opacity duration-200 animate-[fade-in_0.2s_ease-out]"
-        onClick={closeOnOverlayClick ? onClose : undefined}
-      />
-
-      {/* Modal Content */}
-      <div
-        className={cn(
-          'relative w-full rounded-[var(--radius-xl)] shadow-[var(--shadow-floating)]',
-          'animate-[scale-in_0.2s_ease-out]',
-          sizes[size],
-          variants[variant]
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]">
-          <div className="flex-1 pr-4">
-            <h3 className="text-xl font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]">
-              {title}
-            </h3>
-            {description && (
-              <p className="mt-1 text-sm text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)]">
-                {description}
-              </p>
-            )}
-          </div>
-          {showCloseButton && (
-            <button
-              onClick={onClose}
-              className={cn(
-                'w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center',
-                'text-[var(--color-text-tertiary-light)] hover:text-[var(--color-text-secondary-light)] dark:hover:text-[var(--color-text-secondary-dark)]',
-                'hover:bg-[var(--color-bg-tertiary-light)] dark:hover:bg-[var(--color-bg-tertiary-dark)]',
-                'transition-[var(--transition-all)]',
-                'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30'
-              )}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+  const modalContent = (
+    <div
+      className={cn(
+        'macto-modal-container relative w-full rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.15)]',
+        sizes[size],
+        variants[variant]
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between px-6 py-5 border-b border-[var(--color-border)]">
+        <div className="flex-1 pr-4">
+          <h3 className="text-xl font-bold text-[var(--color-text-normal)]">
+            {title}
+          </h3>
+          {description && (
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+              {description}
+            </p>
           )}
         </div>
-
-        {/* Body */}
-        <div className="px-6 py-5 max-h-[60vh] overflow-y-auto">
-          {children}
-        </div>
-
-        {/* Footer */}
-        {footer && (
-          <div className="flex items-center justify-end gap-3 px-6 py-5 border-t border-[var(--color-border-light)] dark:border-[var(--color-border-dark)] bg-[var(--color-bg-secondary-light)]/50 dark:bg-[var(--color-bg-secondary-dark)]/50 rounded-b-[var(--radius-xl)]">
-            {footer}
-          </div>
+        {showCloseButton && (
+          <button
+            onClick={onClose}
+            className={cn(
+              'w-10 h-10 rounded-xl flex items-center justify-center',
+              'text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]',
+              'hover:bg-[var(--color-bg-tertiary)]',
+              'transition-colors duration-150 ease-out',
+              'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30'
+            )}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         )}
       </div>
+
+      {/* Body */}
+      <div className="px-6 py-5 max-h-[60vh] overflow-y-auto">
+        {children}
+      </div>
+
+      {/* Footer */}
+      {footer && (
+        <div className="flex items-center justify-end gap-3 px-6 py-5 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/50 rounded-b-2xl">
+          {footer}
+        </div>
+      )}
     </div>
   )
+
+  // CSS-only animation (default, more performant)
+  if (!useMotion) {
+    if (!visible) return null
+
+    return (
+      <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div
+          className={cn(
+            'fixed inset-0 bg-black/60 backdrop-blur-sm',
+            animatingOut
+              ? 'animate-fade-out'
+              : 'animate-fade-in'
+          )}
+          onClick={closeOnOverlayClick ? onClose : undefined}
+        />
+
+        {/* Modal Content */}
+        <div
+          className={cn(
+            animatingOut
+              ? 'animate-scale-out'
+              : 'animate-scale-in'
+          )}
+        >
+          {modalContent}
+        </div>
+      </div>
+    )
+  }
+
+  // Framer Motion animation (smoother exit animations, future gesture support)
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            key="modal-backdrop"
+            variants={backdropVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closeOnOverlayClick ? onClose : undefined}
+          />
+
+          {/* Modal Content */}
+          <motion.div
+            key="modal-content"
+            variants={modalVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {modalContent}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  )
 }
+
+type ConfirmModalVariant = 'default' | 'danger' | 'warning'
 
 interface ConfirmModalProps {
   isOpen: boolean
@@ -119,7 +203,7 @@ interface ConfirmModalProps {
   description?: string
   confirmText?: string
   cancelText?: string
-  variant?: 'default' | 'danger' | 'warning'
+  variant?: ConfirmModalVariant
   loading?: boolean
 }
 
@@ -129,15 +213,15 @@ export const ConfirmModal = ({
   onConfirm,
   title,
   description,
-  confirmText = '确认',
-  cancelText = '取消',
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
   variant = 'default',
   loading = false,
 }: ConfirmModalProps) => {
-  const confirmButtonVariants = {
-    default: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white',
-    danger: 'bg-[var(--color-error)] hover:bg-[var(--color-error-hover)] text-white',
-    warning: 'bg-[var(--color-warning)] hover:bg-[var(--color-warning-hover)] text-white',
+  const confirmButtonVariants: Record<ConfirmModalVariant, string> = {
+    default: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-bg-base)]',
+    danger: 'bg-[var(--color-dnd)] hover:bg-[var(--color-dnd)]/80 text-[var(--color-bg-base)]',
+    warning: 'bg-[var(--color-idle)] hover:bg-[var(--color-idle)]/80 text-[var(--color-bg-base)]',
   }
 
   return (
@@ -153,10 +237,10 @@ export const ConfirmModal = ({
             onClick={onClose}
             disabled={loading}
             className={cn(
-              'px-5 py-2.5 rounded-[var(--radius-lg)] font-medium',
-              'bg-[var(--color-bg-tertiary-light)] hover:bg-[var(--color-border-light)] dark:bg-[var(--color-bg-tertiary-dark)] dark:hover:bg-[var(--color-border-dark)]',
-              'text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
-              'transition-[var(--transition-all)]',
+              'px-5 py-2.5 rounded-xl font-medium',
+              'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-darker)]',
+              'text-[var(--color-text-normal)]',
+              'transition-colors duration-150 ease-out',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
@@ -166,8 +250,8 @@ export const ConfirmModal = ({
             onClick={onConfirm}
             disabled={loading}
             className={cn(
-              'px-5 py-2.5 rounded-[var(--radius-lg)] font-medium',
-              'transition-[var(--transition-all)]',
+              'px-5 py-2.5 rounded-xl font-medium',
+              'transition-colors duration-150 ease-out',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               confirmButtonVariants[variant]
             )}
@@ -178,7 +262,7 @@ export const ConfirmModal = ({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                处理中...
+                Processing...
               </span>
             ) : confirmText}
           </button>

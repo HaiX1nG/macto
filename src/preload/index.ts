@@ -14,12 +14,22 @@ export interface IPCPayloads {
   'voice:set-volume': { volume: number }
   'voice:set-mute': { muted: boolean }
 
+  'screen:get-sources': null
   'screen:start': { sessionId: string }
   'screen:stop': { sessionId: string }
   'screen:set-control': { enabled: boolean }
 
-  'system:notification': { title: string; body: string }
+  'audio:get-sources': null
+
+  'system:notification': { title: string; body: string; roomId?: number; senderId?: number }
+  'system:notification-supported': null
+  'system:notification-set-enabled': { enabled: boolean }
+  'system:notification-get-enabled': null
   'system:tray-click': null
+
+  'hardware-acceleration:get': null
+  'hardware-acceleration:set': { enabled: boolean }
+  'app:relaunch': null
 }
 
 export interface IPCResponders {
@@ -33,12 +43,43 @@ export interface IPCResponders {
   'voice:set-volume': { success: boolean }
   'voice:set-mute': { success: boolean }
 
+  'screen:get-sources': { id: string; name: string; thumbnail: string }[]
   'screen:start': { success: boolean; streamId: string }
   'screen:stop': { success: boolean }
   'screen:set-control': { success: boolean }
 
+  'audio:get-sources': { id: string; name: string }[]
+
   'system:notification': { success: boolean }
+  'system:notification-supported': boolean
+  'system:notification-set-enabled': { success: boolean }
+  'system:notification-get-enabled': { enabled: boolean }
   'system:tray-click': null
+
+  'hardware-acceleration:get': { enabled: boolean }
+  'hardware-acceleration:set': { success: boolean; requiresRestart: boolean }
+  'app:relaunch': { success: boolean }
+}
+
+// Update types
+export interface UpdateInfo {
+  version: string
+  releaseDate: string
+  releaseNotes?: string | null
+}
+
+export interface UpdateProgress {
+  bytesPerSecond: number
+  percent: number
+  total: number
+  transferred: number
+}
+
+export interface UpdateStatus {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+  updateDownloaded: boolean
 }
 
 // Safe API exposure
@@ -56,18 +97,77 @@ const api = {
   setMute: (muted: boolean) => ipcRenderer.invoke('voice:set-mute', { muted }),
 
   // Screen
+  getScreenSources: () => ipcRenderer.invoke('screen:get-sources'),
   startScreen: (sessionId: string) => ipcRenderer.invoke('screen:start', { sessionId }),
   stopScreen: (sessionId: string) => ipcRenderer.invoke('screen:stop', { sessionId }),
   setScreenControl: (enabled: boolean) => ipcRenderer.invoke('screen:set-control', { enabled }),
 
+  // Audio
+  getAudioSources: () => ipcRenderer.invoke('audio:get-sources'),
+
   // System
-  sendNotification: (title: string, body: string) =>
-    ipcRenderer.invoke('system:notification', { title, body }),
+  sendNotification: (title: string, body: string, options?: { roomId?: number; senderId?: number }) =>
+    ipcRenderer.invoke('system:notification', { title, body, ...options }),
+  isNotificationSupported: () => ipcRenderer.invoke('system:notification-supported'),
+  setNotificationEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('system:notification-set-enabled', { enabled }),
+  getNotificationEnabled: () => ipcRenderer.invoke('system:notification-get-enabled'),
+  onNotificationClick: (callback: (data: { roomId?: number; senderId?: number }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: { roomId?: number; senderId?: number }) =>
+      callback(data)
+    ipcRenderer.on('system:notification-click', listener)
+    return () => ipcRenderer.removeListener('system:notification-click', listener)
+  },
   onTrayClick: (callback: () => void) => {
     const listener = (_event: Electron.IpcRendererEvent) => callback()
     ipcRenderer.on('system:tray-click', listener)
     return () => ipcRenderer.removeListener('system:tray-click', listener)
   },
+
+  // Updates
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  quitAndInstall: () => ipcRenderer.invoke('update:install'),
+  getUpdateVersion: () => ipcRenderer.invoke('update:get-version'),
+  onUpdateChecking: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('update:checking', listener)
+    return () => ipcRenderer.removeListener('update:checking', listener)
+  },
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update:available', listener)
+    return () => ipcRenderer.removeListener('update:available', listener)
+  },
+  onUpdateNotAvailable: (callback: (info: { version: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: { version: string }) =>
+      callback(info)
+    ipcRenderer.on('update:not-available', listener)
+    return () => ipcRenderer.removeListener('update:not-available', listener)
+  },
+  onUpdateProgress: (callback: (progress: UpdateProgress) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: UpdateProgress) =>
+      callback(progress)
+    ipcRenderer.on('update:progress', listener)
+    return () => ipcRenderer.removeListener('update:progress', listener)
+  },
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update:downloaded', listener)
+    return () => ipcRenderer.removeListener('update:downloaded', listener)
+  },
+  onUpdateError: (callback: (error: { message: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, error: { message: string }) =>
+      callback(error)
+    ipcRenderer.on('update:error', listener)
+    return () => ipcRenderer.removeListener('update:error', listener)
+  },
+
+  // Hardware Acceleration
+  getHardwareAcceleration: () => ipcRenderer.invoke('hardware-acceleration:get'),
+  setHardwareAcceleration: (enabled: boolean) =>
+    ipcRenderer.invoke('hardware-acceleration:set', { enabled }),
+  relaunchApp: () => ipcRenderer.invoke('app:relaunch'),
 
   // General
   on: <T = unknown>(channel: string, callback: (data: T) => void) => {
@@ -80,8 +180,10 @@ const api = {
     ipcRenderer.once(channel, listener)
     return () => ipcRenderer.removeListener(channel, listener)
   },
-  off: (channel: string, listener?: Electron.Listener) => {
-    ipcRenderer.off(channel, listener)
+  off: (channel: string, listener?: (...args: unknown[]) => void) => {
+    if (listener) {
+      ipcRenderer.off(channel, listener as (...args: unknown[]) => void)
+    }
   },
 }
 

@@ -64,10 +64,11 @@ export const CreateSessionModal = ({
       cancelButtonProps={{
         className: 'rounded-xl px-6',
       }}
+      zIndex={2000}
       styles={{
-        content: { borderRadius: '16px' },
         body: { padding: '24px' },
       }}
+      style={{ borderRadius: '16px' }}
     >
       <Form
         form={form}

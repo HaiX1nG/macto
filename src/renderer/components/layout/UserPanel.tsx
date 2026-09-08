@@ -1,77 +1,154 @@
 import { useState } from 'react'
-import { Dropdown, Avatar } from 'antd'
-import { AudioOutlined, AudioMutedOutlined, SoundOutlined, SettingOutlined, UserOutlined, LogoutOutlined, EditOutlined } from '@ant-design/icons'
+import { App } from 'antd'
+import { AudioOutlined, AudioMutedOutlined, SoundOutlined, DesktopOutlined, StopOutlined, CustomerServiceOutlined, SettingOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
-import { useAuthStore } from '@renderer/stores/authStore'
-import { useUserStore } from '@renderer/stores/userStore'
-import { SettingsModal } from './SettingsModal'
+import { useUIStore } from '@renderer/stores/uiStore'
+import { useMediaStore } from '@renderer/stores/mediaStore'
+import { ScreenSharePreview } from '../screen/ScreenSharePreview'
+import { AudioSettings } from '../settings/AudioSettings'
+
+const USER_PANEL_HEIGHT = 60
+const CONTROL_BUTTON_SIZE = 40
 
 export function UserPanel() {
-  const { currentUser, logout } = useAuthStore()
-  const { status, setStatus } = useUserStore()
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { message: messageApi } = App.useApp()
+  const { currentChannelId } = useUIStore()
+  const { isSharing, localStream, startSharing, stopSharing, isMuted, setMute } = useMediaStore()
 
-  const [isMuted, setIsMuted] = useState(false)
   const [isDeafened, setIsDeafened] = useState(false)
+  const [screenShareLoading, setScreenShareLoading] = useState(false)
+  const [showAudioSettings, setShowAudioSettings] = useState(false)
 
-  const statusMenuItems = [
-    { key: 'online', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-online)]" /><span>在线</span></div>, onClick: () => setStatus('online') },
-    { key: 'idle', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-idle)]" /><span>空闲</span></div>, onClick: () => setStatus('idle') },
-    { key: 'dnd', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-dnd)]" /><span>请勿打扰</span></div>, onClick: () => setStatus('dnd') },
-    { key: 'offline', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-gray-500" /><span>隐身</span></div>, onClick: () => setStatus('offline') },
-    { type: 'divider' as const },
-    { key: 'custom', label: <div className="flex items-center gap-3 py-1"><EditOutlined className="text-[var(--color-text-muted)]" /><span>设置自定义状态</span></div> }
-  ]
+  const handleScreenShareClick = () => {
+    if (!currentChannelId) {
+      messageApi.warning('请先选择一个频道')
+      return
+    }
 
-  const userMenuItems = [
-    { key: 'profile', label: <div className="flex items-center gap-3 py-1"><UserOutlined /><span>个人资料</span></div>, onClick: () => setSettingsOpen(true) },
-    { key: 'settings', label: <div className="flex items-center gap-3 py-1"><SettingOutlined /><span>用户设置</span></div>, onClick: () => setSettingsOpen(true) },
-    { type: 'divider' as const },
-    { key: 'logout', label: <div className="flex items-center gap-3 py-1 text-[var(--color-dnd)]"><LogoutOutlined /><span>退出登录</span></div>, onClick: logout }
-  ]
-
-  const statusColors: Record<string, string> = {
-    online: 'bg-[var(--color-online)]',
-    idle: 'bg-[var(--color-idle)]',
-    dnd: 'bg-[var(--color-dnd)]',
-    offline: 'bg-gray-500'
+    if (isSharing) {
+      void handleStopScreenShare()
+    } else {
+      void handleStartScreenShare()
+    }
   }
 
-  // Use currentUser from authStore
-  const displayName = currentUser?.username || '用户'
-  const avatar = currentUser?.avatarUrl || undefined
+  const handleStartScreenShare = async () => {
+    setScreenShareLoading(true)
+    try {
+      await startSharing(currentChannelId!)
+    } catch (_err) {
+      messageApi.error('屏幕共享失败')
+    } finally {
+      setScreenShareLoading(false)
+    }
+  }
+
+  const handleStopScreenShare = async () => {
+    setScreenShareLoading(true)
+    try {
+      await stopSharing(currentChannelId!)
+    } finally {
+      setScreenShareLoading(false)
+    }
+  }
 
   return (
     <>
-      <div className="h-[52px] bg-[var(--color-bg-darker)] px-2 flex items-center gap-2 flex-shrink-0">
-        <Dropdown menu={{ items: statusMenuItems }} trigger={['click']} placement="topLeft">
-          <div className="relative cursor-pointer flex-shrink-0">
-            <Avatar size={32} src={avatar} className="bg-gradient-to-br from-blue-500 to-purple-600">
-              {displayName.charAt(0).toUpperCase()}
-            </Avatar>
-            <span className={cn("absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--color-bg-darker)]", statusColors[status])} />
-          </div>
-        </Dropdown>
+      <div
+        className="bg-gradient-to-b from-[var(--color-bg-secondary)] to-[var(--color-bg-darker)] px-3 flex items-center justify-center gap-2.5 flex-shrink-0 border-t border-[var(--color-border)] transition-colors duration-300 ease-out"
+        style={{ height: USER_PANEL_HEIGHT }}
+      >
+        <ControlButton
+          onClick={handleScreenShareClick}
+          disabled={screenShareLoading}
+          isActive={isSharing}
+          activeColor="primary"
+          title={isSharing ? '停止屏幕共享' : '开始屏幕共享'}
+          icon={isSharing ? <StopOutlined /> : <DesktopOutlined />}
+        />
 
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-[var(--color-text-normal)] truncate">{displayName}</div>
-          <div className="text-xs text-[var(--color-text-muted)] truncate">{status === 'online' ? '在线' : status === 'idle' ? '空闲' : status === 'dnd' ? '请勿打扰' : '离线'}</div>
-        </div>
+        <ControlButton
+          onClick={() => setShowAudioSettings(true)}
+          title="音频设置"
+          icon={<CustomerServiceOutlined />}
+        />
 
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={() => setIsMuted(!isMuted)} className={cn("w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]", isMuted ? "text-[var(--color-dnd)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]")}>
-            {isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
-          </button>
-          <button onClick={() => setIsDeafened(!isDeafened)} className={cn("w-8 h-8 rounded flex items-center justify-center hover:bg-[var(--color-bg-tertiary)]", isDeafened ? "text-[var(--color-dnd)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]")}>
-            <SoundOutlined />
-          </button>
-          <button onClick={() => setSettingsOpen(true)} className="w-8 h-8 rounded flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] hover:bg-[var(--color-bg-tertiary)]">
-            <SettingOutlined />
-          </button>
-        </div>
+        <div className="w-px h-6 bg-[var(--color-border)]" />
+
+        <ControlButton
+          onClick={() => setMute(!isMuted)}
+          isActive={isMuted}
+          activeColor="danger"
+          title={isMuted ? '取消静音' : '静音'}
+          icon={isMuted ? <AudioMutedOutlined /> : <AudioOutlined />}
+        />
+
+        <ControlButton
+          onClick={() => setIsDeafened(!isDeafened)}
+          isActive={isDeafened}
+          activeColor="danger"
+          title={isDeafened ? '取消耳聋' : '耳聋'}
+          icon={<SoundOutlined />}
+        />
+
+        <div className="w-px h-6 bg-[var(--color-border)]" />
+
+        <ControlButton
+          onClick={() => setShowAudioSettings(true)}
+          title="设置"
+          icon={<SettingOutlined />}
+        />
       </div>
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ScreenSharePreview
+        stream={isSharing ? localStream : null}
+        onStop={handleStopScreenShare}
+      />
+
+      <AudioSettings
+        open={showAudioSettings}
+        onClose={() => setShowAudioSettings(false)}
+      />
     </>
+  )
+}
+
+interface ControlButtonProps {
+  onClick: () => void
+  disabled?: boolean
+  isActive?: boolean
+  activeColor?: 'primary' | 'danger'
+  title: string
+  icon: React.ReactNode
+}
+
+function ControlButton({ onClick, disabled, isActive, activeColor = 'primary', title, icon }: ControlButtonProps) {
+  const activeStyles = {
+    primary: 'bg-[var(--color-primary)]/15 text-[var(--color-primary)] shadow-sm shadow-[var(--color-primary)]/20',
+    danger: 'bg-[var(--color-dnd)]/15 text-[var(--color-dnd)] shadow-sm shadow-[var(--color-dnd)]/20',
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "relative rounded-xl flex items-center justify-center",
+        "transition-all duration-150 ease-out",
+        "hover:scale-105 active:scale-95",
+        "will-change-transform",
+        isActive
+          ? activeStyles[activeColor]
+          : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] hover:bg-[var(--color-bg-darker)]",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+      style={{ width: CONTROL_BUTTON_SIZE, height: CONTROL_BUTTON_SIZE }}
+      title={title}
+    >
+      <span className="text-lg">{icon}</span>
+      {isActive && (
+        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[var(--color-primary)] rounded-full animate-pulse" />
+      )}
+    </button>
   )
 }

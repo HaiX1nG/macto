@@ -1,0 +1,1 @@
+- [Backend repo & contract authority](backend-repo-and-contract.md) - macto frontend pairs with Go backend at ~/GoProject/Gin-macto/server; docs/api-contract.md is the alignment authority (frontend wins on conflict).

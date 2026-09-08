@@ -31,3 +31,10 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+.agent-collab/
+scripts/logs/
+
+# Redis dump files
+dump.rdb
+*.rdb

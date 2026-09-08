@@ -1,3 +1,5 @@
 export { SettingsGeneral } from './SettingsGeneral'
 export { SettingsAudio } from './SettingsAudio'
 export { SettingsProfile } from './SettingsProfile'
+export { SettingsNotifications } from './SettingsNotifications'
+export { SettingsVideo } from './SettingsVideo'

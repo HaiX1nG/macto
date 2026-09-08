@@ -1,9 +1,16 @@
-import { createContext, useContext, useState } from 'react'
-import { useSettingsStore } from '@renderer/stores/settingsStore'
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { useUIStore, type AppTheme } from '@renderer/stores/uiStore'
+
+/**
+ * SettingsContext (legacy compatibility shim)
+ *
+ * Settings have been merged into uiStore under the `settings` property.
+ * This context exposes them as a flat API for components that haven't been migrated.
+ */
 
 interface SettingsContextType {
-  theme: 'light' | 'dark' | 'system'
-  setTheme: (theme: 'light' | 'dark' | 'system') => void
+  theme: AppTheme
+  setTheme: (theme: AppTheme) => void
   audioInputDeviceId: string
   audioOutputDeviceId: string
   setAudioInputDevice: (deviceId: string) => void
@@ -19,27 +26,20 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
-  const {
-    theme,
-    setTheme,
-    audioInputDeviceId,
-    audioOutputDeviceId,
-    setAudioInputDevice,
-    setAudioOutputDevice,
-    defaultVolume,
-    setDefaultVolume,
-    autoJoinLastSession,
-    setAutoJoinLastSession,
-    showNotification,
-    setShowNotification,
-  } = useSettingsStore()
+  const theme = useUIStore((s) => s.theme)
+  const setTheme = useUIStore((s) => s.setTheme)
+  const settings = useUIStore((s) => s.settings)
+  const setAudioInputDevice = useUIStore((s) => s.setAudioInputDevice)
+  const setAudioOutputDevice = useUIStore((s) => s.setAudioOutputDevice)
+  const setDefaultVolume = useUIStore((s) => s.setDefaultVolume)
+  const setAutoJoinLastSession = useUIStore((s) => s.setAutoJoinLastSession)
+  const setShowNotification = useUIStore((s) => s.setShowNotification)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // 始终返回 context provider，即使未挂载
   if (!mounted) {
     return <>{children}</>
   }
@@ -49,15 +49,15 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       value={{
         theme,
         setTheme,
-        audioInputDeviceId,
-        audioOutputDeviceId,
+        audioInputDeviceId: settings.audioInputDeviceId,
+        audioOutputDeviceId: settings.audioOutputDeviceId,
         setAudioInputDevice,
         setAudioOutputDevice,
-        defaultVolume,
+        defaultVolume: settings.defaultVolume,
         setDefaultVolume,
-        autoJoinLastSession,
+        autoJoinLastSession: settings.autoJoinLastSession,
         setAutoJoinLastSession,
-        showNotification,
+        showNotification: settings.showNotification,
         setShowNotification,
       }}
     >

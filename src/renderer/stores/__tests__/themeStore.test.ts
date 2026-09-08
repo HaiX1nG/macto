@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useThemeStore } from '../themeStore'
+import { useUIStore, type AppTheme } from '../uiStore'
 
 // Mock localStorage
 const localStorageMock = {
@@ -14,135 +14,156 @@ Object.defineProperty(global, 'localStorage', {
   writable: true,
 })
 
-// Mock matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  value: (query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }),
+// Mock document.documentElement
+const mockSetAttribute = vi.fn()
+const mockClassList = {
+  add: vi.fn(),
+  remove: vi.fn(),
+  toggle: vi.fn(),
+  contains: vi.fn(),
+}
+
+Object.defineProperty(document, 'documentElement', {
+  value: {
+    setAttribute: mockSetAttribute,
+    classList: mockClassList,
+    getAttribute: vi.fn(),
+  },
   writable: true,
 })
 
-describe('useThemeStore', () => {
+describe('useUIStore (theme)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorageMock.getItem.mockClear()
     localStorageMock.setItem.mockClear()
+    mockSetAttribute.mockClear()
     localStorageMock.getItem.mockReturnValue(null)
-    // Reset store state to initial values
-    useThemeStore.setState({
-      theme: 'system',
-      actualTheme: 'light',
+    useUIStore.setState({
+      theme: 'sakura',
     })
   })
 
-  describe('initial state', () => {
-    it('should have default theme value of system', () => {
-      // Reset store by getting fresh state
-      localStorageMock.getItem.mockReturnValue(null)
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('system')
-      expect(state.actualTheme).toBe('light')
+  describe('initial theme state', () => {
+    it('should have default theme value of sakura', () => {
+      const state = useUIStore.getState()
+      expect(state.theme).toBe('sakura')
     })
 
-    it('should have empty actualTheme initially', () => {
-      const state = useThemeStore.getState()
-      expect(state.actualTheme).toBe('light')
+    it('should have setTheme method available', () => {
+      const state = useUIStore.getState()
+      expect(typeof state.setTheme).toBe('function')
+    })
+
+    it('should have initTheme method available', () => {
+      const state = useUIStore.getState()
+      expect(typeof state.initTheme).toBe('function')
     })
   })
 
   describe('setTheme action', () => {
-    it('should set theme to light', () => {
-      const { setTheme } = useThemeStore.getState()
-      setTheme('light')
+    it('should set theme to sakura', () => {
+      const { setTheme } = useUIStore.getState()
+      setTheme('sakura')
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('light')
-      expect(state.actualTheme).toBe('light')
+      expect(useUIStore.getState().theme).toBe('sakura')
     })
 
-    it('should set theme to dark', () => {
-      const { setTheme } = useThemeStore.getState()
-      setTheme('dark')
+    it('should set theme to ancient', () => {
+      const { setTheme } = useUIStore.getState()
+      setTheme('ancient')
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('dark')
-      expect(state.actualTheme).toBe('dark')
+      expect(useUIStore.getState().theme).toBe('ancient')
     })
 
-    it('should set theme to system', () => {
-      const { setTheme } = useThemeStore.getState()
-      setTheme('system')
+    it('should set theme to tech', () => {
+      const { setTheme } = useUIStore.getState()
+      setTheme('tech')
 
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('system')
-      expect(state.actualTheme).toBe('light')
+      expect(useUIStore.getState().theme).toBe('tech')
+    })
+
+    it('should apply theme to document via data-theme attribute', () => {
+      const { setTheme } = useUIStore.getState()
+      setTheme('ancient')
+
+      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'ancient')
+    })
+
+    it('should save theme to localStorage', () => {
+      const { setTheme } = useUIStore.getState()
+      setTheme('tech')
+
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('app-theme', 'tech')
     })
   })
 
-  describe('toggleTheme action', () => {
-    it('should toggle from light to dark', () => {
-      const { toggleTheme, setTheme } = useThemeStore.getState()
+  describe('initTheme action', () => {
+    it('should initialize with saved theme from localStorage', () => {
+      localStorageMock.getItem.mockReturnValue('ancient')
 
-      // First set to light
-      setTheme('light')
+      const { initTheme } = useUIStore.getState()
+      initTheme()
 
-      // Now toggle
-      toggleTheme()
-
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('dark')
+      expect(useUIStore.getState().theme).toBe('ancient')
+      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'ancient')
     })
 
-    it('should toggle from dark to light', () => {
-      const { toggleTheme, setTheme } = useThemeStore.getState()
+    it('should default to sakura when no saved theme exists', () => {
+      localStorageMock.getItem.mockReturnValue(null)
 
-      // First set to dark
-      setTheme('dark')
+      const { initTheme } = useUIStore.getState()
+      initTheme()
 
-      // Now toggle
-      toggleTheme()
-
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('light')
+      expect(useUIStore.getState().theme).toBe('sakura')
+      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'sakura')
     })
 
-    it('should handle system theme toggle', () => {
-      const { toggleTheme, setTheme } = useThemeStore.getState()
+    it('should default to sakura when saved theme is invalid', () => {
+      localStorageMock.getItem.mockReturnValue('invalid-theme')
 
-      setTheme('system')
-      toggleTheme()
+      const { initTheme } = useUIStore.getState()
+      initTheme()
 
-      // Should toggle to actual theme based on system preference
-      const state = useThemeStore.getState()
-      expect(['light', 'dark']).toContain(state.theme)
+      expect(useUIStore.getState().theme).toBe('sakura')
+      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'sakura')
+    })
+
+    it('should save default theme to localStorage when no saved theme exists', () => {
+      localStorageMock.getItem.mockReturnValue(null)
+
+      const { initTheme } = useUIStore.getState()
+      initTheme()
+
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('app-theme', 'sakura')
+    })
+  })
+
+  describe('theme type validation', () => {
+    it('should only accept valid theme values', () => {
+      const validThemes: AppTheme[] = ['sakura', 'ancient', 'tech']
+
+      validThemes.forEach((theme) => {
+        const { setTheme } = useUIStore.getState()
+        setTheme(theme)
+        expect(useUIStore.getState().theme).toBe(theme)
+      })
     })
   })
 
   describe('state updates', () => {
-    it('should update theme state correctly', () => {
-      const { setTheme } = useThemeStore.getState()
-      setTheme('dark')
-
-      const state = useThemeStore.getState()
-      expect(state.theme).toBe('dark')
-      expect(state.actualTheme).toBe('dark')
-    })
-
-    it('should trigger re-render on state change', () => {
-      const { setTheme } = useThemeStore.getState()
+    it('should trigger subscription on state change', () => {
+      const { setTheme } = useUIStore.getState()
       let renderCount = 0
 
-      useThemeStore.subscribe(() => {
+      const unsubscribe = useUIStore.subscribe(() => {
         renderCount++
       })
 
-      setTheme('dark')
+      setTheme('tech')
       expect(renderCount).toBeGreaterThan(0)
+
+      unsubscribe()
     })
   })
 })

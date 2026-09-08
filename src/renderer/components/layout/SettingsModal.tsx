@@ -1,8 +1,10 @@
-import { Modal, Tabs } from 'antd'
+import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { DesktopOutlined, AudioOutlined, VideoCameraOutlined, BellOutlined, InfoCircleOutlined, UserOutlined } from '@ant-design/icons'
 import { useThemeStore, type AppTheme } from '@renderer/stores/themeStore'
-import { SettingsProfile } from '@renderer/features/settings'
+import { SettingsProfile, SettingsAudio, SettingsVideo, SettingsNotifications } from '@renderer/features/settings'
 import { cn } from '@renderer/utils/cn'
+import { backdropVariants, modalVariants } from '@renderer/utils/animations'
 
 interface SettingsModalProps {
   open: boolean
@@ -17,8 +19,8 @@ const themeOptions: Array<{
 }> = [
   {
     value: 'sakura',
-    label: '日本樱花风',
-    description: '柔和的粉色系，温馨浪漫',
+    label: 'Japanese Sakura',
+    description: 'Soft pink tones, warm and romantic',
     preview: (
       <div className="flex gap-1">
         <div className="w-5 h-5 rounded bg-[#f8b4c4]" />
@@ -29,8 +31,8 @@ const themeOptions: Array<{
   },
   {
     value: 'ancient',
-    label: '中国古风',
-    description: '典雅的金棕色，古朴大气',
+    label: 'Chinese Ancient',
+    description: 'Elegant gold and brown, classic and refined',
     preview: (
       <div className="flex gap-1">
         <div className="w-5 h-5 rounded bg-[#c9a86c]" />
@@ -41,8 +43,8 @@ const themeOptions: Array<{
   },
   {
     value: 'tech',
-    label: '科技风',
-    description: '炫酷的霓虹蓝，未来感十足',
+    label: 'Tech Neon',
+    description: 'Cool neon blue, futuristic',
     preview: (
       <div className="flex gap-1">
         <div className="w-5 h-5 rounded bg-[#00d4ff]" />
@@ -55,31 +57,24 @@ const themeOptions: Array<{
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const { theme, setTheme } = useThemeStore()
+  const [activeTab, setActiveTab] = useState('profile')
 
-  const items = [
+  const tabs = [
     {
       key: 'profile',
-      label: (
-        <span className="flex items-center gap-2 px-2">
-          <UserOutlined />
-          <span>个人资料</span>
-        </span>
-      ),
-      children: <SettingsProfile />,
+      icon: <UserOutlined />,
+      label: 'Profile',
+      content: <SettingsProfile />,
     },
     {
       key: 'appearance',
-      label: (
-        <span className="flex items-center gap-2 px-2">
-          <DesktopOutlined />
-          <span>外观</span>
-        </span>
-      ),
-      children: (
+      icon: <DesktopOutlined />,
+      label: 'Appearance',
+      content: (
         <div className="space-y-4">
           <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">主题</h3>
-            <p className="text-sm text-[var(--color-text-muted)]">选择您喜欢的界面风格</p>
+            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">Theme</h3>
+            <p className="text-sm text-[var(--color-text-muted)]">Choose your preferred interface style</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {themeOptions.map((t) => (
@@ -99,7 +94,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{t.description}</p>
                 {theme === t.value && (
                   <div className="mt-2 text-xs text-[var(--color-primary)] font-medium">
-                    ✓ 已选择
+                    Selected
                   </div>
                 )}
               </button>
@@ -110,137 +105,132 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     },
     {
       key: 'audio',
-      label: (
-        <span className="flex items-center gap-2 px-2">
-          <AudioOutlined />
-          <span>音频</span>
-        </span>
-      ),
-      children: (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">音频设置</h3>
-            <p className="text-sm text-[var(--color-text-muted)]">配置麦克风和扬声器</p>
-          </div>
-          <div className="p-4 rounded-lg bg-[var(--color-bg-tertiary)] text-center">
-            <p className="text-[var(--color-text-muted)]">音频设置功能开发中...</p>
-          </div>
-        </div>
-      ),
+      icon: <AudioOutlined />,
+      label: 'Audio',
+      content: <SettingsAudio />,
     },
     {
       key: 'video',
-      label: (
-        <span className="flex items-center gap-2 px-2">
-          <VideoCameraOutlined />
-          <span>视频</span>
-        </span>
-      ),
-      children: (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">视频设置</h3>
-            <p className="text-sm text-[var(--color-text-muted)]">配置摄像头和画质</p>
-          </div>
-          <div className="p-4 rounded-lg bg-[var(--color-bg-tertiary)] text-center">
-            <p className="text-[var(--color-text-muted)]">视频设置功能开发中...</p>
-          </div>
-        </div>
-      ),
+      icon: <VideoCameraOutlined />,
+      label: 'Video',
+      content: <SettingsVideo />,
     },
     {
       key: 'notifications',
-      label: (
-        <span className="flex items-center gap-2 px-2">
-          <BellOutlined />
-          <span>通知</span>
-        </span>
-      ),
-      children: (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">通知设置</h3>
-            <p className="text-sm text-[var(--color-text-muted)]">管理消息提醒</p>
-          </div>
-          <div className="p-4 rounded-lg bg-[var(--color-bg-tertiary)] text-center">
-            <p className="text-[var(--color-text-muted)]">通知设置功能开发中...</p>
-          </div>
-        </div>
-      ),
+      icon: <BellOutlined />,
+      label: 'Notifications',
+      content: <SettingsNotifications />,
     },
     {
       key: 'about',
-      label: (
-        <span className="flex items-center gap-2 px-2">
-          <InfoCircleOutlined />
-          <span>关于</span>
-        </span>
-      ),
-      children: (
+      icon: <InfoCircleOutlined />,
+      label: 'About',
+      content: (
         <div className="space-y-4">
           <div>
-            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">关于 Macto</h3>
+            <h3 className="text-base font-semibold text-[var(--color-text-normal)] mb-1">About Macto</h3>
           </div>
           <div className="p-4 rounded-lg bg-[var(--color-bg-tertiary)] space-y-2">
-            <p className="text-[var(--color-text-normal)]">Macto - KOOK 风格语音聊天应用</p>
-            <p className="text-sm text-[var(--color-text-muted)]">版本: 0.1.0</p>
+            <p className="text-[var(--color-text-normal)]">Macto - KOOK-style voice chat application</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Version: 0.1.0</p>
           </div>
         </div>
       ),
     },
   ]
 
+  const activeContent = tabs.find(tab => tab.key === activeTab)?.content
+
   return (
-    <Modal
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={680}
-      title={
-        <span className="text-[var(--color-text-normal)] font-semibold">设置</span>
-      }
-      styles={{
-        content: {
-          backgroundColor: 'var(--color-bg-secondary)',
-          borderRadius: '12px',
-          border: 'none',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-        },
-        header: {
-          backgroundColor: 'var(--color-bg-secondary)',
-          color: 'var(--color-text-normal)',
-          borderBottom: '1px solid var(--color-border)',
-          marginBottom: '0',
-          padding: '16px 24px',
-        },
-        body: {
-          backgroundColor: 'var(--color-bg-secondary)',
-          padding: '16px 24px 24px',
-        },
-        mask: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        },
-      }}
-      classNames={{
-        content: 'settings-modal-content',
-      }}
-    >
-      <Tabs
-        defaultActiveKey="profile"
-        items={items}
-        tabPlacement="left"
-        style={{ minHeight: 380 }}
-        styles={{
-          inkBar: {
-            backgroundColor: 'var(--color-primary)',
-            width: 3,
-          },
-          tab: {
-            color: 'var(--color-text-muted)',
-            padding: '8px 12px',
-          },
-        }}
-      />
-    </Modal>
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            key="settings-backdrop"
+            variants={backdropVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 bg-[var(--color-overlay)] backdrop-blur-sm"
+            onClick={onClose}
+          />
+
+          {/* Modal Content */}
+          <motion.div
+            key="settings-modal"
+            variants={modalVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className={cn(
+              'relative w-full max-w-[680px] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.15)]',
+              'bg-[var(--color-bg-secondary)]',
+              'border border-[var(--color-border)]'
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 py-5 border-b border-[var(--color-border)]">
+              <h3 className="text-xl font-bold text-[var(--color-text-normal)]">
+                Settings
+              </h3>
+              <button
+                onClick={onClose}
+                className={cn(
+                  'w-10 h-10 rounded-xl flex items-center justify-center',
+                  'text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]',
+                  'hover:bg-[var(--color-bg-tertiary)]',
+                  'transition-colors duration-150 ease-out',
+                  'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30'
+                )}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Tabs Navigation */}
+            <div className="flex min-h-[380px]">
+              {/* Sidebar Tabs */}
+              <div className="w-52 border-r border-[var(--color-border)] py-4">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-4 py-3',
+                      'transition-colors duration-150 ease-out',
+                      'text-left',
+                      activeTab === tab.key
+                        ? 'text-[var(--color-primary)] bg-[var(--color-bg-tertiary)]'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] hover:bg-[var(--color-bg-tertiary)]/50'
+                    )}
+                  >
+                    {tab.icon}
+                    <span className="font-medium">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 px-6 py-4 overflow-y-auto max-h-[60vh]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                  >
+                    {activeContent}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   )
 }

@@ -1,277 +1,408 @@
-import type { Server, Channel, Message, User, ServerMember, VoiceParticipant } from '@shared/types/kook'
+/**
+ * Mock data for development and testing.
+ *
+ * Uses the new KOOK-style type system (number IDs, server/channel domain types).
+ * This is for dev-only mock purposes — real data comes from the Go backend.
+ */
+
+import type { Server } from '@shared/types/server'
+import type { Channel, ChannelTreeNode } from '@shared/types/channel'
+import type { ChannelMessage } from '@shared/types/message'
+import type { VoiceParticipant } from '@shared/types/voice'
+import type { UserStatus } from '@shared/types/auth'
 
 // ==================== 用户数据 ====================
 
-export const mockUsers: User[] = [
+export interface MockUser {
+  id: number
+  username: string
+  email: string
+  avatarUrl: string
+  bannerUrl: string
+  bio: string
+  customStatus: string
+  status: UserStatus
+  createdAt: string
+}
+
+export const mockUsers: MockUser[] = [
   {
-    id: 'user-1',
-    name: 'megumikato',
-    displayName: '小猫',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=megumikato',
-    status: 'online',
+    id: 1,
+    username: 'megumikato',
+    email: 'megumikato@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=megumikato',
+    bannerUrl: '',
+    bio: '全栈开发者 | 热爱编程和游戏',
     customStatus: '正在写代码',
-    bio: '全栈开发者 | 热爱编程和游戏'
-  },
-  {
-    id: 'user-2',
-    name: 'sakura',
-    displayName: '樱花',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sakura',
     status: 'online',
-    bio: '设计师'
+    createdAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'user-3',
-    name: 'yuki',
-    displayName: '雪',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=yuki',
+    id: 2,
+    username: 'sakura',
+    email: 'sakura@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sakura',
+    bannerUrl: '',
+    bio: '设计师',
+    customStatus: '',
+    status: 'online',
+    createdAt: '2024-01-02T00:00:00Z',
+  },
+  {
+    id: 3,
+    username: 'yuki',
+    email: 'yuki@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=yuki',
+    bannerUrl: '',
+    bio: '',
+    customStatus: '休息中',
     status: 'idle',
-    customStatus: '休息中'
+    createdAt: '2024-01-03T00:00:00Z',
   },
   {
-    id: 'user-4',
-    name: 'haru',
-    displayName: '春',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=haru',
+    id: 4,
+    username: 'haru',
+    email: 'haru@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=haru',
+    bannerUrl: '',
+    bio: '',
+    customStatus: '开会中',
     status: 'dnd',
-    customStatus: '开会中'
+    createdAt: '2024-01-04T00:00:00Z',
   },
   {
-    id: 'user-5',
-    name: 'natsu',
-    displayName: '夏',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=natsu',
+    id: 5,
+    username: 'natsu',
+    email: 'natsu@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=natsu',
+    bannerUrl: '',
+    bio: '游戏玩家',
+    customStatus: '',
     status: 'online',
-    bio: '游戏玩家'
+    createdAt: '2024-01-05T00:00:00Z',
   },
   {
-    id: 'user-6',
-    name: 'aki',
-    displayName: '秋',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=aki',
-    status: 'offline'
+    id: 6,
+    username: 'aki',
+    email: 'aki@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=aki',
+    bannerUrl: '',
+    bio: '',
+    customStatus: '',
+    status: 'offline',
+    createdAt: '2024-01-06T00:00:00Z',
   },
   {
-    id: 'user-7',
-    name: 'fuyu',
-    displayName: '冬',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fuyu',
-    status: 'online'
+    id: 7,
+    username: 'fuyu',
+    email: 'fuyu@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fuyu',
+    bannerUrl: '',
+    bio: '',
+    customStatus: '',
+    status: 'online',
+    createdAt: '2024-01-07T00:00:00Z',
   },
   {
-    id: 'user-8',
-    name: 'hana',
-    displayName: '花',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hana',
-    status: 'idle'
-  }
+    id: 8,
+    username: 'hana',
+    email: 'hana@example.com',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hana',
+    bannerUrl: '',
+    bio: '',
+    customStatus: '',
+    status: 'idle',
+    createdAt: '2024-01-08T00:00:00Z',
+  },
 ]
 
-export const currentUser: User = mockUsers[0]
+export const currentUser: MockUser = mockUsers[0]
 
 // ==================== 服务器数据 ====================
 
 export const mockServers: Server[] = [
   {
-    id: 'server-1',
+    id: 1,
     name: '技术交流群',
-    icon: 'https://api.dicebear.com/7.x/identicon/svg?seed=tech',
+    iconUrl: 'https://api.dicebear.com/7.x/identicon/svg?seed=tech',
+    bannerUrl: '',
     description: '程序员技术交流社区',
-    ownerId: 'user-1',
-    memberCount: 128,
-    createdAt: Date.now() - 100000000,
-    roles: [
-      { id: 'role-1', serverId: 'server-1', name: '管理员', color: '#f5222d', position: 1, permissions: [] },
-      { id: 'role-2', serverId: 'server-1', name: '开发者', color: '#1890ff', position: 2, permissions: [] },
-      { id: 'role-3', serverId: 'server-1', name: '成员', color: '#52c41a', position: 3, permissions: [] }
-    ],
-    channels: [
-      { id: 'ch-1', serverId: 'server-1', name: '公告', type: 'text', topic: '服务器公告和通知', position: 0 },
-      { id: 'ch-2', serverId: 'server-1', name: '欢迎', type: 'text', topic: '新人欢迎', position: 1 },
-      { id: 'ch-3', serverId: 'server-1', name: '文字频道', type: 'category', position: 2 },
-      { id: 'ch-4', serverId: 'server-1', name: '综合讨论', type: 'text', parentId: 'ch-3', position: 3, unreadCount: 5 },
-      { id: 'ch-5', serverId: 'server-1', name: '前端开发', type: 'text', parentId: 'ch-3', position: 4 },
-      { id: 'ch-6', serverId: 'server-1', name: '后端开发', type: 'text', parentId: 'ch-3', position: 5 },
-      { id: 'ch-7', serverId: 'server-1', name: '语音频道', type: 'category', position: 6 },
-      { id: 'ch-8', serverId: 'server-1', name: '综合语音', type: 'voice', parentId: 'ch-7', position: 7 },
-      { id: 'ch-9', serverId: 'server-1', name: '游戏语音', type: 'voice', parentId: 'ch-7', position: 8 },
-    ]
+    ownerId: 1,
+    inviteCode: 'tech-invite',
+    isPrivate: true,
+    maxMembers: 500,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'server-2',
+    id: 2,
     name: '游戏玩家联盟',
-    icon: 'https://api.dicebear.com/7.x/identicon/svg?seed=game',
+    iconUrl: 'https://api.dicebear.com/7.x/identicon/svg?seed=game',
+    bannerUrl: '',
     description: '游戏爱好者社区',
-    ownerId: 'user-5',
-    memberCount: 256,
-    createdAt: Date.now() - 50000000,
-    roles: [
-      { id: 'role-4', serverId: 'server-2', name: '管理员', color: '#722ed1', position: 1, permissions: [] },
-      { id: 'role-5', serverId: 'server-2', name: '玩家', color: '#13c2c2', position: 2, permissions: [] }
-    ],
-    channels: [
-      { id: 'ch-10', serverId: 'server-2', name: '公告', type: 'text', position: 0 },
-      { id: 'ch-11', serverId: 'server-2', name: '游戏讨论', type: 'text', position: 1, unreadCount: 12 },
-      { id: 'ch-12', serverId: 'server-2', name: '游戏语音', type: 'voice', position: 2 },
-      { id: 'ch-13', serverId: 'server-2', name: '开黑房间', type: 'voice', position: 3 },
-    ]
+    ownerId: 5,
+    inviteCode: 'game-invite',
+    isPrivate: true,
+    maxMembers: 500,
+    createdAt: '2024-01-02T00:00:00Z',
+    updatedAt: '2024-01-02T00:00:00Z',
   },
   {
-    id: 'server-3',
+    id: 3,
     name: '设计工作室',
-    icon: 'https://api.dicebear.com/7.x/identicon/svg?seed=design',
+    iconUrl: 'https://api.dicebear.com/7.x/identicon/svg?seed=design',
+    bannerUrl: '',
     description: '设计师交流平台',
-    ownerId: 'user-2',
-    memberCount: 64,
-    createdAt: Date.now() - 30000000,
-    roles: [],
-    channels: [
-      { id: 'ch-14', serverId: 'server-3', name: '作品分享', type: 'text', position: 0 },
-      { id: 'ch-15', serverId: 'server-3', name: '设计讨论', type: 'text', position: 1 },
-      { id: 'ch-16', serverId: 'server-3', name: '协作语音', type: 'voice', position: 2 },
-    ]
+    ownerId: 2,
+    inviteCode: 'design-invite',
+    isPrivate: true,
+    maxMembers: 500,
+    createdAt: '2024-01-03T00:00:00Z',
+    updatedAt: '2024-01-03T00:00:00Z',
   },
   {
-    id: 'server-4',
+    id: 4,
     name: '学习小组',
-    icon: 'https://api.dicebear.com/7.x/identicon/svg?seed=study',
+    iconUrl: 'https://api.dicebear.com/7.x/identicon/svg?seed=study',
+    bannerUrl: '',
     description: '一起学习进步',
-    ownerId: 'user-3',
-    memberCount: 32,
-    createdAt: Date.now() - 20000000,
-    roles: [],
-    channels: [
-      { id: 'ch-17', serverId: 'server-4', name: '学习计划', type: 'text', position: 0 },
-      { id: 'ch-18', serverId: 'server-4', name: '问题讨论', type: 'text', position: 1 },
-      { id: 'ch-19', serverId: 'server-4', name: '学习语音', type: 'voice', position: 2 },
-    ]
+    ownerId: 3,
+    inviteCode: 'study-invite',
+    isPrivate: true,
+    maxMembers: 500,
+    createdAt: '2024-01-04T00:00:00Z',
+    updatedAt: '2024-01-04T00:00:00Z',
+  },
+]
+
+// ==================== 频道数据 ====================
+
+function makeChannel(
+  id: number,
+  serverId: number,
+  name: string,
+  type: 1 | 2 | 3,
+  position: number,
+  parentId: number | null = null,
+  topic = ''
+): Channel {
+  return {
+    id,
+    serverId,
+    name,
+    type,
+    topic,
+    parentId,
+    position,
+    bitrate: 64000,
+    userLimit: 0,
+    slowMode: 0,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
   }
+}
+
+export const mockChannels: Channel[] = [
+  // Server 1 channels
+  makeChannel(1, 1, '公告', 1, 0, null, '服务器公告和通知'),
+  makeChannel(2, 1, '欢迎', 1, 1, null, '新人欢迎'),
+  makeChannel(3, 1, '文字频道', 3, 2),
+  makeChannel(4, 1, '综合讨论', 1, 3, 3),
+  makeChannel(5, 1, '前端开发', 1, 4, 3),
+  makeChannel(6, 1, '后端开发', 1, 5, 3),
+  makeChannel(7, 1, '语音频道', 3, 6),
+  makeChannel(8, 1, '综合语音', 2, 7, 7),
+  makeChannel(9, 1, '游戏语音', 2, 8, 7),
+  // Server 2 channels
+  makeChannel(10, 2, '公告', 1, 0),
+  makeChannel(11, 2, '游戏讨论', 1, 1),
+  makeChannel(12, 2, '游戏语音', 2, 2),
+  makeChannel(13, 2, '开黑房间', 2, 3),
+  // Server 3 channels
+  makeChannel(14, 3, '作品分享', 1, 0),
+  makeChannel(15, 3, '设计讨论', 1, 1),
+  makeChannel(16, 3, '协作语音', 2, 2),
+  // Server 4 channels
+  makeChannel(17, 4, '学习计划', 1, 0),
+  makeChannel(18, 4, '问题讨论', 1, 1),
+  makeChannel(19, 4, '学习语音', 2, 2),
 ]
 
 // ==================== 成员数据 ====================
 
-export const mockMembers: ServerMember[] = mockUsers.map((user, index) => ({
-  id: `member-${user.id}`,
-  serverId: 'server-1',
+export interface MockServerMember {
+  id: number
+  serverId: number
+  userId: number
+  username: string
+  avatarUrl: string
+  nickname: string
+  roles: never[]
+  joinedAt: string
+  isOwner: boolean
+}
+
+export const mockMembers: MockServerMember[] = mockUsers.map((user, index) => ({
+  id: index + 1,
+  serverId: 1,
   userId: user.id,
-  user,
-  nickname: user.displayName,
-  roles: index < 2 ? ['role-1'] : index < 4 ? ['role-2'] : ['role-3'],
-  joinedAt: Date.now() - Math.random() * 100000000,
-  isOwner: user.id === 'user-1'
+  username: user.username,
+  avatarUrl: user.avatarUrl,
+  nickname: user.username,
+  roles: [],
+  joinedAt: '2024-01-01T00:00:00Z',
+  isOwner: user.id === 1,
 }))
 
 // ==================== 消息数据 ====================
 
-const generateMessages = (channelId: string): Message[] => {
-  const messages: Message[] = []
+const messageContents = [
+  '大家好！',
+  '今天天气不错',
+  '有人在线吗？',
+  '分享一下最近的项目',
+  '这个功能怎么实现？',
+  '我觉得可以用 React 来做',
+  'TypeScript 真的很方便',
+  '刚学会了一个新技巧',
+  '推荐一个好用的工具',
+  '代码写累了，休息一下',
+  '晚上一起打游戏吗？',
+  '这个设计很漂亮',
+  '学习了！',
+  '收到，马上处理',
+  '好的，我来看看',
+  '有遇到什么问题吗？',
+  '可以帮忙看看这个 bug',
+  '提交了 PR，请帮忙 review',
+  '文档更新了',
+  '测试通过了 ✅',
+]
+
+function generateMessages(channelId: number): ChannelMessage[] {
+  const messages: ChannelMessage[] = []
   const count = Math.floor(Math.random() * 20) + 10
 
   for (let i = 0; i < count; i++) {
     const author = mockUsers[Math.floor(Math.random() * mockUsers.length)]
-    const timestamp = Date.now() - (count - i) * 60000 * Math.random() * 5
+    const timestamp = new Date(Date.now() - (count - i) * 60000 * Math.random() * 5)
 
     messages.push({
-      id: `msg-${channelId}-${i}`,
+      id: channelId * 1000 + i,
       channelId,
-      authorId: author.id,
-      author,
-      content: getRandomMessageContent(),
-      timestamp,
-      reactions: Math.random() > 0.7 ? [
-        { emoji: '👍', count: Math.floor(Math.random() * 5) + 1, users: [] },
-        { emoji: '❤️', count: Math.floor(Math.random() * 3) + 1, users: [] }
-      ] : undefined
+      senderUserId: author.id,
+      senderName: author.username,
+      senderAvatarUrl: author.avatarUrl,
+      type: 1,
+      content: messageContents[Math.floor(Math.random() * messageContents.length)],
+      replyToId: null,
+      replyTo: null,
+      editedAt: null,
+      isPinned: false,
+      attachments: [],
+      reactions: Math.random() > 0.7
+        ? [
+            { emoji: '👍', count: Math.floor(Math.random() * 5) + 1, users: [] },
+            { emoji: '❤️', count: Math.floor(Math.random() * 3) + 1, users: [] },
+          ]
+        : [],
+      createdAt: timestamp.toISOString(),
     })
   }
 
   return messages
 }
 
-const getRandomMessageContent = (): string => {
-  const contents = [
-    '大家好！',
-    '今天天气不错',
-    '有人在线吗？',
-    '分享一下最近的项目',
-    '这个功能怎么实现？',
-    '我觉得可以用 React 来做',
-    'TypeScript 真的很方便',
-    '刚学会了一个新技巧',
-    '推荐一个好用的工具',
-    '代码写累了，休息一下',
-    '晚上一起打游戏吗？',
-    '这个设计很漂亮',
-    '学习了！',
-    '收到，马上处理',
-    '好的，我来看看',
-    '有遇到什么问题吗？',
-    '可以帮忙看看这个 bug',
-    '提交了 PR，请帮忙 review',
-    '文档更新了',
-    '测试通过了 ✅'
-  ]
-  return contents[Math.floor(Math.random() * contents.length)]
-}
+export const mockMessages: Map<number, ChannelMessage[]> = new Map()
 
-export const mockMessages: Map<string, Message[]> = new Map()
-
-mockServers.forEach(server => {
-  server.channels.forEach(channel => {
-    if (channel.type === 'text') {
-      mockMessages.set(channel.id, generateMessages(channel.id))
-    }
-  })
+mockChannels.forEach((channel: Channel) => {
+  if (channel.type === 1) {
+    mockMessages.set(channel.id, generateMessages(channel.id))
+  }
 })
 
 // ==================== 语音参与者数据 ====================
 
 export const mockVoiceParticipants: VoiceParticipant[] = [
   {
-    id: 'vp-1',
-    userId: 'user-1',
-    user: mockUsers[0],
+    id: 1,
+    channelId: 8,
+    userId: 1,
+    username: 'megumikato',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=megumikato',
     isMuted: false,
     isDeafened: false,
     isSpeaking: false,
     volume: 80,
-    joinedAt: Date.now() - 100000
+    joinedAt: new Date(Date.now() - 100000).toISOString(),
   },
   {
-    id: 'vp-2',
-    userId: 'user-5',
-    user: mockUsers[4],
+    id: 2,
+    channelId: 8,
+    userId: 5,
+    username: 'natsu',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=natsu',
     isMuted: true,
     isDeafened: false,
     isSpeaking: false,
     volume: 70,
-    joinedAt: Date.now() - 50000
+    joinedAt: new Date(Date.now() - 50000).toISOString(),
   },
   {
-    id: 'vp-3',
-    userId: 'user-7',
-    user: mockUsers[6],
+    id: 3,
+    channelId: 8,
+    userId: 7,
+    username: 'fuyu',
+    avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fuyu',
     isMuted: false,
     isDeafened: false,
     isSpeaking: true,
     volume: 75,
-    joinedAt: Date.now() - 30000
-  }
+    joinedAt: new Date(Date.now() - 30000).toISOString(),
+  },
 ]
 
 // ==================== 辅助函数 ====================
 
-export const getServerById = (id: string): Server | undefined =>
-  mockServers.find(s => s.id === id)
+export const getServerById = (id: number): Server | undefined =>
+  mockServers.find((s) => s.id === id)
 
-export const getChannelById = (id: string): Channel | undefined =>
-  mockServers.flatMap(s => s.channels).find(c => c.id === id)
+export const getChannelById = (id: number): Channel | undefined =>
+  mockChannels.find((c) => c.id === id)
 
-export const getUserById = (id: string): User | undefined =>
-  mockUsers.find(u => u.id === id)
+export const getUserById = (id: number): MockUser | undefined =>
+  mockUsers.find((u) => u.id === id)
 
-export const getMessagesByChannel = (channelId: string): Message[] =>
+export const getMessagesByChannel = (channelId: number): ChannelMessage[] =>
   mockMessages.get(channelId) || []
 
-export const getMembersByServer = (serverId: string): ServerMember[] =>
-  mockMembers.filter(m => m.serverId === serverId)
+export const getMembersByServer = (serverId: number): MockServerMember[] =>
+  mockMembers.filter((m) => m.serverId === serverId)
+
+export const getChannelsByServer = (serverId: number): Channel[] =>
+  mockChannels.filter((c) => c.serverId === serverId)
+
+export const getChannelTreeByServer = (serverId: number): ChannelTreeNode[] => {
+  const channels = getChannelsByServer(serverId)
+  const roots: ChannelTreeNode[] = []
+  const childMap = new Map<number | null, Channel[]>()
+
+  channels.forEach((ch) => {
+    const parentKey = ch.parentId
+    if (!childMap.has(parentKey)) {
+      childMap.set(parentKey, [])
+    }
+    childMap.get(parentKey)!.push(ch)
+  })
+
+  function buildTree(parentId: number | null): ChannelTreeNode[] {
+    const children = childMap.get(parentId) || []
+    return children.map((ch) => ({
+      ...ch,
+      children: buildTree(ch.id),
+    }))
+  }
+
+  roots.push(...buildTree(null))
+  return roots
+}

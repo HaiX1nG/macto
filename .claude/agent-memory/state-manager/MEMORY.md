@@ -1,0 +1,4 @@
+- [serverStore refactoring](serverStore-refactoring.md) - Phase 4: serverStore fully rewritten with KOOK server/channel hierarchy
+- [Store-Service Integration](store-service-integration.md) - Phase 4: 11->7 store reorganization, full architecture details
+- [Mute single source](mute-single-source.md) - Phase 6 P1: mute moved to mediaStore; voiceStore.setMute delegates; dynamic import removed
+- [WS dual token fix](ws-dual-token-fix.md) - double ?token=?token 401 bug fixed in websocketService.connect()

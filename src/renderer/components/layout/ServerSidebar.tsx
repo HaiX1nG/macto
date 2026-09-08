@@ -1,63 +1,385 @@
-import { useState, useEffect } from 'react'
-import { Tooltip } from 'antd'
-import { PlusOutlined, CompassOutlined, DownloadOutlined } from '@ant-design/icons'
+import { useState, useCallback } from 'react'
+import { Modal, Input, App, Avatar, Dropdown } from 'antd'
+import {
+  PlusOutlined,
+  SettingOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  TeamOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
 import { useServerStore } from '@renderer/stores/serverStore'
-import type { Server } from '@shared/types/kook'
+import { useAuthStore } from '@renderer/stores/authStore'
+import { useUIStore, SIDEBAR_WIDTHS } from '@renderer/stores/uiStore'
+import { SettingsModal } from './SettingsModal'
+import type { Server } from '@shared/types/server'
+import type { UserStatus } from '@shared/types/auth'
 
 export function ServerSidebar() {
-  const { servers, currentServerId, setCurrentServer } = useServerStore()
+  const { servers, currentServerId, createServer, deleteServer, setCurrentServer, fetchServerDetail } = useServerStore()
+  const { currentUser, setCustomStatus, status, setStatus } = useAuthStore()
+  const { serverSidebarExpanded, toggleServerSidebar, setActiveView, setCurrentServerId } = useUIStore()
+  const { message } = App.useApp()
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showCustomStatusModal, setShowCustomStatusModal] = useState(false)
+  const [customStatusText, setCustomStatusText] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [serverName, setServerName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [serverToDelete, setServerToDelete] = useState<Server | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const sidebarWidth = serverSidebarExpanded
+    ? SIDEBAR_WIDTHS.serverExpanded
+    : SIDEBAR_WIDTHS.server
+
+  const handleCreateServer = async () => {
+    if (!serverName.trim()) {
+      message.warning('请输入服务器名称')
+      return
+    }
+    setLoading(true)
+    try {
+      const newServer = await createServer({ name: serverName.trim(), isPrivate: false })
+      setCurrentServer(newServer.id)
+      setCurrentServerId(newServer.id)
+      setActiveView('server-home', { serverId: newServer.id })
+      message.success('服务器创建成功')
+      setShowCreateModal(false)
+      setServerName('')
+    } catch (_err) {
+      message.error('创建服务器失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: UserStatus) => {
+    setStatus(newStatus)
+    const statusText = newStatus === 'online' ? '' :
+                       newStatus === 'idle' ? '空闲' :
+                       newStatus === 'dnd' ? '请勿打扰' : '隐身'
+    await setCustomStatus({ customStatus: statusText })
+  }
+
+  const handleSetCustomStatus = async () => {
+    await setCustomStatus({ customStatus: customStatusText.trim() })
+    setShowCustomStatusModal(false)
+    setCustomStatusText('')
+    message.success('自定义状态已设置')
+  }
+
+  const handleDeleteServer = (server: Server) => {
+    setServerToDelete(server)
+    setDeleteModalOpen(true)
+  }
+
+  const confirmDeleteServer = async () => {
+    if (!serverToDelete) return
+
+    setDeleteLoading(true)
+    try {
+      await deleteServer(serverToDelete.id)
+      message.success('服务器已删除')
+      setDeleteModalOpen(false)
+      setServerToDelete(null)
+    } catch (err) {
+      console.error('Failed to delete server:', err)
+      let errorMessage = '删除服务器失败'
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { code?: number; message?: string } } }
+        if (axiosErr.response?.data?.message) {
+          errorMessage = axiosErr.response.data.message
+        }
+      }
+      message.error(errorMessage)
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const statusMenuItems = [
+    { key: 'online', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-online)]" /><span>在线</span></div>, onClick: () => handleStatusChange('online') },
+    { key: 'idle', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-idle)]" /><span>空闲</span></div>, onClick: () => handleStatusChange('idle') },
+    { key: 'dnd', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-dnd)]" /><span>请勿打扰</span></div>, onClick: () => handleStatusChange('dnd') },
+    { key: 'offline', label: <div className="flex items-center gap-3 py-1"><span className="w-3 h-3 rounded-full bg-[var(--color-offline)]" /><span>隐身</span></div>, onClick: () => handleStatusChange('offline') },
+    { type: 'divider' as const },
+    { key: 'custom', label: <div className="flex items-center gap-3 py-1"><EditOutlined className="text-[var(--color-text-muted)]" /><span>设置自定义状态</span></div>, onClick: () => setShowCustomStatusModal(true) }
+  ]
+
+  const statusColors: Record<string, string> = {
+    online: 'bg-[var(--color-online)]',
+    idle: 'bg-[var(--color-idle)]',
+    dnd: 'bg-[var(--color-dnd)]',
+    offline: 'bg-[var(--color-offline)]'
+  }
+
+  const displayName = currentUser?.username || '用户'
+  const avatar = currentUser?.avatarUrl || undefined
+
+  const handleServerClick = useCallback((serverId: number | null) => {
+    if (serverId === null) {
+      setActiveView('server-home')
+    } else {
+      setCurrentServer(serverId)
+      setCurrentServerId(serverId)
+      void fetchServerDetail(serverId)
+      setActiveView('server-home', { serverId })
+    }
+  }, [setCurrentServer, setCurrentServerId, fetchServerDetail, setActiveView])
 
   return (
-    <div className="w-[72px] bg-[var(--color-bg-darkest)] flex flex-col items-center py-3 gap-2 h-full flex-shrink-0">
-      {/* Home Button */}
-      <ServerIcon
-        icon={
-          <svg viewBox="0 0 28 20" className="w-7 h-5 text-white" fill="currentColor">
-            <path d="M23.0212 1.67671C21.3107 0.879656 19.5079 0.318797 17.6584 0C17.4062 0.461742 17.1749 0.934541 16.9708 1.4184C15.003 1.12145 12.9974 1.12145 11.0283 1.4184C10.819 0.934541 10.589 0.461744 10.3416 0C8.49087 0.322199 6.68661 0.885653 4.97361 1.68345C1.53179 6.77853 0.559612 11.7417 1.04602 16.6309C3.04912 18.1166 5.31187 19.2137 7.72333 19.8612C8.25832 19.1384 8.73498 18.3699 9.14898 17.5624C8.37544 17.2724 7.62992 16.9089 6.92297 16.4756C7.10261 16.3474 7.27777 16.2131 7.44717 16.0745C11.7197 18.0621 16.3394 18.0621 20.5554 16.0745C20.7248 16.2131 20.8999 16.3474 21.0796 16.4756C20.3714 16.9102 19.6246 17.275 18.8497 17.5637C19.2637 18.3711 19.7403 19.1397 20.2753 19.8625C22.6881 19.2137 24.9508 18.1153 26.954 16.6309C27.5307 10.9745 26.0372 6.05798 23.0212 1.67671ZM9.68041 13.6383C8.39754 13.6383 7.34085 12.4453 7.34085 10.994C7.34085 9.54272 8.37155 8.34973 9.68041 8.34973C10.9893 8.34973 12.0455 9.54272 12.0187 10.994C12.0187 12.4453 10.9893 13.6383 9.68041 13.6383ZM18.3161 13.6383C17.0332 13.6383 15.9765 12.4453 15.9765 10.994C15.9765 9.54272 17.0072 8.34973 18.3161 8.34973C19.6249 8.34973 20.6811 9.54272 20.6544 10.994C20.6544 12.4453 19.6249 13.6383 18.3161 13.6383Z" />
-          </svg>
-        }
-        name="首页"
-        isActive={!currentServerId}
-        onClick={() => setCurrentServer(null)}
-      />
-
-      {/* Divider */}
-      <div className="w-8 h-[2px] bg-[var(--color-border)] rounded-full my-1" />
-
-      {/* Server List */}
-      {servers.map((server) => (
+    <div
+      className={cn(
+        "bg-[var(--color-bg-darkest)] flex flex-col h-full flex-shrink-0 overflow-hidden",
+        "border-r border-[var(--color-border)]",
+        "transition-[width] duration-300 ease-out"
+      )}
+      style={{ width: sidebarWidth }}
+    >
+      {/* Logo - 首页按钮 */}
+      <div className="flex-shrink-0 pt-3">
         <ServerIcon
-          key={server.id}
-          server={server}
-          name={server.name}
-          isActive={currentServerId === server.id}
-          onClick={() => setCurrentServer(server.id)}
-          hasNotification={server.channels.some(c => c.unreadCount && c.unreadCount > 0)}
+          icon={
+            <svg viewBox="0 0 28 20" className="w-7 h-5 text-white" fill="currentColor">
+              <path d="M23.0212 1.67671C21.3107 0.879656 19.5079 0.318797 17.6584 0C17.4062 0.461742 17.1749 0.934541 16.9708 1.4184C15.003 1.12145 12.9974 1.12145 11.0283 1.4184C10.819 0.934541 10.589 0.461744 10.3416 0C8.49087 0.322199 6.68661 0.885653 4.97361 1.68345C1.53179 6.77853 0.559612 11.7417 1.04602 16.6309C3.04912 18.1166 5.31187 19.2137 7.72333 19.8612C8.25832 19.1384 8.73498 18.3699 9.14898 17.5624C8.37544 17.2724 7.62992 16.9089 6.92297 16.4756C7.10261 16.3474 7.27777 16.2131 7.44717 16.0745C11.7197 18.0621 16.3394 18.0621 20.5554 16.0745C20.7248 16.2131 20.8999 16.3474 21.0796 16.4756C20.3714 16.9102 19.6246 17.275 18.8497 17.5637C19.2637 18.3711 19.7403 19.1397 20.2753 19.8625C22.6881 19.2137 24.9508 18.1153 26.954 16.6309C27.5307 10.9745 26.0372 6.05798 23.0212 1.67671ZM9.68041 13.6383C8.39754 13.6383 7.34085 12.4453 7.34085 10.994C7.34085 9.54272 8.37155 8.34973 9.68041 8.34973C10.9893 8.34973 12.0455 9.54272 12.0187 10.994C12.0187 12.4453 10.9893 13.6383 9.68041 13.6383ZM18.3161 13.6383C17.0332 13.6383 15.9765 12.4453 15.9765 10.994C15.9765 9.54272 17.0072 8.34973 18.3161 8.34973C19.6249 8.34973 20.6811 9.54272 20.6544 10.994C20.6544 12.4453 19.6249 13.6383 18.3161 13.6383Z" />
+            </svg>
+          }
+          name="首页"
+          isActive={currentServerId === null}
+          onClick={() => handleServerClick(null)}
+          isExpanded={serverSidebarExpanded}
         />
-      ))}
+      </div>
 
-      {/* Add Server Button */}
-      <ServerIcon
-        icon={<PlusOutlined className="text-[var(--color-primary)] text-xl" />}
-        name="添加服务器"
-        onClick={() => {}}
-        isAction
-      />
+      {/* 分隔线 */}
+      <div className={cn(
+        "mx-auto my-1 h-[2px] bg-[var(--color-border)] rounded-full flex-shrink-0",
+        "transition-[width] duration-300 ease-out",
+        serverSidebarExpanded ? "w-[calc(100%-24px)]" : "w-8"
+      )} />
 
-      <ServerIcon
-        icon={<CompassOutlined className="text-[var(--color-primary)] text-xl" />}
-        name="探索服务器"
-        onClick={() => {}}
-        isAction
-      />
+      {/* 好友按钮 */}
+      <div className="flex-shrink-0">
+        <ServerIcon
+          icon={<TeamOutlined className="text-lg text-[var(--color-primary)]" />}
+          name="好友"
+          isActive={false}
+          onClick={() => setActiveView('friends')}
+          isAction
+          isExpanded={serverSidebarExpanded}
+        />
+      </div>
 
-      <ServerIcon
-        icon={<DownloadOutlined className="text-[var(--color-primary)] text-xl" />}
-        name="下载应用"
-        onClick={() => {}}
-        isAction
-      />
+      {/* 分隔线 */}
+      <div className={cn(
+        "mx-auto my-1 h-[2px] bg-[var(--color-border)] rounded-full flex-shrink-0",
+        "transition-[width] duration-300 ease-out",
+        serverSidebarExpanded ? "w-[calc(100%-24px)]" : "w-8"
+      )} />
+
+      {/* 服务器列表 - 可滚动区域 */}
+      <div className={cn(
+        "flex-1 overflow-y-auto overflow-x-hidden min-h-0",
+        serverSidebarExpanded ? "px-2" : "flex flex-col items-center"
+      )}>
+        {servers.map((server) => (
+          <ServerIcon
+            key={server.id}
+            server={server}
+            name={server.name}
+            isActive={currentServerId === server.id}
+            onClick={() => handleServerClick(server.id)}
+            onDelete={() => handleDeleteServer(server)}
+            isExpanded={serverSidebarExpanded}
+          />
+        ))}
+
+        {/* 添加服务器按钮 */}
+        <ServerIcon
+          icon={<PlusOutlined className="text-[var(--color-primary)] text-lg" />}
+          name="添加服务器"
+          onClick={() => setShowCreateModal(true)}
+          isAction
+          isExpanded={serverSidebarExpanded}
+        />
+      </div>
+
+      {/* 设置按钮 */}
+      <div className={cn(
+        "flex-shrink-0",
+        serverSidebarExpanded ? "px-2" : "flex justify-center"
+      )}>
+        <ServerIcon
+          icon={<SettingOutlined className="text-[var(--color-primary)] text-lg" />}
+          name="设置"
+          onClick={() => setSettingsOpen(true)}
+          isAction
+          isExpanded={serverSidebarExpanded}
+        />
+      </div>
+
+      {/* 展开/收起按钮 */}
+      <div className={cn(
+        "flex-shrink-0",
+        serverSidebarExpanded ? "px-2" : "flex justify-center"
+      )}>
+        <button
+          onClick={toggleServerSidebar}
+          className={cn(
+            "w-full flex items-center gap-3 rounded-lg",
+            "text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)]",
+            "hover:bg-[var(--color-bg-tertiary)]",
+            "transition-colors duration-200",
+            serverSidebarExpanded
+              ? "h-10 px-3"
+              : "w-12 h-12 justify-center mx-auto"
+          )}
+        >
+          {serverSidebarExpanded ? (
+            <>
+              <MenuFoldOutlined className="text-base flex-shrink-0" />
+              <span className="text-sm font-medium truncate">收起侧边栏</span>
+            </>
+          ) : (
+            <MenuUnfoldOutlined className="text-base" />
+          )}
+        </button>
+      </div>
+
+      {/* 用户头像区域 */}
+      <div className={cn(
+        "flex-shrink-0 mb-2 mt-1",
+        serverSidebarExpanded ? "px-2" : "flex justify-center"
+      )}>
+        <Dropdown menu={{ items: statusMenuItems }} trigger={['click']} placement="topLeft" styles={{ root: { zIndex: 1500 } }}>
+          <div
+            className={cn(
+              "relative cursor-pointer group",
+              "rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors duration-200",
+              serverSidebarExpanded
+                ? "flex items-center gap-3 px-2 py-2"
+                : "p-0"
+            )}
+          >
+            <div className="relative flex-shrink-0">
+              <Avatar
+                size={serverSidebarExpanded ? 32 : 36}
+                src={avatar}
+                className={cn(
+                  "bg-gradient-to-br from-[var(--color-avatar-gradient-start)] to-[var(--color-avatar-gradient-end)] cursor-pointer",
+                  "transition-[size] duration-300 ease-out",
+                  serverSidebarExpanded ? "rounded-lg" : "rounded-full"
+                )}
+              >
+                {displayName.charAt(0).toUpperCase()}
+              </Avatar>
+              <span className={cn(
+                "absolute rounded-full border-2 border-[var(--color-bg-darkest)]",
+                statusColors[status],
+                serverSidebarExpanded
+                  ? "-bottom-0.5 -right-0.5 w-3 h-3"
+                  : "-bottom-0.5 -right-0.5 w-3.5 h-3.5"
+              )} />
+            </div>
+            {serverSidebarExpanded && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[var(--color-text-normal)] truncate leading-tight">
+                  {displayName}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)] truncate leading-tight mt-0.5">
+                  {status === 'online' ? '在线' :
+                   status === 'idle' ? '空闲' :
+                   status === 'dnd' ? '请勿打扰' :
+                   status === 'offline' ? '隐身' : ''}
+                </p>
+              </div>
+            )}
+          </div>
+        </Dropdown>
+      </div>
+
+      <Modal
+        open={showCreateModal}
+        title="创建服务器"
+        onCancel={() => setShowCreateModal(false)}
+        onOk={handleCreateServer}
+        okText="创建"
+        cancelText="取消"
+        confirmLoading={loading}
+        zIndex={2000}
+        styles={{
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
+        }}
+      >
+        <div className="py-4">
+          <Input
+            value={serverName}
+            onChange={(e) => setServerName(e.target.value)}
+            placeholder="输入服务器名称"
+            prefix={<PlusOutlined className="text-[var(--color-text-muted)]" />}
+            className="rounded-lg"
+          />
+        </div>
+      </Modal>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <Modal
+        open={showCustomStatusModal}
+        title="设置自定义状态"
+        onCancel={() => {
+          setShowCustomStatusModal(false)
+          setCustomStatusText('')
+        }}
+        onOk={handleSetCustomStatus}
+        okText="设置"
+        cancelText="取消"
+        zIndex={2000}
+        styles={{
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
+        }}
+      >
+        <div className="py-4">
+          <Input
+            value={customStatusText}
+            onChange={(e) => setCustomStatusText(e.target.value)}
+            placeholder="输入自定义状态..."
+            prefix={<EditOutlined className="text-[var(--color-text-muted)]" />}
+            className="rounded-lg"
+            maxLength={100}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={deleteModalOpen}
+        title="删除服务器"
+        onCancel={() => {
+          setDeleteModalOpen(false)
+          setServerToDelete(null)
+        }}
+        onOk={confirmDeleteServer}
+        okText="删除"
+        cancelText="取消"
+        okButtonProps={{ danger: true, loading: deleteLoading }}
+        zIndex={2000}
+        styles={{
+          body: { backgroundColor: 'var(--color-bg-secondary)' },
+        }}
+      >
+        <div className="py-4">
+          <p className="text-[var(--color-text-normal)]">
+            确定要删除服务器 <strong>"{serverToDelete?.name}"</strong> 吗？
+          </p>
+          <p className="text-[var(--color-text-muted)] text-sm mt-2">
+            此操作不可撤销，服务器内的所有数据将被删除。
+          </p>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -68,58 +390,163 @@ interface ServerIconProps {
   name: string
   isActive?: boolean
   onClick?: () => void
+  onDelete?: () => void
   isAction?: boolean
   hasNotification?: boolean
+  isExpanded: boolean
 }
 
-function ServerIcon({ server, icon, name, isActive, onClick, isAction, hasNotification }: ServerIconProps) {
-  const [showTooltip, setShowTooltip] = useState(false)
+function ServerIcon({ server, icon, name, isActive, onClick, onDelete, isAction, hasNotification, isExpanded }: ServerIconProps) {
+  const contextMenuItems = server && onDelete ? [
+    {
+      key: 'delete',
+      label: (
+        <div className="flex items-center gap-2 text-[var(--color-dnd)]">
+          <DeleteOutlined />
+          <span>删除服务器</span>
+        </div>
+      ),
+      onClick: onDelete,
+    },
+  ] : []
 
-  return (
-    <div className="relative flex items-center justify-center group">
-      {/* Active Indicator */}
-      <div
-        className={cn(
-          "absolute left-0 w-1 rounded-r-full transition-all duration-200",
-          "top-1/2 -translate-y-1/2",
-          isActive ? "h-10 bg-[var(--color-text-normal)]" : "h-5 bg-[var(--color-text-normal)] opacity-0 group-hover:opacity-100"
-        )}
-      />
-
-      {/* Notification Dot */}
-      {hasNotification && !isActive && (
-        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[var(--color-dnd)] rounded-full border-4 border-[var(--color-bg-darkest)] z-10" />
-      )}
-
-      <Tooltip
-        title={name}
-        placement="right"
-        open={showTooltip}
-        onOpenChange={setShowTooltip}
-        styles={{ container: { backgroundColor: 'var(--color-bg-darker)', borderRadius: '8px', padding: '8px 12px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-normal)' } }}
+  // Collapsed state: circular icon with Tooltip
+  if (!isExpanded) {
+    return (
+      <Dropdown
+        menu={{ items: contextMenuItems }}
+        trigger={['contextMenu']}
+        disabled={!server}
+        styles={{ root: { zIndex: 1500 } }}
       >
-        <button
-          onClick={onClick}
-          className={cn(
-            "w-12 h-12 flex items-center justify-center overflow-hidden",
-            "transition-all duration-200",
-            isActive ? "rounded-2xl" : "rounded-full hover:rounded-2xl",
-            isAction && "bg-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/30",
-            !isAction && !server?.icon && !icon && "bg-[var(--color-accent)]",
-            server?.icon && "bg-transparent"
+        <div className="relative flex items-center justify-center group w-full py-0.5">
+          {/* Active indicator bar */}
+          <div
+            className={cn(
+              "absolute left-0 w-1 rounded-r-full",
+              "transition-all duration-200 ease-out",
+              "top-1/2 -translate-y-1/2",
+              isActive
+                ? "h-10 bg-white"
+                : "h-5 bg-white opacity-0 group-hover:opacity-100"
+            )}
+          />
+
+          {/* Notification dot */}
+          {hasNotification && !isActive && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[var(--color-dnd)] rounded-full border-2 border-[var(--color-bg-darkest)] z-10" />
           )}
-        >
-          {server?.icon ? (
-            <img src={server.icon} alt={server.name} className="w-full h-full object-cover" />
+
+          <button
+            onClick={onClick}
+            className={cn(
+              "relative w-12 h-12 flex items-center justify-center",
+              "transition-all duration-200 ease-out",
+              "rounded-full hover:rounded-2xl",
+              isActive && "rounded-2xl bg-[var(--color-primary)]/20",
+              isAction && "bg-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/30",
+              !isAction && !server?.iconUrl && !icon && "bg-[var(--color-accent)]"
+            )}
+          >
+            {server?.iconUrl ? (
+              <img
+                src={server.iconUrl}
+                alt={server.name}
+                className="w-full h-full rounded-[inherit] object-cover"
+              />
+            ) : icon ? (
+              <span className="flex-shrink-0">{icon}</span>
+            ) : (
+              <span className="text-white font-semibold text-lg">
+                {server?.name?.charAt(0)?.toUpperCase() || name.charAt(0)}
+              </span>
+            )}
+          </button>
+
+          {/* Tooltip positioned outside the button to avoid blocking clicks */}
+          <div className={cn(
+            "absolute left-full ml-4 px-3 py-1.5 rounded-lg",
+            "bg-[var(--color-bg-darker)] text-[var(--color-text-normal)]",
+            "text-sm font-medium whitespace-nowrap",
+            "opacity-0 group-hover:opacity-100 pointer-events-none",
+            "transition-opacity duration-150 ease-out",
+            "shadow-lg z-50"
+          )}>
+            {name}
+          </div>
+        </div>
+      </Dropdown>
+    )
+  }
+
+  // Expanded state: rounded square icon + name, no Tooltip
+  return (
+    <Dropdown
+      menu={{ items: contextMenuItems }}
+      trigger={['contextMenu']}
+      disabled={!server}
+      styles={{ root: { zIndex: 1500 } }}
+    >
+      <button
+        onClick={onClick}
+        className={cn(
+          "relative flex items-center gap-3 w-full my-0.5",
+          "transition-all duration-200 ease-out",
+          "rounded-lg px-2 h-10",
+          // Active state
+          isActive && "bg-[var(--color-primary)]/15",
+          // Action buttons
+          isAction && "hover:bg-[var(--color-primary)]/10",
+          // Default hover
+          !isActive && !isAction && "hover:bg-[var(--color-bg-tertiary)]"
+        )}
+      >
+        {/* Active indicator bar */}
+        {isActive && (
+          <div className="absolute left-0 w-1 h-8 bg-white rounded-r-full" />
+        )}
+
+        {/* Notification dot */}
+        {hasNotification && !isActive && (
+          <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-[var(--color-dnd)] rounded-full border border-[var(--color-bg-darkest)] z-10" />
+        )}
+
+        {/* Icon */}
+        <div className={cn(
+          "flex-shrink-0 flex items-center justify-center",
+          isAction
+            ? "w-8 h-8 rounded-lg bg-[var(--color-primary)]/20"
+            : "w-8 h-8 rounded-lg",
+          !isAction && !server?.iconUrl && !icon && "bg-[var(--color-accent)]",
+          !isAction && !server?.iconUrl && icon && "bg-transparent"
+        )}>
+          {server?.iconUrl ? (
+            <img
+              src={server.iconUrl}
+              alt={server.name}
+              className="w-full h-full rounded-lg object-cover"
+            />
           ) : icon ? (
-            icon
+            <span className="flex-shrink-0">{icon}</span>
           ) : (
-            <span className="text-white font-semibold text-lg">
+            <span className="text-white font-semibold text-sm">
               {server?.name?.charAt(0)?.toUpperCase() || name.charAt(0)}
             </span>
           )}
-        </button>
-      </Tooltip>
-    </div>
+        </div>
+
+        {/* Name label */}
+        <span className={cn(
+          "flex-1 text-left text-sm font-medium truncate",
+          isActive
+            ? "text-[var(--color-text-normal)]"
+            : isAction
+              ? "text-[var(--color-primary)]"
+              : "text-[var(--color-text-muted)]"
+        )}>
+          {server?.name || name}
+        </span>
+      </button>
+    </Dropdown>
   )
 }

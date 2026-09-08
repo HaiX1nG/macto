@@ -1,129 +1,401 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { App, Empty, Popover } from 'antd'
+import { useChannelStore } from '@renderer/stores/channelStore'
+import { useChatStore, type MessageWithStatus } from '@renderer/stores/chatStore'
 import { useServerStore } from '@renderer/stores/serverStore'
-import { useChatStore } from '@renderer/stores/chatStore'
+import { useUIStore } from '@renderer/stores/uiStore'
+import { useAuthStore } from '@renderer/stores/authStore'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
-import { AudioOutlined, BellOutlined, PushpinOutlined, NumberOutlined, UserOutlined, SearchOutlined, InboxOutlined } from '@ant-design/icons'
-import { cn } from '@renderer/utils/cn'
-import type { Channel, Message } from '@shared/types/kook'
+import { SearchMessages } from './SearchMessages'
+import { NotificationDropdown } from './NotificationDropdown'
+import {
+  PushpinOutlined,
+  NumberOutlined,
+  UserOutlined,
+  SearchOutlined,
+  InboxOutlined,
+} from '@ant-design/icons'
+import { HeaderButton } from '@renderer/components/ui/HeaderButton'
+import { SkeletonMessageList } from '@renderer/components/ui/Skeleton'
+import { NoChannelSelected } from '@renderer/components/ui/EmptyState'
+import { motion, AnimatePresence } from 'framer-motion'
+import { MessageType } from '@shared/types/message'
+import type { ChannelMessage } from '@shared/types/message'
+import { useKeyboardShortcuts } from '@renderer/hooks/useKeyboardShortcuts'
 
 export function ChatView() {
-  const { servers, currentServerId, currentChannelId } = useServerStore()
-  const { messages, sendMessage, addMessage } = useChatStore()
+  const { message: messageApi } = App.useApp()
+  const { currentChannel, currentChannelId } = useChannelStore()
+  const { members } = useServerStore()
+  const { setActiveView, toggleMemberList } = useUIStore()
+  const {
+    messages: messagesMap,
+    fetchMessages,
+    sendMessage,
+    isLoading,
+    hasMore,
+    pinMessage,
+    retryMessage,
+    updateMessage,
+    deleteMessage,
+    addReaction,
+    removeReaction,
+    clearChannel,
+  } = useChatStore()
+  const { currentUser } = useAuthStore()
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<ChannelMessage | null>(null)
 
-  const currentServer = servers.find(s => s.id === currentServerId)
-  const currentChannel = currentServer?.channels.find(c => c.id === currentChannelId)
-
-  // Convert API messages to KOOK format for display
-  const channelMessages: Message[] = messages.map(msg => ({
-    id: String(msg.id),
-    channelId: String(msg.roomId),
-    authorId: String(msg.senderUserId),
-    author: {
-      id: String(msg.senderUserId),
-      name: msg.senderName,
-      displayName: msg.senderName,
-      status: 'online' as const,
+  // Register keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      id: 'openSearch',
+      handler: () => {
+        setSearchOpen(true)
+      },
+      condition: () => !searchOpen,
+      priority: 5,
     },
-    content: msg.content,
-    timestamp: new Date(msg.createdAt).getTime(),
-  }))
+    {
+      id: 'focusMessageInput',
+      handler: () => {
+        const input = document.querySelector('[data-message-input]') as HTMLInputElement | HTMLTextAreaElement
+        if (input) {
+          input.focus()
+        }
+      },
+      priority: 5,
+    },
+  ])
 
-  const handleSendMessage = (content: string) => {
+  // Scroll state for smooth scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
+
+  const serverMembers = useMemo(() => {
+    return members.map(m => ({
+      id: m.userId,
+      username: m.username,
+      displayName: m.nickname || m.username,
+      avatar: m.avatarUrl,
+    }))
+  }, [members])
+
+  const channelMessages: MessageWithStatus[] = useMemo(() => {
+    if (!currentChannelId) return []
+    return messagesMap.get(currentChannelId) || []
+  }, [messagesMap, currentChannelId])
+
+  const pinnedMessages = useMemo(() => {
+    return channelMessages.filter(m => m.isPinned)
+  }, [channelMessages])
+
+  // 置顶消息面板内容
+  const pinnedPanel = useMemo(() => {
+    if (pinnedMessages.length === 0) {
+      return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无置顶消息" className="m-4" />
+    }
+    return (
+      <div className="flex flex-col gap-1 p-1 max-h-72 overflow-y-auto w-64">
+        {pinnedMessages.map((m) => (
+          <div key={m.id} className="px-3 py-2 rounded-lg hover:bg-[var(--color-bg-tertiary)] flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[var(--color-primary)] truncate">{m.senderName}</span>
+              <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">
+                {new Date(m.createdAt).toLocaleString()}
+              </span>
+            </div>
+            <p className="text-sm text-[var(--color-text-normal)] break-all">{m.content}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }, [pinnedMessages])
+
+  useEffect(() => {
+    if (currentChannelId) {
+      clearChannel(currentChannelId)
+      fetchMessages(currentChannelId)
+      setShouldScrollToBottom(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentChannelId])
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (shouldScrollToBottom && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+      setShouldScrollToBottom(false)
+    }
+  }, [channelMessages, shouldScrollToBottom])
+
+  const handleSendMessage = useCallback(async (content: string, attachments?: { url: string; type: 'image' | 'video' | 'audio' | 'file'; filename: string; size: number }[]) => {
     if (!currentChannelId) return
-    // Add message optimistically
-    addMessage({
-      id: Date.now(),
-      roomId: Number(currentChannelId) || 0,
-      senderUserId: 0,
-      senderName: 'You',
-      messageType: 1,
-      content,
-      createdAt: new Date().toISOString(),
-    })
-  }
 
-  if (!currentServer || !currentChannel) {
+    try {
+      if (attachments && attachments.length > 0) {
+        for (const attachment of attachments) {
+          const msgType = attachment.type === 'image' ? MessageType.Image : MessageType.Text
+          await sendMessage(currentChannelId, {
+            type: msgType,
+            content: attachment.url,
+          })
+        }
+      }
+
+      if (content.trim()) {
+        await sendMessage(currentChannelId, {
+          type: MessageType.Text,
+          content: content.trim(),
+          replyToId: replyingTo?.id,
+        })
+      }
+      setShouldScrollToBottom(true)
+      setReplyingTo(null)
+    } catch (_err) {
+      messageApi.error('发送消息失败')
+    }
+  }, [currentChannelId, sendMessage, messageApi, replyingTo])
+
+  const handleLoadMore = useCallback(() => {
+    if (currentChannelId && hasMore.get(currentChannelId) && !isLoading) {
+      const oldestMsg = channelMessages[0]
+      const before = oldestMsg?.id
+      fetchMessages(currentChannelId, before)
+    }
+  }, [currentChannelId, hasMore, isLoading, fetchMessages, channelMessages])
+
+  const handleReply = useCallback((message: MessageWithStatus) => {
+    setReplyingTo(message)
+  }, [])
+
+  const handleCancelReply = useCallback(() => {
+    setReplyingTo(null)
+  }, [])
+
+  const handleEditMessage = useCallback(async (messageId: number, content: string) => {
+    if (!currentChannelId) return
+
+    try {
+      await updateMessage(currentChannelId, messageId, content)
+      messageApi.success('消息已更新')
+    } catch (_err) {
+      messageApi.error('更新消息失败')
+    }
+  }, [currentChannelId, messageApi, updateMessage])
+
+  const handleDeleteMessage = useCallback(async (messageId: number) => {
+    if (!currentChannelId) return
+
+    try {
+      await deleteMessage(currentChannelId, messageId)
+      messageApi.success('消息已删除')
+    } catch (_err) {
+      messageApi.error('删除消息失败')
+    }
+  }, [currentChannelId, messageApi, deleteMessage])
+
+  const handlePinMessage = useCallback((messageId: number) => {
+    if (!currentChannelId) return
+    pinMessage(currentChannelId, messageId)
+  }, [currentChannelId, pinMessage])
+
+  const handleReaction = useCallback((messageId: number, emoji: string) => {
+    if (!currentChannelId) return
+    const msg = channelMessages.find(m => m.id === messageId)
+    if (!msg) return
+    const existingReaction = msg.reactions.find(r => r.emoji === emoji)
+    const hasReacted = existingReaction?.users.includes(currentUser?.id ?? -1)
+    if (hasReacted) {
+      removeReaction(currentChannelId, messageId, emoji)
+    } else {
+      addReaction(currentChannelId, messageId, emoji)
+    }
+  }, [currentChannelId, channelMessages, currentUser?.id, addReaction, removeReaction])
+
+  const handleRetryMessage = useCallback((retryId: string) => {
+    const msg = channelMessages.find(m => m._retryId === retryId)
+    if (msg && currentChannelId) {
+      retryMessage(retryId, currentChannelId, {
+        type: msg.type,
+        content: msg.content,
+      })
+    }
+  }, [channelMessages, currentChannelId, retryMessage])
+
+  const handleSearchMessageClick = useCallback((message: ChannelMessage) => {
+    if (message.channelId) {
+      // Navigate to the channel containing the message
+      setActiveView('text-channel', { channelId: message.channelId })
+    }
+  }, [setActiveView])
+
+  const typingIndicator = useTypingIndicator(currentChannelId)
+
+  if (!currentChannel) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-base)]">
-        <div className="text-center">
-          <div className="w-20 h-20 rounded-full bg-[var(--color-bg-darker)] flex items-center justify-center mx-auto mb-4">
-            <svg viewBox="0 0 28 20" className="w-10 h-8 text-[var(--color-text-muted)]" fill="currentColor">
-              <path d="M23.0212 1.67671C21.3107 0.879656 19.5079 0.318797 17.6584 0C17.4062 0.461742 17.1749 0.934541 16.9708 1.4184C15.003 1.12145 12.9974 1.12145 11.0283 1.4184C10.819 0.934541 10.589 0.461744 10.3416 0C8.49087 0.322199 6.68661 0.885653 4.97361 1.68345C1.53179 6.77853 0.559612 11.7417 1.04602 16.6309C3.04912 18.1166 5.31187 19.2137 7.72333 19.8612C8.25832 19.1384 8.73498 18.3699 9.14898 17.5624C8.37544 17.2724 7.62992 16.9089 6.92297 16.4756C7.10261 16.3474 7.27777 16.2131 7.44717 16.0745C11.7197 18.0621 16.3394 18.0621 20.5554 16.0745C20.7248 16.2131 20.8999 16.3474 21.0796 16.4756C20.3714 16.9102 19.6246 17.275 18.8497 17.5637C19.2637 18.3711 19.7403 19.1397 20.2753 19.8625C22.6881 19.2137 24.9508 18.1153 26.954 16.6309C27.5307 10.9745 26.0372 6.05798 23.0212 1.67671ZM9.68041 13.6383C8.39754 13.6383 7.34085 12.4453 7.34085 10.994C7.34085 9.54272 8.37155 8.34973 9.68041 8.34973C10.9893 8.34973 12.0455 9.54272 12.0187 10.994C12.0187 12.4453 10.9893 13.6383 9.68041 13.6383ZM18.3161 13.6383C17.0332 13.6383 15.9765 12.4453 15.9765 10.994C15.9765 9.54272 17.0072 8.34973 18.3161 8.34973C19.6249 8.34973 20.6811 9.54272 20.6544 10.994C20.6544 12.4453 19.6249 13.6383 18.3161 13.6383Z" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold text-[var(--color-text-normal)] mb-2">欢迎使用 Macto</h3>
-          <p className="text-[var(--color-text-muted)]">选择一个服务器和频道开始聊天</p>
-        </div>
+        <NoChannelSelected />
       </div>
     )
   }
 
-  if (currentChannel.type === 'voice') return <VoiceChannelView channel={currentChannel} />
-
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-bg-base)]">
-      {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-[var(--color-border)] flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <NumberOutlined className="text-[var(--color-text-muted)]" />
-          <span className="font-semibold text-[var(--color-text-normal)]">{currentChannel.name}</span>
+    <>
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-bg-base)]">
+        {/* Header */}
+        <div className="h-[var(--header-height)] px-4 flex items-center gap-4 border-b border-[var(--color-border)] flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <NumberOutlined className="text-[var(--color-text-muted)]" />
+            <span className="font-semibold text-[var(--color-text-normal)]">{currentChannel.name}</span>
+          </div>
+          {currentChannel.topic && (
+            <>
+              <div className="w-px h-6 bg-[var(--color-border)]" />
+              <span className="text-sm text-[var(--color-text-muted)] truncate max-w-[300px]">{currentChannel.topic}</span>
+            </>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <NotificationDropdown />
+            <Popover
+              placement="bottomRight"
+              trigger="click"
+              content={pinnedPanel}
+              title={<span className="text-sm font-semibold text-[var(--color-text-normal)]">置顶消息</span>}
+              overlayInnerStyle={{ padding: 0 }}
+              overlayClassName="rounded-xl overflow-hidden"
+            >
+              <span className="inline-flex">
+                <HeaderButton icon={<PushpinOutlined />} label="置顶" />
+              </span>
+            </Popover>
+            <HeaderButton icon={<UserOutlined />} label="成员" onClick={toggleMemberList} />
+            <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 px-2 h-7 bg-[var(--color-bg-darkest)] rounded text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] transition-colors"
+            >
+              <SearchOutlined />
+              <span className="w-20 text-left">搜索</span>
+            </button>
+            <HeaderButton
+              icon={<InboxOutlined />}
+              label="收件箱"
+              onClick={() => setActiveView('friends')}
+            />
+          </div>
         </div>
-        {currentChannel.topic && (
-          <>
-            <div className="w-px h-6 bg-[var(--color-border)]" />
-            <span className="text-sm text-[var(--color-text-muted)] truncate max-w-[300px]">{currentChannel.topic}</span>
-          </>
+
+        {/* Reply bar */}
+        <AnimatePresence>
+          {replyingTo && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="px-4 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] flex items-center gap-2 overflow-hidden"
+            >
+              <span className="text-xs text-[var(--color-text-muted)]">
+                回复 <span className="text-[var(--color-primary)] font-medium">{replyingTo.senderName}</span>:
+              </span>
+              <span className="text-sm text-[var(--color-text-normal)] truncate flex-1">
+                {replyingTo.content.slice(0, 50)}{replyingTo.content.length > 50 ? '...' : ''}
+              </span>
+              <button
+                onClick={handleCancelReply}
+                className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] px-2 py-1 rounded hover:bg-[var(--color-bg-tertiary)] transition-colors"
+              >
+                取消
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Typing indicator */}
+        <AnimatePresence>
+          {typingIndicator && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="px-4 py-1 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] overflow-hidden"
+            >
+              <span className="text-xs text-[var(--color-text-muted)]">
+                <span className="text-[var(--color-primary)]">{typingIndicator}</span> 正在输入...
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Messages Area */}
+        {isLoading && channelMessages.length === 0 ? (
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <SkeletonMessageList count={8} />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-hidden relative">
+            <MessageList
+              messages={channelMessages}
+              onAddReaction={handleReaction}
+              onLoadMore={handleLoadMore}
+              hasMore={currentChannelId ? hasMore.get(currentChannelId) ?? false : false}
+              isLoading={isLoading}
+              onReply={handleReply}
+              onEdit={handleEditMessage}
+              onDelete={handleDeleteMessage}
+              onPin={handlePinMessage}
+              onUnpin={handlePinMessage}
+              pinnedMessages={pinnedMessages}
+              onRetry={handleRetryMessage}
+            />
+            <div ref={messagesEndRef} />
+          </div>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <HeaderBtn icon={<BellOutlined />} />
-          <HeaderBtn icon={<PushpinOutlined />} />
-          <HeaderBtn icon={<UserOutlined />} />
-          <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
-          <div className="relative">
-            <input type="text" placeholder="搜索" className="w-36 h-7 pl-7 pr-2 bg-[var(--color-bg-darkest)] border-none rounded text-sm text-[var(--color-text-normal)] placeholder-[var(--color-text-muted)] focus:outline-none focus:w-56 transition-all" />
-            <SearchOutlined className="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-          </div>
-          <HeaderBtn icon={<InboxOutlined />} />
+
+        {/* Message Input */}
+        <div className="flex-shrink-0">
+          <MessageInput
+            onSend={handleSendMessage}
+            channelName={currentChannel.name}
+            replyingTo={replyingTo ? { name: replyingTo.senderName, content: replyingTo.content } : null}
+            onCancelReply={handleCancelReply}
+            members={serverMembers}
+          />
         </div>
       </div>
 
-      {/* Messages */}
-      <MessageList messages={channelMessages} />
-
-      {/* Input */}
-      <MessageInput onSend={handleSendMessage} channelName={currentChannel.name} />
-    </div>
+      <SearchMessages
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onMessageClick={handleSearchMessageClick}
+      />
+    </>
   )
 }
 
-function HeaderBtn({ icon }: { icon: React.ReactNode }) {
-  return <button className="w-8 h-8 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-normal)] hover:bg-[var(--color-bg-darker)] rounded transition-colors">{icon}</button>
+function useTypingIndicator(channelId: number | null) {
+  const typingUsers = useChatStore(state => state.typingUsers)
+  const currentUser = useAuthStore(state => state.currentUser)
+
+  const usersTyping = useMemo(() => {
+    if (!channelId) return []
+    const channelTyping = typingUsers.get(channelId) || new Set<number>()
+    return Array.from(channelTyping).filter(u => u !== currentUser?.id)
+  }, [channelId, typingUsers, currentUser?.id])
+
+  if (usersTyping.length === 0) return null
+  // Look up member names from serverStore
+  const { members } = useServerStore.getState()
+  const names = usersTyping.map(uid => {
+    const member = members.find(m => m.userId === uid)
+    return member?.nickname || member?.username || `用户 ${uid}`
+  })
+  if (names.length === 1) return names[0]
+  if (names.length === 2) return `${names[0]} 和 ${names[1]}`
+  return `${names[0]} 和其他 ${names.length - 1} 人`
 }
 
-function VoiceChannelView({ channel }: { channel: Channel }) {
-  const [isConnected, setIsConnected] = useState(false)
-
-  return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-bg-base)]">
-      <div className="h-12 px-4 flex items-center gap-4 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-2">
-          <AudioOutlined className="text-[var(--color-text-muted)]" />
-          <span className="font-semibold text-[var(--color-text-normal)]">{channel.name}</span>
-        </div>
-      </div>
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-20 h-20 rounded-full bg-[var(--color-bg-darker)] flex items-center justify-center mx-auto mb-4">
-            <AudioOutlined className="text-3xl text-[var(--color-text-muted)]" />
-          </div>
-          <h3 className="text-xl font-semibold text-[var(--color-text-normal)] mb-2">{channel.name}</h3>
-          <p className="text-[var(--color-text-muted)] mb-6">语音频道</p>
-          <button onClick={() => setIsConnected(!isConnected)} className={cn("px-6 py-3 rounded font-medium transition-colors", isConnected ? "bg-[var(--color-dnd)] hover:opacity-90 text-white" : "bg-[var(--color-primary)] hover:opacity-90 text-white")}>
-            {isConnected ? '断开连接' : '加入语音'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+export default ChatView

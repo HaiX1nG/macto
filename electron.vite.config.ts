@@ -10,8 +10,13 @@ export default defineConfig({
         entry: path.resolve(__dirname, 'src/main/index.ts'),
       },
       outDir: 'out/main',
-      sourcemap: true,
+      sourcemap: false,
+      rollupOptions: {
+        external: ['electron', 'fsevents'],
+      },
     },
+    // Use vite's assetsInclude to treat icons as assets
+    assetsInclude: ['**/*.png', '**/*.ico', '**/*.icns'],
   },
   preload: {
     build: {
@@ -22,7 +27,7 @@ export default defineConfig({
         },
       },
       outDir: 'out/preload',
-      sourcemap: true,
+      sourcemap: false,
     },
   },
   renderer: {
@@ -34,13 +39,38 @@ export default defineConfig({
     },
     build: {
       target: 'chrome120',
+      outDir: path.resolve(__dirname, 'out/renderer'),
+      sourcemap: false,
       rollupOptions: {
         input: {
           index: path.resolve(__dirname, 'src/renderer/index.html'),
         },
+        output: {
+          manualChunks(id) {
+            // 首屏大依赖拆成独立 chunk，配合 entryFileNames 缓存提升加载
+            if (id.includes('node_modules')) {
+              if (/node_modules\/(react|react-dom|react-router(-dom)?|@remix-run\/)/.test(id)) {
+                return 'vendor-react'
+              }
+              if (/node_modules\/(antd|@ant-design\/)/.test(id)) {
+                return 'vendor-antd'
+              }
+              if (/node_modules\/framer-motion/.test(id)) {
+                return 'vendor-motion'
+              }
+              if (/node_modules\/axios/.test(id)) {
+                return 'vendor-http'
+              }
+              // 其余第三方
+              return 'vendor'
+            }
+            return undefined
+          },
+          assetFileNames: 'assets/[name]-[hash][extname]',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          entryFileNames: 'assets/[name]-[hash].js',
+        },
       },
-      outDir: path.resolve(__dirname, 'out/renderer'),
-      sourcemap: true,
     },
     resolve: {
       alias: {

@@ -1,3 +1,5 @@
+import { vi } from 'vitest'
+
 // Mock IPC for testing
 export const mockInvoke = vi.fn()
 export const mockOn = vi.fn()

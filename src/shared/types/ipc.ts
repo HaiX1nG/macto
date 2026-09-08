@@ -36,6 +36,12 @@ export interface ScreenStream {
   controlEnabled: boolean
 }
 
+export interface ScreenSource {
+  id: string
+  name: string
+  thumbnail: string
+}
+
 // Settings
 export interface Settings {
   audioInputDeviceId: string
@@ -44,6 +50,27 @@ export interface Settings {
   autoJoinLastSession: boolean
   showNotification: boolean
   theme: 'light' | 'dark' | 'system'
+}
+
+// Update types
+export interface UpdateInfo {
+  version: string
+  releaseDate: string
+  releaseNotes?: string | null
+}
+
+export interface UpdateProgress {
+  bytesPerSecond: number
+  percent: number
+  total: number
+  transferred: number
+}
+
+export interface UpdateStatus {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+  updateDownloaded: boolean
 }
 
 // IPC Types
@@ -58,12 +85,20 @@ export interface IPCPayloads {
   'voice:set-volume': { volume: number }
   'voice:set-mute': { muted: boolean }
 
+  'screen:get-sources': null
   'screen:start': { sessionId: string }
   'screen:stop': { sessionId: string }
   'screen:set-control': { enabled: boolean }
 
-  'system:notification': { title: string; body: string }
+  'system:notification': { title: string; body: string; roomId?: number; senderId?: number }
+  'system:notification-supported': null
+  'system:notification-set-enabled': { enabled: boolean }
+  'system:notification-get-enabled': null
   'system:tray-click': null
+
+  'hardware-acceleration:get': null
+  'hardware-acceleration:set': { enabled: boolean }
+  'app:relaunch': null
 }
 
 export interface IPCResponders {
@@ -77,10 +112,18 @@ export interface IPCResponders {
   'voice:set-volume': { success: boolean }
   'voice:set-mute': { success: boolean }
 
+  'screen:get-sources': ScreenSource[]
   'screen:start': { success: boolean; streamId: string }
   'screen:stop': { success: boolean }
   'screen:set-control': { success: boolean }
 
   'system:notification': { success: boolean }
+  'system:notification-supported': boolean
+  'system:notification-set-enabled': { success: boolean }
+  'system:notification-get-enabled': { enabled: boolean }
   'system:tray-click': null
+
+  'hardware-acceleration:get': { enabled: boolean }
+  'hardware-acceleration:set': { success: boolean; requiresRestart: boolean }
+  'app:relaunch': { success: boolean }
 }

@@ -56,6 +56,13 @@
 - 使用 Ant Design `Button` 组件刷新设备
 - 添加了设备刷新功能
 
+#### SettingsProfile 组件 (新增改进)
+- 组件加载时自动获取最新用户信息
+- 添加响应式布局支持（sm: 断点）
+- 添加 glassmorphism 效果（backdrop-blur-sm）
+- 使用 rounded-xl/rounded-2xl 圆角符合 macOS 设计规范
+- 添加 shadow 效果增强视觉层次
+
 ### 3. App.tsx 更新
 
 - 添加了 `message` 导入用于显示通知
@@ -69,6 +76,34 @@
 - 使用 Ant Design 的响应式设计
 - 保持一致的视觉风格
 - 添加了适当的图标和动画效果
+
+## API 接口
+
+### 用户资料接口
+
+#### GET /api/v1/user/profile
+获取当前登录用户的资料信息。
+
+**认证**: Bearer JWT Token
+
+**响应格式**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "userId": 1,
+    "username": "user123",
+    "email": "user@example.com",
+    "avatarUrl": "https://...",
+    "isOnline": true,
+    "customStatus": "",
+    "createdAt": "2024-01-01 00:00:00"
+  }
+}
+```
+
+**注意**: `/api/v1/user/profile` 是 `/api/v1/user/info` 的别名路由，返回相同数据。
 
 ## 技术改进
 
@@ -88,6 +123,7 @@
 - `src/renderer/features/screen/ScreenControl.tsx`
 - `src/renderer/features/settings/SettingsGeneral.tsx`
 - `src/renderer/features/settings/SettingsAudio.tsx`
+- `src/renderer/features/settings/SettingsProfile.tsx`
 - `src/renderer/App.tsx`
 
 ### 新增的组件
@@ -127,6 +163,12 @@
 4. 配置通知设置
 5. 选择音频输入/输出设备
 6. 调整默认音量
+
+### 个人资料
+1. 切换到 "Settings" -> "Profile" 标签页
+2. 查看和编辑用户名、邮箱、头像
+3. 修改密码
+4. 退出登录或删除账户
 
 ## 注意事项
 

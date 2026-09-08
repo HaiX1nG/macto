@@ -1,6 +1,52 @@
 @import "tailwindcss";
 
 @theme {
+  /* ===== 尺寸规范 Token ===== */
+  --header-height: 48px;
+  --sidebar-padding-y: 12px;
+  --card-padding: 16px;
+  --card-padding-lg: 24px;
+
+  /* ===== 圆角、阴影、模糊 Token ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --blur-sm: 4px;
+  --blur-md: 12px;
+  --blur-lg: 16px;
+
+  /* ===== Z-Index 层级 Token ===== */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+
+  /* ===== 过渡动画 Token ===== */
+  --transition-colors: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+  --transition-all: all 200ms ease-out;
+  --transition-transform: transform 200ms ease-out;
+  --transition-opacity: opacity 150ms ease-out;
+
+  /* ===== 动画时间和 Easing Token ===== */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-very-slow: 500ms;
+
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== 主题颜色基础定义 ===== */
+
   /* 日本樱花风 - Sakura Theme */
   --color-sakura-primary: #f8b4c4;
   --color-sakura-secondary: #ffd6e0;
@@ -8,30 +54,34 @@
   --color-sakura-bg-base: #fff5f7;
   --color-sakura-bg-secondary: #ffeef1;
   --color-sakura-bg-tertiary: #ffe4e9;
-  --color-sakura-bg-darker: #ffdce3;
-  --color-sakura-bg-darkest: #ffd0d8;
+  --color-sakura-bg-darker: #ffd6e0;      /* 修正：比 tertiary 更深 */
+  --color-sakura-bg-darkest: #f5c6d0;     /* 修正：最深背景 */
   --color-sakura-text-normal: #4a2c3a;
-  --color-sakura-text-muted: #7d5a68;
-  --color-sakura-border: #f5d0d8;
-  --color-sakura-online: #7ec699;
-  --color-sakura-idle: #f0b232;
-  --color-sakura-dnd: #e57373;
+  --color-sakura-text-muted: #8b6b7a;     /* 修正：提高可读性 */
+  --color-sakura-border: #f0d0d8;
+  --color-sakura-online: #5cb85c;
+  --color-sakura-idle: #f0ad4e;
+  --color-sakura-dnd: #d9534f;
+  --color-sakura-input-bg: #fff0f3;       /* 新增：输入框专用背景 */
+  --color-sakura-shadow: rgba(248, 180, 196, 0.15); /* 新增：阴影色 */
 
   /* 中国古风 - Ancient Theme */
   --color-ancient-primary: #c9a86c;
   --color-ancient-secondary: #d4b896;
-  --color-ancient-accent: #8b6914;
+  --color-ancient-accent: #a67c52;        /* 修正：提高与 primary 的对比度 */
   --color-ancient-bg-base: #1a1612;
   --color-ancient-bg-secondary: #231e19;
   --color-ancient-bg-tertiary: #2d2620;
-  --color-ancient-bg-darker: #382f28;
-  --color-ancient-bg-darkest: #433a32;
+  --color-ancient-bg-darker: #3a322a;     /* 修正：比 tertiary 深 */
+  --color-ancient-bg-darkest: #4a3f35;    /* 修正：最深背景 */
   --color-ancient-text-normal: #f0e6d8;
-  --color-ancient-text-muted: #c4b49c;
-  --color-ancient-border: #4a3f35;
+  --color-ancient-text-muted: #b8a888;    /* 修正：提高可读性 */
+  --color-ancient-border: #5a4f45;
   --color-ancient-online: #6b8e5a;
   --color-ancient-idle: #c9a86c;
   --color-ancient-dnd: #a85454;
+  --color-ancient-input-bg: #2a241e;      /* 新增：输入框专用背景 */
+  --color-ancient-shadow: rgba(0, 0, 0, 0.3); /* 新增：阴影色 */
 
   /* 科技风 - Tech Theme */
   --color-tech-primary: #00d4ff;
@@ -48,9 +98,66 @@
   --color-tech-online: #00ff88;
   --color-tech-idle: #ffcc00;
   --color-tech-dnd: #ff4757;
+  --color-tech-input-bg: #121824;         /* 新增：输入框专用背景 */
+  --color-tech-shadow: rgba(0, 212, 255, 0.1); /* 新增：阴影色 */
+
+  /* ===== 通用主题变量（默认值 = tech 主题） ===== */
+  --color-primary: #00d4ff;
+  --color-secondary: #0099cc;
+  --color-accent: #7b2dff;
+  --color-bg-base: #0a0e17;
+  --color-bg-secondary: #0f1520;
+  --color-bg-tertiary: #151c2a;
+  --color-bg-darker: #1a2335;
+  --color-bg-darkest: #202b40;
+  --color-text-normal: #f0faff;
+  --color-text-muted: #8fa8c4;
+  --color-border: #1e2d42;
+  --color-online: #00ff88;
+  --color-idle: #ffcc00;
+  --color-dnd: #ff4757;
+
+  /* ===== 语义化颜色扩展 ===== */
+  --color-surface: var(--color-bg-secondary);
+  --color-surface-hover: var(--color-bg-tertiary);
+  --color-surface-active: var(--color-bg-darker);
+  --color-divider: var(--color-border);
+  --color-text-inverse: var(--color-bg-base);
+  --color-link: var(--color-primary);
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-offline: #6b7280;
+
+  /* ===== 头像渐变颜色 ===== */
+  --color-avatar-gradient-start: var(--color-primary);
+  --color-avatar-gradient-end: var(--color-accent);
+
+  /* ===== 侧边栏头部渐变颜色 ===== */
+  --color-sidebar-header-gradient-start: var(--color-primary);
+  --color-sidebar-header-gradient-end: var(--color-accent);
+
+  /* ===== 消息气泡颜色 ===== */
+  --color-message-bubble-own: var(--color-primary);
+  --color-message-bubble-own-text: var(--color-bg-base);
+  --color-message-bubble-other: var(--color-bg-tertiary);
+  --color-message-bubble-other-text: var(--color-text-normal);
+
+  /* ===== 向后兼容别名 ===== */
+  --color-text-light: var(--color-text-normal);
+  --color-text-dark: var(--color-text-normal);
+  --color-bg-dark: var(--color-bg-base);
+  --color-primary-hover: var(--color-secondary);
+  --color-bg-secondary-light: var(--color-bg-secondary);
+  --color-border-light: var(--color-border);
+  --color-border-dark: var(--color-border);
+  --color-bg-tertiary-dark: var(--color-bg-tertiary);
+  --color-text-secondary-dark: var(--color-text-muted);
+  --color-text-secondary-light: var(--color-text-muted);
+  --color-bg-tertiary-light: var(--color-bg-tertiary);
+  --color-input-bg: var(--color-bg-darker);
+  --color-shadow: rgba(0, 0, 0, 0.15);
 }
 
-/* 滚动条 */
+/* ===== 滚动条 ===== */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -78,7 +185,7 @@
   height: 6px;
 }
 
-/* 基础样式 */
+/* ===== 基础样式 ===== */
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -88,6 +195,8 @@ html, body, #root {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-normal);
 }
 
 /* ==================== 日本樱花风 - Sakura Theme ==================== */
@@ -106,6 +215,21 @@ body {
   --color-online: var(--color-sakura-online);
   --color-idle: var(--color-sakura-idle);
   --color-dnd: var(--color-sakura-dnd);
+  --color-input-bg: var(--color-sakura-input-bg);
+  --color-shadow: var(--color-sakura-shadow);
+  --color-message-bubble-own: var(--color-sakura-accent);
+  --color-message-bubble-own-text: #ffffff;
+  --color-message-bubble-other: var(--color-sakura-bg-tertiary);
+  --color-message-bubble-other-text: var(--color-sakura-text-normal);
+  --color-offline: #b89aab;
+  --color-avatar-gradient-start: var(--color-sakura-primary);
+  --color-avatar-gradient-end: var(--color-sakura-accent);
+  --color-sidebar-header-gradient-start: rgba(248, 180, 196, 0.5);
+  --color-sidebar-header-gradient-end: rgba(232, 145, 162, 0.3);
+  --color-overlay: rgba(74, 44, 58, 0.5);
+  /* 别名变量 */
+  --color-text-secondary-light: var(--color-sakura-text-muted);
+  --color-bg-tertiary-light: var(--color-sakura-bg-tertiary);
 }
 
 [data-theme="sakura"] body {
@@ -113,12 +237,13 @@ body {
   color: var(--color-sakura-text-normal);
 }
 
+/* Sakura 主题使用深色滚动条以在亮色背景下可见 */
 [data-theme="sakura"] ::-webkit-scrollbar-thumb {
-  background: rgba(248, 180, 196, 0.3);
+  background: rgba(74, 44, 58, 0.25);
 }
 
 [data-theme="sakura"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(248, 180, 196, 0.5);
+  background: rgba(74, 44, 58, 0.4);
 }
 
 /* ==================== 中国古风 - Ancient Theme ==================== */
@@ -137,6 +262,21 @@ body {
   --color-online: var(--color-ancient-online);
   --color-idle: var(--color-ancient-idle);
   --color-dnd: var(--color-ancient-dnd);
+  --color-input-bg: var(--color-ancient-input-bg);
+  --color-shadow: var(--color-ancient-shadow);
+  --color-message-bubble-own: var(--color-ancient-accent);
+  --color-message-bubble-own-text: #ffffff;
+  --color-message-bubble-other: var(--color-ancient-bg-tertiary);
+  --color-message-bubble-other-text: var(--color-ancient-text-normal);
+  --color-offline: #6b5e4f;
+  --color-avatar-gradient-start: var(--color-ancient-primary);
+  --color-avatar-gradient-end: var(--color-ancient-accent);
+  --color-sidebar-header-gradient-start: rgba(212, 167, 106, 0.5);
+  --color-sidebar-header-gradient-end: rgba(166, 124, 82, 0.3);
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  /* 别名变量 */
+  --color-text-secondary-light: var(--color-ancient-text-muted);
+  --color-bg-tertiary-light: var(--color-ancient-bg-tertiary);
 }
 
 [data-theme="ancient"] body {
@@ -168,6 +308,21 @@ body {
   --color-online: var(--color-tech-online);
   --color-idle: var(--color-tech-idle);
   --color-dnd: var(--color-tech-dnd);
+  --color-input-bg: var(--color-tech-input-bg);
+  --color-shadow: var(--color-tech-shadow);
+  --color-message-bubble-own: var(--color-tech-secondary);
+  --color-message-bubble-own-text: #ffffff;
+  --color-message-bubble-other: var(--color-tech-bg-tertiary);
+  --color-message-bubble-other-text: var(--color-tech-text-normal);
+  --color-offline: #4a5568;
+  --color-avatar-gradient-start: var(--color-tech-primary);
+  --color-avatar-gradient-end: var(--color-tech-accent);
+  --color-sidebar-header-gradient-start: rgba(0, 212, 255, 0.5);
+  --color-sidebar-header-gradient-end: rgba(123, 45, 255, 0.3);
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  /* 别名变量 */
+  --color-text-secondary-light: var(--color-tech-text-muted);
+  --color-bg-tertiary-light: var(--color-tech-bg-tertiary);
 }
 
 [data-theme="tech"] body {
@@ -328,4 +483,1012 @@ body {
 
 .ant-dropdown-menu-item:hover {
   background-color: var(--color-bg-tertiary) !important;
+}
+
+/* ==================== 全局过渡动画 ==================== */
+
+/* Keyframes 定义 - 仅保留 Tailwind 无法表达的复杂动画 */
+@keyframes fade-in-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fade-in-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.5); }
+}
+
+@keyframes pulse-once {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fade-in-success {
+  0% { opacity: 0.7; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 动画类 - 使用 CSS 变量 */
+.animate-fade-in {
+  animation: fade-in var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-fade-out {
+  animation: fade-out var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-down {
+  animation: fade-in-down var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-left {
+  animation: fade-in-left var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-right {
+  animation: fade-in-right var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-scale-out {
+  animation: scale-out var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.4s var(--ease-out) forwards;
+}
+
+.animate-shake {
+  animation: shake 0.5s var(--ease-in-out);
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s var(--ease-in-out) infinite;
+}
+
+.animate-pulse-once {
+  animation: pulse-once var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-success {
+  animation: fade-in-success var(--duration-slow) var(--ease-out) forwards;
+}
+
+/* 页面切换动画 */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out);
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out);
+}
+
+/* 模态框动画 */
+.modal-enter {
+  opacity: 0;
+}
+
+.modal-enter-active {
+  opacity: 1;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.modal-content-enter {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px);
+}
+
+.modal-content-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: opacity var(--duration-normal) var(--ease-out), transform var(--duration-normal) var(--ease-out);
+}
+
+/* 消息列表滚动动画 */
+.message-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.message-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out);
+}
+
+/* 悬停效果增强 */
+.hover-lift {
+  transition: transform var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hover-glow {
+  transition: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px var(--color-primary);
+}
+
+.hover-scale {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-color {
+  transition: color var(--duration-normal) var(--ease-out), background-color var(--duration-normal) var(--ease-out);
+}
+
+/* 按钮点击反馈 */
+.click-feedback {
+  transition: transform 0.1s var(--ease-out);
+}
+
+.click-feedback:active {
+  transform: scale(0.97);
+}
+
+/* 输入框聚焦效果 */
+.focus-glow:focus {
+  box-shadow: 0 0 0 3px var(--color-primary);
+  outline: none;
+}
+
+.focus-ring:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ==================== 骨架屏样式 ==================== */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-tertiary) 25%,
+    var(--color-bg-darker) 50%,
+    var(--color-bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.skeleton-text {
+  height: 1em;
+  margin-bottom: 0.5em;
+}
+
+.skeleton-title {
+  height: 1.5em;
+  width: 60%;
+  margin-bottom: 1em;
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 200px;
+}
+
+.skeleton-button {
+  width: 120px;
+  height: 36px;
+}
+
+.skeleton-card {
+  width: 100%;
+  height: 120px;
+}
+
+/* ==================== Toast/通知样式优化 ==================== */
+.ant-message {
+  top: 60px !important;
+}
+
+.ant-message-notice-content {
+  background: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 12px !important;
+  padding: 12px 20px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  animation: fade-in-up var(--duration-slow) var(--ease-out) !important;
+}
+
+.ant-message-success .anticon {
+  color: var(--color-online) !important;
+}
+
+.ant-message-error .anticon {
+  color: var(--color-dnd) !important;
+}
+
+.ant-message-warning .anticon {
+  color: var(--color-idle) !important;
+}
+
+.ant-message-info .anticon {
+  color: var(--color-primary) !important;
+}
+
+.ant-notification {
+  top: 60px !important;
+  right: 20px !important;
+}
+
+.ant-notification-notice {
+  background: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  animation: slide-in-right var(--duration-slow) var(--ease-out) !important;
+}
+
+.ant-notification-notice-message {
+  color: var(--color-text-normal) !important;
+  font-weight: 600 !important;
+}
+
+.ant-notification-notice-description {
+  color: var(--color-text-muted) !important;
+}
+
+/* ==================== 响应式设计 ==================== */
+/* 断点与 Tailwind 对齐: sm=640px, md=768px, lg=1024px, xl=1280px */
+
+/* 移动端 - sm 断点以下 (< 640px) */
+@media (max-width: 639px) {
+  .server-sidebar-container {
+    width: 56px !important;
+  }
+
+  .channel-sidebar-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: var(--z-modal);
+    transform: translateX(-100%);
+    transition: transform var(--duration-slow) var(--ease-out);
+    box-shadow: none;
+  }
+
+  .channel-sidebar-container.expanded {
+    transform: translateX(0);
+    box-shadow: var(--shadow-floating);
+  }
+
+  .member-list-container {
+    display: none !important;
+  }
+
+  .main-content-container {
+    width: 100% !important;
+  }
+
+  /* 触摸友好尺寸 */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .search-container {
+    display: none !important;
+  }
+
+  .header-actions {
+    display: none !important;
+  }
+
+  .message-input-actions {
+    display: none !important;
+  }
+
+  .modal-container {
+    width: 95vw !important;
+    max-width: none !important;
+  }
+}
+
+/* 平板端 - md 断点 (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .server-sidebar-container {
+    width: 64px !important;
+  }
+
+  .channel-sidebar-container {
+    width: 200px !important;
+  }
+
+  .member-list-container {
+    display: none !important;
+  }
+}
+
+/* 大屏 - lg 断点以上 (>= 1024px) */
+@media (min-width: 1024px) {
+  .member-list-container {
+    display: block !important;
+  }
+}
+
+/* ==================== 滚动条样式美化 ==================== */
+.custom-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-border) var(--color-bg-darker);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-bg-darker);
+  border-radius: 5px;
+  margin: 4px 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 5px;
+  border: 2px solid var(--color-bg-darker);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: var(--color-primary);
+}
+
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* ==================== 空状态样式 ==================== */
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  animation: fade-in var(--duration-slow) var(--ease-out) forwards;
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-normal);
+  margin-bottom: 8px;
+}
+
+.empty-state-description {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  max-width: 280px;
+}
+
+.empty-state-action {
+  margin-top: 24px;
+}
+
+/* ==================== 加载状态样式 ==================== */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-bg-tertiary);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+/* ==================== 微交互样式 ==================== */
+
+.message-send-success {
+  animation: bounce-in 0.4s var(--ease-out);
+}
+
+.reaction-add {
+  animation: bounce-in var(--duration-slow) var(--ease-out);
+}
+
+.success-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-online);
+  animation: fade-in var(--duration-slow) var(--ease-out);
+}
+
+.error-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-dnd);
+  animation: shake 0.5s var(--ease-in-out);
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--color-text-muted);
+  border-radius: 50%;
+  animation: wave 1s var(--ease-in-out) infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ==================== 过渡基础类 ==================== */
+.transition-all-smooth {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.transition-opacity {
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.transition-transform {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.transition-colors {
+  transition: color var(--duration-normal) var(--ease-out), background-color var(--duration-normal) var(--ease-out), border-color var(--duration-normal) var(--ease-out);
+}
+
+.transition-shadow {
+  transition: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+/* ==================== 折叠侧边栏样式 ==================== */
+.collapsible-sidebar {
+  transition: width var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out);
+  overflow: hidden;
+}
+
+.collapsible-sidebar.collapsed {
+  width: 0;
+}
+
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.sidebar-toggle-btn.left {
+  left: -24px;
+}
+
+.sidebar-toggle-btn.right {
+  right: -24px;
+  border-radius: 8px 0 0 8px;
+}
+
+/* ==================== Markdown 内容样式 ==================== */
+.markdown-content {
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.markdown-content > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* 提及(@)高亮样式 */
+.markdown-content .mention-highlight {
+  color: var(--color-primary);
+  font-weight: 500;
+  background: var(--color-primary)/15;
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.markdown-content .mention-highlight:hover {
+  background: var(--color-primary)/25;
+}
+
+/* 链接样式增强 - 暗色主题下可读性 */
+.markdown-content a {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-content a:hover {
+  opacity: 0.85;
+}
+
+/* 代码高亮主题 - One Dark 风格 */
+.hljs {
+  background: transparent !important;
+  color: var(--color-text-normal) !important;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #5c6370 !important;
+  font-style: italic;
+}
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-formula {
+  color: #c678dd !important;
+}
+
+.hljs-section,
+.hljs-name,
+.hljs-selector-tag,
+.hljs-deletion,
+.hljs-subst {
+  color: #e06c75 !important;
+}
+
+.hljs-literal {
+  color: #56b6c2 !important;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: #98c379 !important;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-type,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-number {
+  color: #d19a66 !important;
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-selector-id,
+.hljs-title {
+  color: #61aeee !important;
+}
+
+.hljs-built_in,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+  color: #e6c07b !important;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* 行内代码 */
+.markdown-content code:not(.hljs) {
+  background: var(--color-bg-darker);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: 'Fira Code', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* 代码块 */
+.markdown-content pre {
+  background: var(--color-bg-darker);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* 任务列表 */
+.markdown-content input[type="checkbox"] {
+  margin-right: 0.5rem;
+  accent-color: var(--color-primary);
+}
+
+.markdown-content ul input[type="checkbox"] {
+  list-style: none;
+}
+
+/* 链接悬停效果 */
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+/* 表格样式 */
+.markdown-content table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
+}
+
+.markdown-content th {
+  background: var(--color-bg-darker);
+  font-weight: 600;
+}
+
+.markdown-content tr:hover {
+  background: var(--color-bg-tertiary);
+}
+
+/* 删除线 */
+.markdown-content del {
+  opacity: 0.7;
+}
+
+/* 图片样式 */
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+}
+
+/* 水平分割线 */
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1rem 0;
+}
+
+/* ==================== 音频均衡器动画 ==================== */
+@keyframes equalizer-1 {
+  0%, 100% { height: 8px; }
+  50% { height: 16px; }
+}
+
+@keyframes equalizer-2 {
+  0%, 100% { height: 12px; }
+  50% { height: 8px; }
+}
+
+@keyframes equalizer-3 {
+  0%, 100% { height: 6px; }
+  50% { height: 14px; }
+}
+
+.animate-equalizer-1 {
+  animation: equalizer-1 0.5s ease-in-out infinite;
+}
+
+.animate-equalizer-2 {
+  animation: equalizer-2 0.5s ease-in-out infinite 0.15s;
+}
+
+.animate-equalizer-3 {
+  animation: equalizer-3 0.5s ease-in-out infinite 0.3s;
+}
+
+/* ==================== 登录页面样式 ==================== */
+.login-page-bg {
+  position: absolute;
+  inset: 0;
+}
+
+/* Sakura 主题：樱花粉色渐变，明亮通透 */
+[data-theme="sakura"] .login-page-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(248, 180, 196, 0.5) 0%,
+    rgba(232, 145, 162, 0.4) 35%,
+    rgba(255, 213, 224, 0.3) 65%,
+    rgba(255, 245, 247, 1) 100%
+  );
+}
+
+/* Ancient 主题：古铜棕色渐变，沉稳厚重 */
+[data-theme="ancient"] .login-page-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(58, 50, 42, 1) 0%,
+    rgba(74, 63, 53, 0.95) 35%,
+    rgba(45, 38, 32, 0.9) 65%,
+    rgba(26, 22, 18, 1) 100%
+  );
+}
+
+/* Tech 主题：深蓝科技渐变，深邃神秘 */
+[data-theme="tech"] .login-page-bg {
+  background: linear-gradient(
+    135deg,
+    rgba(26, 35, 53, 1) 0%,
+    rgba(32, 43, 64, 0.95) 35%,
+    rgba(21, 28, 42, 0.9) 65%,
+    rgba(10, 14, 23, 1) 100%
+  );
+}
+
+/* 登录页面装饰圆形 */
+.login-page-decoration {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+/* Sakura 装饰：樱花粉色，增加透明度使其柔和 */
+[data-theme="sakura"] .login-page-decoration {
+  background: rgba(248, 180, 196, 0.6);
+}
+
+/* Ancient 装饰：古铜金色，营造古典氛围 */
+[data-theme="ancient"] .login-page-decoration {
+  background: rgba(201, 168, 108, 0.4);
+}
+
+/* Tech 装饰：霓虹青色，科幻感 */
+[data-theme="tech"] .login-page-decoration {
+  background: rgba(0, 212, 255, 0.35);
+}
+
+/* 登录卡片样式 */
+.login-card {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+/* Sakura 卡片：柔和的粉色玻璃质感 */
+[data-theme="sakura"] .login-card {
+  background: rgba(255, 250, 252, 0.92);
+  border: 1px solid rgba(248, 180, 196, 0.35);
+  box-shadow:
+    0 20px 40px rgba(74, 44, 58, 0.08),
+    0 0 0 1px rgba(248, 180, 196, 0.2) inset;
+}
+
+/* Ancient 卡片：古铜质感卡片 */
+[data-theme="ancient"] .login-card {
+  background: rgba(35, 30, 25, 0.95);
+  border: 1px solid rgba(90, 79, 69, 0.5);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(201, 168, 108, 0.15) inset;
+}
+
+/* Tech 卡片：深蓝科技感 */
+[data-theme="tech"] .login-card {
+  background: rgba(15, 21, 32, 0.95);
+  border: 1px solid rgba(30, 45, 66, 0.5);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 212, 255, 0.1) inset;
+}
+
+/* 登录输入框容器样式 */
+.login-input-wrapper {
+  position: relative;
+}
+
+/* 登录输入框样式 */
+.login-input {
+  transition: all 0.2s ease-out;
+}
+
+.login-input:focus-within {
+  transform: translateY(-1px);
+}
+
+/* Sakura 输入框：柔和粉色背景 */
+[data-theme="sakura"] .login-input {
+  background: rgba(255, 240, 245, 1) !important;
+  border-color: rgba(248, 180, 196, 0.4) !important;
+}
+
+[data-theme="sakura"] .login-input:hover {
+  border-color: rgba(248, 180, 196, 0.6) !important;
+}
+
+[data-theme="sakura"] .login-input:focus-within {
+  border-color: rgba(248, 180, 196, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(248, 180, 196, 0.15) !important;
+}
+
+/* Ancient 输入框：深棕背景 */
+[data-theme="ancient"] .login-input {
+  background: rgba(42, 36, 30, 1) !important;
+  border-color: rgba(90, 79, 69, 0.5) !important;
+}
+
+[data-theme="ancient"] .login-input:hover {
+  border-color: rgba(201, 168, 108, 0.5) !important;
+}
+
+[data-theme="ancient"] .login-input:focus-within {
+  border-color: rgba(201, 168, 108, 0.7) !important;
+  box-shadow: 0 0 0 3px rgba(201, 168, 108, 0.15) !important;
+}
+
+/* Tech 输入框：深蓝背景 */
+[data-theme="tech"] .login-input {
+  background: rgba(18, 24, 36, 1) !important;
+  border-color: rgba(30, 45, 66, 0.6) !important;
+}
+
+[data-theme="tech"] .login-input:hover {
+  border-color: rgba(0, 212, 255, 0.4) !important;
+}
+
+[data-theme="tech"] .login-input:focus-within {
+  border-color: rgba(0, 212, 255, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15) !important;
+}
+
+/* 登录按钮增强 */
+.login-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.login-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease-out;
+}
+
+.login-button:hover::before {
+  left: 100%;
+}
+
+/* Logo 容器动画 */
+.login-logo {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* 登录表单入场动画 */
+.login-form-enter {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -22,6 +22,6 @@ export default defineConfig({
     outDir: 'out/renderer',
     assetsDir: 'assets',
     emptyOutDir: true,
-    sourcemap: true,
+    sourcemap: false,
   },
 })

@@ -2,16 +2,20 @@ import type { CardProps as AntdCardProps } from 'antd';
 import { Card as AntdCard } from 'antd'
 import { cn } from '@renderer/utils/cn'
 
-interface CardProps extends Omit<AntdCardProps, 'className'> {
+type CardVariant = 'default' | 'bordered' | 'elevated' | 'glass'
+type CardPadding = 'none' | 'sm' | 'md' | 'lg'
+type CardBorderColor = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'default'
+
+interface CardProps extends Omit<AntdCardProps, 'className' | 'variant' | 'bordered'> {
   className?: string
   title?: React.ReactNode
   subtitle?: string
   extra?: React.ReactNode
   children: React.ReactNode
-  variant?: 'default' | 'bordered' | 'elevated' | 'glass'
+  variant?: CardVariant
   hoverable?: boolean
-  padding?: 'none' | 'sm' | 'md' | 'lg'
-  borderColor?: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'default'
+  padding?: CardPadding
+  borderColor?: CardBorderColor
 }
 
 export const Card = ({
@@ -26,39 +30,39 @@ export const Card = ({
   borderColor = 'default',
   ...props
 }: CardProps) => {
-  const variants = {
+  const variants: Record<CardVariant, string> = {
     default: cn(
-      'bg-white dark:bg-[var(--color-bg-tertiary-dark)]',
-      'border border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'shadow-[var(--shadow-sm)]'
+      'bg-[var(--color-bg-secondary)]',
+      'border border-[var(--color-border)]',
+      'shadow-sm'
     ),
     bordered: cn(
-      'bg-white dark:bg-[var(--color-bg-tertiary-dark)]',
-      'border-2 border-[var(--color-border-secondary-light)] dark:border-[var(--color-border-secondary-dark)]'
+      'bg-[var(--color-bg-secondary)]',
+      'border-2 border-[var(--color-border)]'
     ),
     elevated: cn(
-      'bg-white dark:bg-[var(--color-bg-tertiary-dark)]',
-      'border border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-      'shadow-[var(--shadow-lg)]'
+      'bg-[var(--color-bg-secondary)]',
+      'border border-[var(--color-border)]',
+      'shadow-lg'
     ),
     glass: cn(
-      'bg-[var(--color-glass-light)] dark:bg-[var(--color-glass-dark)]',
-      'backdrop-blur-[var(--blur-xl)]',
-      'border border-[var(--color-glass-border-light)] dark:border-[var(--color-glass-border-dark)]',
-      'shadow-[var(--shadow-floating)]'
+      'bg-[var(--color-bg-secondary)]/80',
+      'backdrop-blur-xl',
+      'border border-[var(--color-border)]',
+      'shadow-[0_8px_32px_rgba(0,0,0,0.12)]'
     ),
   }
 
-  const borderColors = {
+  const borderColors: Record<CardBorderColor, string> = {
     default: '',
     blue: 'border-l-4 border-l-[var(--color-primary)]',
-    green: 'border-l-4 border-l-[var(--color-success)]',
-    purple: 'border-l-4 border-l-purple-500',
-    orange: 'border-l-4 border-l-[var(--color-warning)]',
-    red: 'border-l-4 border-l-[var(--color-error)]',
+    green: 'border-l-4 border-l-[var(--color-online)]',
+    purple: 'border-l-4 border-l-[var(--color-accent)]',
+    orange: 'border-l-4 border-l-[var(--color-idle)]',
+    red: 'border-l-4 border-l-[var(--color-dnd)]',
   }
 
-  const paddings = {
+  const paddings: Record<CardPadding, string> = {
     none: '',
     sm: 'p-3',
     md: 'p-5',
@@ -68,13 +72,13 @@ export const Card = ({
   return (
     <AntdCard
       className={cn(
-        'rounded-[var(--radius-xl)] overflow-hidden',
-        'transition-[var(--transition-all)] ease-out',
+        'rounded-2xl overflow-hidden',
+        'transition-shadow duration-200 ease-out transition-transform',
         variants[variant],
         borderColors[borderColor],
         hoverable && cn(
-          'hover:shadow-[var(--shadow-xl)] hover:-translate-y-1',
-          'hover:border-[var(--color-border-secondary-light)] dark:hover:border-[var(--color-border-secondary-dark)]',
+          'hover:shadow-xl hover:-translate-y-1',
+          'hover:border-[var(--color-primary)]/30',
           'cursor-pointer'
         ),
         className
@@ -83,7 +87,7 @@ export const Card = ({
         <div className="flex items-center gap-3">
           {title}
           {subtitle && (
-            <span className="text-xs text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] font-normal">
+            <span className="text-xs text-[var(--color-text-muted)] font-normal">
               {subtitle}
             </span>
           )}
@@ -93,7 +97,7 @@ export const Card = ({
       styles={{
         body: { padding: padding === 'none' ? 0 : undefined },
         header: {
-          borderBottom: '1px solid rgba(229, 231, 235, 0.5)',
+          borderBottom: '1px solid var(--color-border)',
           padding: '16px 20px',
         },
       }}
@@ -118,13 +122,13 @@ export const CardHeader = ({
   action?: React.ReactNode
 }) => (
   <div className={cn(
-    'px-5 py-4 border-b border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
+    'px-5 py-4 border-b border-[var(--color-border)]',
     'flex items-center justify-between',
     className
   )}>
     <div className="flex items-center gap-3">
       {icon && (
-        <div className="w-10 h-10 rounded-[var(--radius-lg)] bg-[var(--color-primary-light)] dark:bg-[var(--color-primary-light)]/10 flex items-center justify-center text-[var(--color-primary)]">
+        <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)]">
           {icon}
         </div>
       )}
@@ -141,9 +145,9 @@ export const CardContent = ({
 }: {
   children: React.ReactNode
   className?: string
-  padding?: 'none' | 'sm' | 'md' | 'lg'
+  padding?: CardPadding
 }) => {
-  const paddings = {
+  const paddings: Record<CardPadding, string> = {
     none: '',
     sm: 'p-3',
     md: 'p-5',
@@ -165,8 +169,8 @@ export const CardFooter = ({
   className?: string
 }) => (
   <div className={cn(
-    'px-5 py-4 border-t border-[var(--color-border-light)] dark:border-[var(--color-border-dark)]',
-    'bg-[var(--color-bg-secondary-light)]/50 dark:bg-[var(--color-bg-secondary-dark)]/50',
+    'px-5 py-4 border-t border-[var(--color-border)]',
+    'bg-[var(--color-bg-tertiary)]/50',
     className
   )}>
     {children}
@@ -181,7 +185,7 @@ export const CardTitle = ({
   className?: string
 }) => (
   <h3 className={cn(
-    'text-lg font-bold text-[var(--color-text-light)] dark:text-[var(--color-text-dark)]',
+    'text-lg font-bold text-[var(--color-text-normal)]',
     className
   )}>
     {children}
@@ -196,7 +200,7 @@ export const CardDescription = ({
   className?: string
 }) => (
   <p className={cn(
-    'text-sm text-[var(--color-text-secondary-light)] dark:text-[var(--color-text-secondary-dark)] mt-1',
+    'text-sm text-[var(--color-text-muted)] mt-1',
     className
   )}>
     {children}

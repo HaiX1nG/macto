@@ -1,4 +1,5 @@
 import { useSettings } from '@renderer/hooks/useSettings'
+import type { AppTheme } from '@renderer/stores/settingsStore'
 import { Card, Switch } from 'antd'
 import { MoonOutlined, SunOutlined, DesktopOutlined, BellOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils/cn'
@@ -6,10 +7,10 @@ import { cn } from '@renderer/utils/cn'
 export const SettingsGeneral = () => {
   const { theme, setTheme, autoJoinLastSession, setAutoJoinLastSession, showNotification, setShowNotification } = useSettings()
 
-  const themeOptions = [
-    { value: 'light', label: '明亮', icon: <SunOutlined />, color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' },
-    { value: 'dark', label: '暗黑', icon: <MoonOutlined />, color: 'bg-blue-900 text-blue-400 dark:bg-blue-900/30 dark:text-blue-400' },
-    { value: 'system', label: '系统', icon: <DesktopOutlined />, color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
+  const themeOptions: { value: AppTheme; label: string; icon: React.ReactNode; color: string }[] = [
+    { value: 'sakura', label: '樱花', icon: <SunOutlined />, color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' },
+    { value: 'ancient', label: '古韵', icon: <MoonOutlined />, color: 'bg-blue-900 text-blue-400 dark:bg-blue-900/30 dark:text-blue-400' },
+    { value: 'tech', label: '科技', icon: <DesktopOutlined />, color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
   ]
 
   return (
@@ -46,7 +47,7 @@ export const SettingsGeneral = () => {
               {themeOptions.map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => setTheme(option.value as 'light' | 'dark' | 'system')}
+                  onClick={() => setTheme(option.value)}
                   className={cn(
                     'p-4 rounded-[var(--radius-xl)] border-2 cursor-pointer',
                     'transition-[var(--transition-all)]',

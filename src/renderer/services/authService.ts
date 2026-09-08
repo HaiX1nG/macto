@@ -4,7 +4,9 @@ import type {
   UserInfoResponse,
   UpdateProfileRequest,
   ChangePasswordRequest,
-} from '@shared/types/api'
+  SetCustomStatusRequest,
+  UserOnlineStatusResponse,
+} from '@shared/types/auth'
 
 export const authService = {
   async login(username: string, password: string): Promise<LoginResponse> {
@@ -29,6 +31,22 @@ export const authService = {
 
   async changePassword(data: ChangePasswordRequest): Promise<void> {
     return apiClient.put('/user/password', data)
+  },
+
+  async setCustomStatus(data: SetCustomStatusRequest): Promise<void> {
+    return apiClient.put('/user/status', data)
+  },
+
+  async getUserOnlineStatus(userId: number): Promise<UserOnlineStatusResponse> {
+    return apiClient.get<UserOnlineStatusResponse>(`/users/${userId}/online`)
+  },
+
+  async getUserInfoById(userId: number): Promise<UserInfoResponse> {
+    return apiClient.get<UserInfoResponse>(`/users/${userId}/info`)
+  },
+
+  async deleteAccount(): Promise<void> {
+    return apiClient.delete('/user/account')
   },
 
   logout(): void {

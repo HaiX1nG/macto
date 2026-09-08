@@ -1,45 +1,36 @@
 import { createContext, useContext, useEffect } from 'react'
-import { useThemeStore } from '@renderer/stores/themeStore'
+import { useUIStore, type AppTheme } from '@renderer/stores/uiStore'
 
 interface ThemeContextType {
-  theme: 'light' | 'dark'
-  toggleTheme: () => void
+  theme: AppTheme
+  setTheme: (theme: AppTheme) => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const { theme, actualTheme, setTheme, initTheme } = useThemeStore()
+  const theme = useUIStore((s) => s.theme)
+  const setTheme = useUIStore((s) => s.setTheme)
+  const initTheme = useUIStore((s) => s.initTheme)
 
   // Initialize theme on mount
   useEffect(() => {
     initTheme()
   }, [initTheme])
 
-  // Apply theme to document when actualTheme changes
+  // Apply theme to document when theme changes
   useEffect(() => {
-    if (actualTheme === 'dark') {
+    const isDark = theme === 'ancient' || theme === 'tech'
+    if (isDark) {
       document.documentElement.classList.add('dark')
-      document.documentElement.setAttribute('data-theme', 'dark')
     } else {
       document.documentElement.classList.remove('dark')
-      document.documentElement.setAttribute('data-theme', 'light')
     }
-  }, [actualTheme])
-
-  const toggleTheme = () => {
-    if (theme === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      setTheme(isDark ? 'dark' : 'light')
-    } else if (theme === 'light') {
-      setTheme('dark')
-    } else {
-      setTheme('light')
-    }
-  }
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   return (
-    <ThemeContext.Provider value={{ theme: actualTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   )

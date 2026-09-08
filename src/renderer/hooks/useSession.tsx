@@ -1,32 +1,54 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { useSessionStore, type Session, type Participant } from '@renderer/stores/sessionStore'
+import { useServerStore } from '@renderer/stores/serverStore'
+import type { Server, ServerDetail, ServerMember } from '@shared/types/server'
+import type { CreateServerRequest, JoinServerRequest } from '@shared/types/server'
+
+/**
+ * SessionContext (legacy compatibility shim)
+ *
+ * The old session/room concept has been replaced by the KOOK-style
+ * server/channel architecture. This context wraps the new serverStore
+ * and uiStore to provide a backward-compatible API for components
+ * that haven't been migrated yet.
+ */
 
 interface SessionContextType {
-  sessions: Session[]
-  currentSessionId: string
-  participants: Participant[]
-  isCreating: boolean
+  // Server-based state (replaces old room state)
+  servers: Server[]
+  currentServer: ServerDetail | null
+  currentServerId: number | null
+  members: ServerMember[]
+  isLoading: boolean
   error: string | null
-  fetchSessions: () => Promise<void>
-  createSession: (name: string, roomType?: number, isPrivate?: boolean, maxParticipants?: number) => Promise<string>
-  joinSession: (sessionId: string, inviteCode?: string) => Promise<void>
-  leaveSession: (sessionId: string) => Promise<void>
+
+  // Server actions
+  fetchServers: () => Promise<void>
+  fetchServerDetail: (id: number) => Promise<void>
+  createServer: (data: CreateServerRequest) => Promise<ServerDetail>
+  joinServer: (id: number, data: JoinServerRequest) => Promise<void>
+  leaveServer: (id: number) => Promise<void>
+  setCurrentServer: (id: number) => void
+  fetchMembers: (serverId: number) => Promise<void>
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
 
 export const SessionProvider = ({ children }: { children: React.ReactNode }) => {
   const {
-    sessions,
-    currentSessionId,
-    participants,
-    isCreating,
+    servers,
+    currentServer,
+    currentServerId,
+    members,
+    isLoading,
     error,
-    fetchSessions,
-    createSession,
-    joinSession,
-    leaveSession,
-  } = useSessionStore()
+    fetchServers,
+    fetchServerDetail,
+    createServer,
+    joinServer,
+    leaveServer,
+    setCurrentServer,
+    fetchMembers,
+  } = useServerStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -38,17 +60,23 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   }
 
   return (
-    <SessionContext.Provider value={{
-      sessions,
-      currentSessionId,
-      participants,
-      isCreating,
-      error,
-      fetchSessions,
-      createSession,
-      joinSession,
-      leaveSession,
-    }}>
+    <SessionContext.Provider
+      value={{
+        servers,
+        currentServer,
+        currentServerId,
+        members,
+        isLoading,
+        error,
+        fetchServers,
+        fetchServerDetail,
+        createServer,
+        joinServer,
+        leaveServer,
+        setCurrentServer,
+        fetchMembers,
+      }}
+    >
       {children}
     </SessionContext.Provider>
   )

@@ -1,6 +1,74 @@
 import type { ThemeConfig } from 'antd'
-import type { Config } from 'tailwindcss'
 
+/**
+ * 获取主题对应的 Ant Design 配置
+ * @param theme - 主题名称 ('sakura' | 'ancient' | 'tech')
+ */
+export function getAntdThemeConfig(theme: string): ThemeConfig {
+  const themes: Record<string, ThemeConfig> = {
+    sakura: {
+      token: {
+        colorPrimary: '#f8b4c4',
+        colorSuccess: '#7ec699',
+        colorWarning: '#f0b232',
+        colorError: '#e57373',
+        colorInfo: '#f8b4c4',
+        borderRadius: 8,
+        borderRadiusLG: 12,
+        borderRadiusSM: 6,
+        fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif',
+        fontSize: 14,
+        fontSizeLG: 15,
+        fontSizeSM: 13,
+        fontWeightStrong: 600,
+        fontFamilyCode: 'Menlo, Monaco, Consolas, "Courier New", monospace',
+      },
+    },
+    ancient: {
+      token: {
+        colorPrimary: '#c9a86c',
+        colorSuccess: '#6b8e5a',
+        colorWarning: '#c9a86c',
+        colorError: '#a85454',
+        colorInfo: '#c9a86c',
+        borderRadius: 8,
+        borderRadiusLG: 12,
+        borderRadiusSM: 6,
+        fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif',
+        fontSize: 14,
+        fontSizeLG: 15,
+        fontSizeSM: 13,
+        fontWeightStrong: 600,
+        fontFamilyCode: 'Menlo, Monaco, Consolas, "Courier New", monospace',
+      },
+    },
+    tech: {
+      token: {
+        colorPrimary: '#00d4ff',
+        colorSuccess: '#00ff88',
+        colorWarning: '#ffcc00',
+        colorError: '#ff4757',
+        colorInfo: '#00d4ff',
+        borderRadius: 8,
+        borderRadiusLG: 12,
+        borderRadiusSM: 6,
+        fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif',
+        fontSize: 14,
+        fontSizeLG: 15,
+        fontSizeSM: 13,
+        fontWeightStrong: 600,
+        fontFamilyCode: 'Menlo, Monaco, Consolas, "Courier New", monospace',
+      },
+    },
+  }
+
+  return themes[theme] ?? themes.tech
+}
+
+/**
+ * 默认 Ant Design 主题配置
+ * 用于 Ant Design 组件的基础样式配置
+ */
 const kookTheme: ThemeConfig = {
   token: {
     colorPrimary: '#1890ff',
@@ -11,34 +79,18 @@ const kookTheme: ThemeConfig = {
     borderRadius: 8,
     borderRadiusLG: 12,
     borderRadiusSM: 6,
-    fontFamily: [
-      '-apple-system',
-      'BlinkMacSystemFont',
-      'Segoe UI',
-      'Roboto',
-      'Helvetica Neue',
-      'Arial',
-      'sans-serif',
-    ],
+    fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif',
     fontSize: 14,
     fontSizeLG: 15,
     fontSizeSM: 13,
     fontWeightStrong: 600,
-    fontFamilyCode: [
-      'Menlo',
-      'Monaco',
-      'Consolas',
-      '"Courier New"',
-      'monospace',
-    ],
+    fontFamilyCode: 'Menlo, Monaco, Consolas, "Courier New", monospace',
   },
   components: {
     Button: {
       colorPrimary: '#1890ff',
       borderRadius: 8,
       fontWeight: 600,
-      boxShadow: '0 2px 8px rgba(24, 144, 255, 0.3)',
-      boxShadowHover: '0 4px 16px rgba(24, 144, 255, 0.4)',
       colorPrimaryHover: '#40a9ff',
       colorPrimaryActive: '#096dd9',
     },
@@ -47,34 +99,26 @@ const kookTheme: ThemeConfig = {
       colorBorder: '#d9d9d9',
       colorBgContainer: '#ffffff',
       colorBgElevated: '#ffffff',
-      paddingLG: 10,
       fontSize: 14,
     },
     Modal: {
       borderRadiusLG: 16,
       colorBgContainer: '#ffffff',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
     },
     Card: {
       borderRadiusLG: 16,
       colorBgContainer: '#ffffff',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
     },
     Dropdown: {
       colorBgElevated: '#ffffff',
       borderRadiusLG: 12,
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
     },
     Menu: {
       colorBgElevated: '#f9fafb',
       borderRadiusLG: 12,
-      itemBgHover: '#f3f4f6',
-      itemBgSelected: '#1890ff',
-      itemColor: '#374151',
-      itemColorSelected: '#ffffff',
       itemHoverBg: '#f3f4f6',
       itemSelectedBg: '#1890ff',
-      groupBorderColor: '#e5e7eb',
+      itemColor: '#374151',
       subMenuItemBg: '#f9fafb',
     },
     Select: {
@@ -96,14 +140,12 @@ const kookTheme: ThemeConfig = {
     Switch: {
       colorPrimary: '#1890ff',
       handleSize: 20,
-      trackSize: 40,
     },
     Slider: {
       colorPrimary: '#1890ff',
       trackBg: '#e5e7eb',
       handleSize: 18,
       handleSizeHover: 20,
-      handleSizeActive: 20,
     },
     Table: {
       borderRadiusLG: 12,
@@ -111,93 +153,87 @@ const kookTheme: ThemeConfig = {
       colorBorder: '#e5e7eb',
       headerBg: '#f9fafb',
       rowHoverBg: '#f3f4f6',
-      cellPaddingLG: 12,
     },
     Tag: {
       colorPrimary: '#1890ff',
-      colorPrimaryBorder: '#1890ff',
       borderRadius: 6,
       fontSize: 12,
-      paddingBlock: 2,
-      paddingInline: 8,
     },
     Tooltip: {
-      colorBg: '#1f2937',
+      colorBgSpotlight: '#1f2937',
       colorText: '#ffffff',
       borderRadius: 8,
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
     },
     Avatar: {
       borderRadius: 50,
-      size: 32,
-      sizeLG: 40,
-      sizeSM: 24,
     },
     Progress: {
       colorPrimary: '#1890ff',
-      trailColor: '#e5e7eb',
       borderRadius: 99,
-      strokeLinecap: 'round',
     },
     Tabs: {
       colorPrimary: '#1890ff',
-      cardBg: '#ffffff',
       inkBarColor: '#1890ff',
       itemActiveColor: '#1890ff',
       itemHoverColor: '#1890ff',
-      itemInactiveColor: '#6b7280',
       borderRadiusLG: 12,
     },
     Drawer: {
       colorBgContainer: '#ffffff',
       borderRadiusLG: 16,
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
     },
     Popover: {
-      colorBg: '#ffffff',
+      colorBgElevated: '#ffffff',
       borderRadius: 12,
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
     },
-    message: {
-      colorBg: '#1f2937',
+    Message: {
+      colorBgContainer: '#1f2937',
       colorText: '#ffffff',
       borderRadius: 8,
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
     },
-    notification: {
-      colorBg: '#ffffff',
+    Notification: {
+      colorBgContainer: '#ffffff',
       borderRadius: 12,
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
     },
   },
 }
 
-const tailwindConfig: Config = {
-  content: [
-    './index.html',
-    './src/renderer/**/*.{js,ts,jsx,tsx}',
-    './src/main/**/*.{js,ts,jsx,tsx}',
-  ],
-  theme: {
-    extend: {
-      colors: {
-        bg: {
-          light: '#ffffff',
-          dark: '#0a0a0f',
-        },
-        text: {
-          light: '#111827',
-          dark: '#e0e0e0',
-        },
-      },
-      borderRadius: {
-        'xl': '12px',
-        '2xl': '16px',
-        '3xl': '24px',
-      },
-    },
+/**
+ * 主题颜色定义
+ */
+export const themeColors = {
+  sakura: {
+    primary: '#f8b4c4',
+    secondary: '#ffd6e0',
+    accent: '#e891a2',
+    bgBase: '#fff5f7',
+    bgSecondary: '#ffeef1',
+    textNormal: '#4a2c3a',
+    textMuted: '#7d5a68',
+    border: '#f5d0d8',
   },
-  plugins: [],
-}
+  ancient: {
+    primary: '#c9a86c',
+    secondary: '#d4b896',
+    accent: '#8b6914',
+    bgBase: '#1a1612',
+    bgSecondary: '#231e19',
+    textNormal: '#f0e6d8',
+    textMuted: '#c4b49c',
+    border: '#4a3f35',
+  },
+  tech: {
+    primary: '#00d4ff',
+    secondary: '#0099cc',
+    accent: '#7b2dff',
+    bgBase: '#0a0e17',
+    bgSecondary: '#0f1520',
+    textNormal: '#f0faff',
+    textMuted: '#8fa8c4',
+    border: '#1e2d42',
+  },
+} as const
 
-export { kookTheme, tailwindConfig }
+export type ThemeName = keyof typeof themeColors
+
+export { kookTheme }

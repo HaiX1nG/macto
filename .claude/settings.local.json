@@ -1,0 +1,44 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -rf /Users/megumikato/ReactProject/macto/*)",
+      "Bash(npm create *)",
+      "Bash(pkill -f Electron)",
+      "Bash(rm -rf /Users/megumikato/ReactProject/macto/dist/*)",
+      "Bash(rm -rf .claude/collab/)",
+      "Bash(rm -rf .claude/agents/)",
+      "Bash(rm -rf .claude/hooks/)",
+      "Bash(rm -rf scripts/logs/)",
+      "Bash(rm -f scripts/dashboard.sh)",
+      "Bash(rm -rf ~/.claude/hub/)",
+      "Bash(rm -rf ~/.claude/mcp/)",
+      "Bash(rm -rf ~/.claude/hooks/)",
+      "Bash(rm -f ~/.claude/collaboration-instructions.md)",
+      "Bash(rm -f ~/.claude/s001-client.js)",
+      "Bash(tmux kill-session *)",
+      "Bash(rm -rf ~/.claude/teams/macto-dev ~/.claude/tasks/macto-dev)",
+      "Bash(rm -rf ~/.claude/tasks/*)",
+      "Bash(rm -rf ~/.claude/teams/*)",
+      "Bash(mkdir -p /Users/megumikato/ReactProject/macto/.claude/agents)",
+      "Bash(cp /Users/megumikato/ReactProject/macto/.claude/agents.bak/ui-builder.md /Users/megumikato/ReactProject/macto/.claude/agents/ui-builder.md)",
+      "Bash(git fetch *)",
+      "Bash(npx tsc *)",
+      "Bash(python *)",
+      "Bash(rg --files /Users/megumikato/ReactProject/macto/.claude/worktrees/agent-a7a98f24fc7c7c424/src/renderer/pages /Users/megumikato/ReactProject/macto/.claude/worktrees/agent-a7a98f24fc7c7c424/src/renderer/components)",
+      "Bash(rg *)",
+      "Bash(git *)",
+      "Bash(awk -F: '{print $1}')"
+    ]
+  },
+  "mcpServers": {
+    "agent-room": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "agent-room",
+        "--service-url",
+        "ws://localhost:9000"
+      ]
+    }
+  }
+}
